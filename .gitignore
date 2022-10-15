@@ -1,0 +1,10 @@
+*.egg-info
+.vscode
+.env
+__pycache__
+.envtest
+.coverage*
+.env*
+wandb
+*.pex
+.pexing
