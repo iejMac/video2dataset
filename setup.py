@@ -22,6 +22,7 @@ if __name__ == "__main__":
         description="Easily create large video dataset from video urls",
         long_description=long_description,
         long_description_content_type="text/markdown",
+        entry_points={"console_scripts": ["video2dataset=video2dataset.cli:main"]},
         author="Maciej Kilian",
         author_email="kilianmaciej6@gmail.com",
         url="https://github.com/iejMac/video2dataset",
