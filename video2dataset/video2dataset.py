@@ -2,6 +2,8 @@
 
 
 from .reader import Reader
+from .writer import FileWriter
+from .downloader import handle_url
 
 
 def video2dataset(
@@ -27,11 +29,26 @@ def video2dataset(
   metadata_columns = list(metadata_columns) if isinstance(metadata_columns, tuple) else metadata_columns
   reader = Reader(src, metadata_columns)
   vids, ids, meta = reader.get_data()
-  meta_refs = list(range(len(vids)))
 
-  print(vids)
-  print(ids)
-  print(meta)
+  if output_format == "files":
+    writer = FileWriter(dest)
+  else:
+    print("Not implemented yet.")
+    return -1
 
+  for i in range(len(vids)):
+    vid = vids[i]
+    vid_id = ids[i]
+    vid_meta = {}
+    for k in meta:
+      vid_meta[k] = meta[k][i].as_py()
 
+    load_vid, file, dst_name = handle_url(vid)
+    with open(load_vid, "rb") as vid_file:
+      vid_bytes = vid_file.read()
+    video = vid_bytes
 
+    writer.write(video, vid_id, vid_meta)
+
+    if file is not None:  # for python files that need to be closed
+      file.close()
