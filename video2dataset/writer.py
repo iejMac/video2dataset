@@ -12,23 +12,28 @@ from io import BytesIO
 class FileWriter:
     """Writes output as files."""
 
-    def __init__(self, output_folder):
+    def __init__(self, output_folder, get_audio=False):
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
         self.output_folder = output_folder
 
         self.fs, self.output_folder = fsspec.core.url_to_fs(output_folder)
+        self.get_audio = get_audio
 
     def write(self, video, key, metadata=None):
         """write sample to file."""
         key = str(key)
+        ext = '.mp3' if self.get_audio else '.mp4'
 
-        save_pth = os.path.join(self.output_folder, key + ".mp4")
+        save_pth = os.path.join(self.output_folder, key + ext)
         with self.fs.open(save_pth, "wb") as f:
             f.write(video)
 
         if metadata is not None:
             if "caption" in metadata:
                 caption = str(metadata.pop("caption"))
-                caption_filename = os.path.join(self.output_folder, key + ".txt")
+                caption_filename = os.path.join(
+                    self.output_folder, key + ".txt")
                 with self.fs.open(caption_filename, "w") as f:
                     f.write(caption)
             if len(metadata) > 0:
