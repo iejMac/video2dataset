@@ -39,7 +39,7 @@ def video2dataset(
     ext = '.mp3' if get_audio else '.mp4'
 
     if output_format == "files":
-        writer = FileWriter(dest)
+        writer = FileWriter(dest, get_audio)
     elif output_format == "webdataset":
         writer = WebDatasetWriter(
             dest, 9, ext, maxcount=shard_sample_count, shard_id=starting_shard_id)

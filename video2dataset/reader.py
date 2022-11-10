@@ -41,10 +41,13 @@ class Reader:
 
         if isinstance(src, str):
             if src.endswith(".txt"):
-                df = csv_pq.read_csv(src, read_options=csv_pq.ReadOptions(column_names=["videoLoc"]))
-                df = df.add_column(0, "videoID", [list(range(df.num_rows))])  # add ID's
+                df = csv_pq.read_csv(
+                    src, read_options=csv_pq.ReadOptions(column_names=["videoLoc"]))
+                df = df.add_column(
+                    0, "videoID", [list(range(df.num_rows))])  # add ID's
             elif src.endswith(".csv"):
                 df = csv_pq.read_csv(src)
+                df = df.add_column(0, "videoID", [list(range(df.num_rows))])
             elif src.endswith(".parquet"):
                 with open(src, "rb") as f:
                     columns_to_read = self.columns + meta_columns
@@ -53,7 +56,8 @@ class Reader:
                 src = [src]
         if isinstance(src, list):
             df = pa.Table.from_arrays([src], names=["videoLoc"])
-            df = df.add_column(0, "videoID", [list(range(df.num_rows))])  # add ID's
+            df = df.add_column(
+                0, "videoID", [list(range(df.num_rows))])  # add ID's
 
         for c in no_dupl_temp:
             self.meta_columns.append(c)
