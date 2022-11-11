@@ -57,9 +57,9 @@ def video2dataset(
         if info:
             vid_meta = {
                 'meta': vid_meta,
-                'audio_info': info
+                'video_info': info
             }
-        if get_audio:
+        if type(load_vid) != str:
             video = load_vid
         else:
             with open(load_vid, "rb") as vid_file:

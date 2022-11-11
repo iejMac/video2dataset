@@ -50,6 +50,9 @@ def get_info_and_resample(url: str, sample_rate: int, get_info: bool = True) -> 
 
     headers = '"User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.80 Safari/537.36"'
     media_info = get_media_info(url)
+    video_info = {
+        'audio_info': media_info
+    }
     sample_rate = sample_rate if sample_rate else media_info['sample_rate']
 
     command = f'ffmpeg -headers {headers}  -i {url} -vn -ac 2 -f wav -acodec pcm_s16le -ar {sample_rate} - -hide_banner -loglevel error'
@@ -72,5 +75,5 @@ def get_info_and_resample(url: str, sample_rate: int, get_info: bool = True) -> 
     else:
         error_msg = str(error_msg)
     if get_info:
-        return b, media_info
+        return b, video_info
     return b, None
