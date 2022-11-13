@@ -3,6 +3,10 @@
 
 Easily create large video dataset from video urls
 
+![Video2dataset design overview](video2dataset_overview.png)]
+
+Checkout the [design doc](https://docs.google.com/document/d/1_TD2KQLkEegszq4Eip568fc6cWnh9h0Jqj4Lc88t9Y0/edit#)
+
 ## Install
 
 pip install video2dataset
