@@ -12,23 +12,26 @@ from io import BytesIO
 class FileWriter:
     """Writes output as files."""
 
-    def __init__(self, output_folder, get_audio=False):
+    def __init__(self, output_folder, video_format):
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
         self.output_folder = output_folder
 
         self.fs, self.output_folder = fsspec.core.url_to_fs(output_folder)
-        self.get_audio = get_audio
+        self.video_format = video_format
 
-    def write(self, video, key, metadata=None):
+    def write(self, streams, key, metadata=None):
         """write sample to file."""
         key = str(key)
-        ext = '.mp3' if self.get_audio else '.mp4'
 
-        save_pth = os.path.join(self.output_folder, key + ext)
-        with self.fs.open(save_pth, "wb") as f:
-            f.write(video)
-
+        for ext in self.video_format.split(','):
+            try:
+                video = streams[ext]['file']
+                save_pth = os.path.join(self.output_folder, key + '.' + ext)
+                with self.fs.open(save_pth, "wb") as f:
+                    f.write(video)
+            except:
+                continue
         if metadata is not None:
             if "caption" in metadata:
                 caption = str(metadata.pop("caption"))
@@ -39,7 +42,7 @@ class FileWriter:
             if len(metadata) > 0:
                 j = json.dumps(metadata, indent=4)
                 meta_filename = os.path.join(self.output_folder, key + ".json")
-                with self.fs.open(meta_filename, "w") as f:
+                with self.fs.open(meta_filename, "w", encoding='utf8') as f:
                     f.write(j)
 
     def close(self):
@@ -49,10 +52,17 @@ class FileWriter:
 class WebDatasetWriter:
     """Writes output in WebDataset format."""
 
-    def __init__(self, output_folder, oom_shard_count, encode_format, maxcount=10000, shard_id=0):
+    def __init__(
+            self,
+            output_folder: str,
+            oom_shard_count: int,
+            video_format: str,
+            maxcount: int = 10000,
+            shard_id: int = 0
+    ):
         self.output_folder = output_folder
         self.oom_shard_count = oom_shard_count
-        self.encode_format = encode_format
+        self.video_format = video_format
         self.maxcount = maxcount
         self.shard_id = shard_id
 
@@ -73,7 +83,7 @@ class WebDatasetWriter:
         self.tar_fd = fs.open(f"{output_path}/{shard_name}.tar", "wb")
         self.tarwriter = wds.TarWriter(self.tar_fd)
 
-    def write(self, video, key, metadata=None):
+    def write(self, streams, key, metadata=None):
         """write sample to current shard."""
         key = str(key)
         if self.count >= self.maxcount:
@@ -81,7 +91,15 @@ class WebDatasetWriter:
             self.count = 0
             self.create_shard()
 
-        sample = {"__key__": key, self.encode_format: video}
+        for encode_format in self.video_format.split(','):
+
+            try:
+                sample = {"__key__": key,
+                          encode_format: streams[encode_format]['file']}
+            except:
+                sample = {"__key__": key,
+                          encode_format: streams['error']}
+
         if metadata is not None:
             if "caption" in metadata:
                 sample["txt"] = str(metadata.pop("caption"))
