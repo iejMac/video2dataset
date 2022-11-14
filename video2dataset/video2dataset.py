@@ -4,6 +4,7 @@
 from .reader import Reader
 from .writer import FileWriter, WebDatasetWriter
 from .downloader import handle_url
+from tqdm import tqdm
 
 
 def video2dataset(
@@ -11,8 +12,9 @@ def video2dataset(
     dest="",
     output_format="webdataset",
     metadata_columns="",
-    get_audio=False,
+    video_format="",
     sample_rate=None,
+    url_col='videoLoc'
 ):
     """
     create video dataset from video links
@@ -30,21 +32,20 @@ def video2dataset(
         metadata_columns = [metadata_columns] if metadata_columns != "" else []
     metadata_columns = list(metadata_columns) if isinstance(
         metadata_columns, tuple) else metadata_columns
-    reader = Reader(src, metadata_columns)
+    reader = Reader(src, metadata_columns, url_col)
     vids, ids, meta = reader.get_data()
+    video_format = video_format.replace(' ', '')
 
     starting_shard_id = 0
     shard_sample_count = 10000
 
-    ext = '.mp3' if get_audio else '.mp4'
-
     if output_format == "files":
-        writer = FileWriter(dest, get_audio)
+        writer = FileWriter(dest, video_format)
     elif output_format == "webdataset":
         writer = WebDatasetWriter(
-            dest, 9, ext, maxcount=shard_sample_count, shard_id=starting_shard_id)
+            dest, 9, video_format=video_format, maxcount=shard_sample_count, shard_id=starting_shard_id)
 
-    for i in range(len(vids)):
+    for i in tqdm(range(len(vids))):
         vid = vids[i]
         vid_id = ids[i]
         vid_meta = {}
@@ -52,21 +53,14 @@ def video2dataset(
             vid_meta[k] = meta[k][i].as_py()
 
         # NOTE: Right now assuming video is url (maybe add support for local mp4
-        load_vid, file, dst_name, info = handle_url(
-            vid, get_audio=get_audio, sample_rate=sample_rate)
-        if info:
-            vid_meta = {
-                'meta': vid_meta,
-                'video_info': info
-            }
-        if type(load_vid) != str:
-            video = load_vid
-        else:
-            with open(load_vid, "rb") as vid_file:
-                vid_bytes = vid_file.read()
-            video = vid_bytes
+        streams = handle_url(
+            vid, video_format=video_format, sample_rate=sample_rate)
+        info = streams['info']
 
-        writer.write(video, vid_id, vid_meta)
+        vid_meta = {
+            'meta': vid_meta,
+            'video_info': info,
+            'error': streams['error']
+        }
 
-        if file is not None:  # for python files that need to be closed
-            file.close()
+        writer.write(streams, vid_id, vid_meta)
