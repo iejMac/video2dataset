@@ -7,4 +7,3 @@ __pycache__
 .env*
 wandb
 *.pex
-.pexing
