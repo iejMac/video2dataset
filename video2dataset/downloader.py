@@ -68,6 +68,7 @@ def get_info_and_resample(url: str, sample_rate: int) -> tuple:
         stdout=subprocess.PIPE,
         shell=False
     )
+
     b = b''
     nsamples = 1024
     itemsize = 2
