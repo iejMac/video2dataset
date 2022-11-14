@@ -58,6 +58,7 @@ def get_info_and_resample(url: str, sample_rate: int) -> tuple:
     video_info = {
         'audio_info': media_info
     }
+
     sample_rate = sample_rate if sample_rate else media_info['sample_rate']
 
     command = f'ffmpeg -headers {headers}  -i {url} -vn -ac 2 -f wav -acodec pcm_s16le -ar {sample_rate} - -hide_banner -loglevel panic'
