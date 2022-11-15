@@ -48,7 +48,6 @@ def video2dataset(
 
     # NOTE: Right now assuming video is url (maybe add support for local mp4
     load_vid, file, dst_name = handle_url(vid)
-
     with open(load_vid, "rb") as vid_file:
       vid_bytes = vid_file.read()
     video = vid_bytes
