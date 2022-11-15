@@ -4,6 +4,7 @@
 from .reader import Reader
 from .writer import FileWriter, WebDatasetWriter
 from .downloader import handle_url
+from .downloader import handle_mp4_link
 
 
 def video2dataset(
@@ -39,6 +40,7 @@ def video2dataset(
     writer = WebDatasetWriter(dest, 9, "mp4", maxcount=shard_sample_count, shard_id=starting_shard_id)
 
   for i in range(len(vids)):
+    print(f"{i}/{len(vids)}")
     vid = vids[i]
     vid_id = ids[i]
     vid_meta = {}
@@ -47,6 +49,7 @@ def video2dataset(
 
     # NOTE: Right now assuming video is url (maybe add support for local mp4
     load_vid, file, dst_name = handle_url(vid)
+
     with open(load_vid, "rb") as vid_file:
       vid_bytes = vid_file.read()
     video = vid_bytes
