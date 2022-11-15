@@ -39,6 +39,7 @@ def video2dataset(
     writer = WebDatasetWriter(dest, 9, "mp4", maxcount=shard_sample_count, shard_id=starting_shard_id)
 
   for i in range(len(vids)):
+    print(f"{i}/{len(vids)}")
     vid = vids[i]
     vid_id = ids[i]
     vid_meta = {}

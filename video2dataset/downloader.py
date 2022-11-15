@@ -6,7 +6,7 @@ import yt_dlp
 
 QUALITY = "360p"
 
-
+# TODO: update this to be link in video2numpy (with retries)
 def handle_youtube(youtube_url):
     """returns file and destination name from youtube url."""
     ydl_opts = {}
@@ -19,9 +19,12 @@ def handle_youtube(youtube_url):
             continue
         break
 
-    cv2_vid = f.get("url", None)
-    dst_name = info.get("id") + ".npy"
-    return cv2_vid, dst_name
+    vid_url = f.get("url", None)
+    dst_name = info.get("id")
+
+    # For video2dataset we need the bytes:
+    ntf, _ = handle_mp4_link(vid_url)
+    return ntf, dst_name
 
 
 def handle_mp4_link(mp4_link):
@@ -29,7 +32,7 @@ def handle_mp4_link(mp4_link):
     ntf = tempfile.NamedTemporaryFile()  # pylint: disable=consider-using-with
     ntf.write(resp.content)
     ntf.seek(0)
-    dst_name = mp4_link.split("/")[-1][:-4] + ".npy"
+    dst_name = mp4_link.split("/")[-1][:-4]
     return ntf, dst_name
 
 
@@ -41,18 +44,18 @@ def handle_url(url):
     Output:
         load_file - variable used to load video.
         file - the file itself (in cases where it needs to be closed after usage).
-        name - numpy fname to save frames to.
+        name - fname to save frames to.
     """
     if "youtube" in url:  # youtube link
-        load_file, name = handle_youtube(url)
-        return load_file, None, name
-		# TODO: add .avi, .webm, should also work
+        file, name = handle_youtube(url)
+    # TODO: add .avi, .webm, should also work
     elif url.endswith(".mp4"):  # mp4 link
         file, name = handle_mp4_link(url)
-        return file.name, file, name
     else:
         print("Warning: Incorrect URL type")
         return None, None, ""
+    
+    return file.name, file, name
 
 
 class Downloader:
