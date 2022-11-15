@@ -4,7 +4,6 @@
 from .reader import Reader
 from .writer import FileWriter, WebDatasetWriter
 from .downloader import handle_url
-from .downloader import handle_mp4_link
 
 
 def video2dataset(
