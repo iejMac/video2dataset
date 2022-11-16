@@ -6,7 +6,6 @@ import requests
 import os
 import subprocess
 import shlex
-import aiohttp
 
 
 def get_info_and_resample(url: str, sample_rate: int) -> tuple:
@@ -48,16 +47,6 @@ def get_info_and_resample(url: str, sample_rate: int) -> tuple:
 QUALITY = "360p"
 
 
-async def download_stream(url: str) -> bytes:
-    headers = {
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36',
-    }
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, headers=headers) as resp:
-            content = await resp.read()
-            return content
-
-
 def handle_youtube(youtube_url: str, video_format: str, sample_rate: int):
     """returns stream and video/audio info from youtube url."""
     headers = {
@@ -95,15 +84,10 @@ def handle_youtube(youtube_url: str, video_format: str, sample_rate: int):
                         continue
                     break
                 url = f.get('url', None)
-                print(f)
-
-                # stream = download_stream(url)
-
                 session = requests.Session()
 
                 res = session.get(url, headers=headers, stream=True)
                 stream = res.content
-                # stream = res.iter_content(chunk_size=1024)
                 streams[vf] = dict()
                 streams[vf]['file'] = stream
 
