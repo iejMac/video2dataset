@@ -9,22 +9,20 @@ from tqdm import tqdm
 
 def video2dataset(
     src,
-    dest="",
-    video_format="",
-    sample_rate=None,
+    dest="", video_format="", sample_rate=None,
     output_format="webdataset",
     metadata_columns="",
 ):
     """
     create video dataset from video links
     src:
-      str: path to table of data with video links and metdata
+        str: path to table of data with video links and metdata
     dest:
-      str: where to save dataset to
+        str: where to save dataset to
     output_format:
-      str: webdataset, files
+        str: webdataset, files
     metadata_columns:
-      str: a comma separated list of metadata column names to look for in src
+        str: a comma separated list of metadata column names to look for in src
     """
     if isinstance(metadata_columns, str):
         metadata_columns = [metadata_columns] if metadata_columns != "" else []
