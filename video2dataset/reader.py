@@ -17,7 +17,7 @@ class Reader:
     anything else - put in key.json metadata file
     """
 
-    def __init__(self, src, meta_columns=None, url_col='videoLoc'):
+    def __init__(self, src, meta_columns=None):
         """
         Input:
 
@@ -30,7 +30,7 @@ class Reader:
         meta_columns:
             list[str]: columns of useful metadata to save with videos
         """
-        self.columns = [url_col]
+        self.columns = ["videoID", "videoLoc"]
         no_dupl_temp = []
         for c in self.columns:
             if c in meta_columns:
@@ -42,22 +42,19 @@ class Reader:
         if isinstance(src, str):
             if src.endswith(".txt"):
                 df = csv_pq.read_csv(
-                    src, read_options=csv_pq.ReadOptions(column_names=[url_col]))
+                    src, read_options=csv_pq.ReadOptions(column_names=["videoLoc"]))
                 df = df.add_column(
                     0, "videoID", [list(range(df.num_rows))])  # add ID's
             elif src.endswith(".csv"):
                 df = csv_pq.read_csv(src)
-                df = df.add_column(0, "videoID", [list(range(df.num_rows))])
             elif src.endswith(".parquet"):
                 with open(src, "rb") as f:
                     columns_to_read = self.columns + meta_columns
                     df = pq.read_table(f, columns=columns_to_read)
-                    df = df.add_column(
-                        0, "videoID", [list(range(df.num_rows))])
             else:  # singular video (mp4 or link)
                 src = [src]
         if isinstance(src, list):
-            df = pa.Table.from_arrays([src], names=[url_col])
+            df = pa.Table.from_arrays([src], names=["videoLoc"])
             df = df.add_column(
                 0, "videoID", [list(range(df.num_rows))])  # add ID's
 
@@ -66,7 +63,7 @@ class Reader:
         self.df = df
 
     def get_data(self):
-        vids = self.df[self.columns[0]].to_pylist()
+        vids = self.df["videoLoc"].to_pylist()
         ids = self.df["videoID"]
         meta = dict(  # pylint: disable=consider-using-dict-comprehension
             [(meta, self.df[meta]) for meta in self.meta_columns]

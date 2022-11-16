@@ -3,44 +3,10 @@ import requests
 import tempfile
 import yt_dlp
 import requests
-import json
-from subprocess import check_output
 import os
 import subprocess
 import shlex
-
-
-def get_media_info(filename: str) -> dict:
-    """Extracts audio format, number of channels, duration and sample rate
-
-    Keyword arguments:
-    filename - video filename or URL
-
-    Returns:
-    dict of info
-    """
-
-    result = check_output(['ffprobe',
-                           '-hide_banner', '-loglevel', 'panic',
-                           '-select_streams',
-                           'a:0',
-                           '-show_streams',
-                           '-of',
-                           'json', filename])
-
-    result = json.loads(result)['streams']
-    result = result[0]
-    codec_name = result.get('codec_name', None)
-    channels = result.get('channels', None)
-    duration = result.get('duration', None)
-    sample_rate = result.get('sample_rate', None)
-
-    return {
-        'format': codec_name,
-        'channels': channels,
-        'duration': duration,
-        'orig_sample_rate': sample_rate
-    }
+import aiohttp
 
 
 def get_info_and_resample(url: str, sample_rate: int) -> tuple:
@@ -53,15 +19,10 @@ def get_info_and_resample(url: str, sample_rate: int) -> tuple:
     """
 
     headers = '"User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.80 Safari/537.36"'
-    media_info = get_media_info(url)
-    media_info['sample_rate'] = sample_rate
-    video_info = {
-        'audio_info': media_info
-    }
 
-    sample_rate = sample_rate if sample_rate else media_info['sample_rate']
+    sample_rate_str = f'-ar {sample_rate}' if sample_rate else ''
 
-    command = f'ffmpeg -headers {headers}  -i {url} -vn -ac 2 -f wav -acodec pcm_s16le -ar {sample_rate} - -hide_banner -loglevel panic'
+    command = f'ffmpeg -headers {headers}  -i {url} -vn -ac 2 -f wav -acodec pcm_s16le {sample_rate_str} - -hide_banner -loglevel panic'
 
     ffmpeg_cmd = subprocess.Popen(
         shlex.split(command),
@@ -81,10 +42,20 @@ def get_info_and_resample(url: str, sample_rate: int) -> tuple:
             if error_msg is not None:
                 break
 
-    return b, video_info
+    return b
 
 
 QUALITY = "360p"
+
+
+async def download_stream(url: str) -> bytes:
+    headers = {
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36',
+    }
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers) as resp:
+            content = await resp.read()
+            return content
 
 
 def handle_youtube(youtube_url: str, video_format: str, sample_rate: int):
@@ -95,7 +66,6 @@ def handle_youtube(youtube_url: str, video_format: str, sample_rate: int):
 
     ydl_opts = {
         'quiet': True,
-        'format': 'bestvideo[ext=mp4]+bestaudio[ext=mp3]/mp4',
     }
 
     streams = dict()
@@ -104,27 +74,20 @@ def handle_youtube(youtube_url: str, video_format: str, sample_rate: int):
         info = ydl.extract_info(youtube_url, download=False)
 
         formats = info.get("formats", None)
-        video_info = {
-            'id': info['id'],
-            'title': info['title'],
-            'description': info.get('description', None),
-            'tags': info.get('tags', None)
-        }
         for vf in video_format.split(','):
             if vf == 'mp3':
 
                 for f in formats:
-                    if f.get("audio_ext", None) != 'm4a' and not f.get("asr", None):
+                    if not f.get("asr", None):
                         continue
                     break
 
                 url = f.get('url', None)
 
-                stream, audio_info = get_info_and_resample(
+                stream = get_info_and_resample(
                     url, sample_rate)
                 streams[vf] = dict()
                 streams[vf]['file'] = stream
-                video_info['audio_info'] = audio_info
 
             else:
                 for f in formats:
@@ -132,15 +95,20 @@ def handle_youtube(youtube_url: str, video_format: str, sample_rate: int):
                         continue
                     break
                 url = f.get('url', None)
-                res = requests.get(url, headers=headers, stream=True)
+                print(f)
+
+                # stream = download_stream(url)
+
+                session = requests.Session()
+
+                res = session.get(url, headers=headers, stream=True)
                 stream = res.content
+                # stream = res.iter_content(chunk_size=1024)
                 streams[vf] = dict()
                 streams[vf]['file'] = stream
 
-        streams['info'] = video_info
         streams['error'] = ''
     except Exception as err:
-        streams['info'] = {}
         streams['error'] = err
     return streams
 
@@ -163,7 +131,6 @@ def handle_mp4_link(
                 resp = requests.get(mp4_link, stream=True)
                 streams[vf] = dict()
                 streams[vf]['file'] = resp.content
-        streams['info']['audio_info'] = audio_info
         streams['error'] = ''
         return streams
 
@@ -191,7 +158,7 @@ def handle_url(url, video_format, sample_rate=None):
         return streams
 
         # TODO: add .avi, .webm, should also work
-    elif url.endswith(".mp4") or url.endswith(".mp3") or url.endswith(".m4a"):  # mp4 link
+    elif url.endswith(".mp4") or url.endswith(".mp3"):  # mp4 link
         streams = handle_mp4_link(
             url, video_format, sample_rate=sample_rate)
         return streams

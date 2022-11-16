@@ -42,7 +42,7 @@ class FileWriter:
             if len(metadata) > 0:
                 j = json.dumps(metadata, indent=4)
                 meta_filename = os.path.join(self.output_folder, key + ".json")
-                with self.fs.open(meta_filename, "w", encoding='utf8') as f:
+                with self.fs.open(meta_filename, "w") as f:
                     f.write(j)
 
     def close(self):
