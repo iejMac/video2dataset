@@ -57,7 +57,15 @@ def handle_url(url):
     
     return file.name, file, name
 
+class VideoDataReader:
+    def __init__(self) -> None:
+        pass
 
-class Downloader:
-  def __init__(self):
-    pass
+    def __call__(self, row, timeout, retries):
+        key, url = row
+        file_name, file, _ = handle_url(url)
+        with open(file_name, "rb") as vid_file:
+            vid_bytes = vid_file.read()
+        if file is not None:  # for python files that need to be closed
+            file.close()
+        return key, vid_bytes, None

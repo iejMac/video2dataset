@@ -111,7 +111,7 @@ class SpeedLogger(Logger):
         self, count, success, failed_to_download, failed_to_resize, start_time, end_time
     ):  # pylint: disable=arguments-differ
         duration = end_time - start_time
-        img_per_sec = count / duration
+        vid_per_sec = count / duration
         success_ratio = 1.0 * success / count
         failed_to_download_ratio = 1.0 * failed_to_download / count
         failed_to_resize_ratio = 1.0 * failed_to_resize / count
@@ -123,7 +123,7 @@ class SpeedLogger(Logger):
                     f"success: {success_ratio:.3f}",
                     f"failed to download: {failed_to_download_ratio:.3f}",
                     f"failed to resize: {failed_to_resize_ratio:.3f}",
-                    f"images per sec: {img_per_sec:.0f}",
+                    f"images per sec: {vid_per_sec:.0f}",
                     f"count: {count}",
                 ]
             )
@@ -132,7 +132,7 @@ class SpeedLogger(Logger):
         if self.enable_wandb:
             wandb.log(
                 {
-                    f"{self.prefix}/img_per_sec": img_per_sec,
+                    f"{self.prefix}/vid_per_sec": vid_per_sec,
                     f"{self.prefix}/success": success_ratio,
                     f"{self.prefix}/failed_to_download": failed_to_download_ratio,
                     f"{self.prefix}/failed_to_resize": failed_to_resize_ratio,

@@ -6,3 +6,6 @@ yt_dlp
 pyarrow
 fsspec
 webdataset
+wandb
+pandas
+tqdm

@@ -3,6 +3,8 @@
 
 from typing import List, Optional
 import fire
+
+from video2dataset.data_reader import VideoDataReader
 from .logger import LoggerProcess
 from .data_writer import (
     WebDatasetSampleWriter,
@@ -22,14 +24,13 @@ from .worker import Worker
 
 def video2dataset(
     url_list: str,
-    output_folder: str = "images",
+    output_folder: str = "videos",
     processes_count: int = 1,
     output_format: str = "files",
     input_format: str = "txt",
     url_col: str = "url",
     caption_col: Optional[str] = None,
     number_sample_per_shard: int = 10000,
-    extract_exif: bool = True,
     save_additional_columns: Optional[List[str]] = None,
     enable_wandb: bool = False,
     wandb_project: str = "video2dataset",
@@ -39,6 +40,7 @@ def video2dataset(
     retries: int = 0,
     incremental_mode: str = "incremental",
     max_shard_retry: int = 1,
+    timeout: int = 60,
 ):
   """
   create video dataset from video links
@@ -93,7 +95,7 @@ def video2dataset(
   logger_process.done_shards = done_shards
   logger_process.start()
 
-  reader = Reader(
+  input_sharder = InputSharder(
       url_list,
       input_format,
       url_col,
@@ -120,11 +122,12 @@ def video2dataset(
   downloader = Worker(
       sample_writer_class=sample_writer_class,
       save_caption=save_caption,
-      extract_exif=extract_exif,
       output_folder=output_folder,
-      column_list=reader.column_list,
+      column_list=input_sharder.column_list,
+      timeout=timeout,
       number_sample_per_shard=number_sample_per_shard,
       oom_shard_count=oom_shard_count,
+      encode_format="mp4",
       retries=retries,
   )
 
@@ -139,14 +142,15 @@ def video2dataset(
   distributor_fn(
       processes_count,
       downloader,
-      reader,
+      input_sharder,
       subjob_size,
       max_shard_retry,
   )
   logger_process.join()
   fs.rm(tmp_dir, recursive=True)
 
-
+def main():
+    fire.Fire(video2dataset)
 
 if __name__ == "__main__":
-    fire.Fire(video2dataset)
+    main()
