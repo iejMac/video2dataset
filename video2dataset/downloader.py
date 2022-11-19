@@ -53,8 +53,12 @@ def handle_youtube(youtube_url: str, video_format: str, sample_rate: int):
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36',
     }
 
+    yt_dlp.utils.std_headers['Referer'] = "https://www.youtube.com/"
+    yt_dlp.utils.std_headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36'
+
     ydl_opts = {
         'quiet': True,
+        'format': 'bv*[height<=360][ext=mp4]+ba[ext=m4a]/b[height<=360]'
     }
 
     streams = dict()
@@ -63,33 +67,21 @@ def handle_youtube(youtube_url: str, video_format: str, sample_rate: int):
         info = ydl.extract_info(youtube_url, download=False)
 
         formats = info.get("formats", None)
+        audio_url = [f for f in formats if f['format']
+                     == '140 - audio only (medium)'][0]['url']
+        video_url = [f for f in formats if f['format_note']
+                     == '360p' and f['ext'] == 'mp4'][0]['url']
         for vf in video_format.split(','):
             if vf == 'mp3':
-
-                for f in formats:
-                    if not f.get("asr", None):
-                        continue
-                    break
-
-                url = f.get('url', None)
-
                 stream = get_info_and_resample(
-                    url, sample_rate)
-                streams[vf] = dict()
-                streams[vf]['file'] = stream
-
+                    audio_url, sample_rate)
             else:
-                for f in formats:
-                    if f.get("format_note", None) != QUALITY:
-                        continue
-                    break
-                url = f.get('url', None)
                 session = requests.Session()
-
-                res = session.get(url, headers=headers, stream=True)
+                res = session.get(video_url, headers=headers, stream=True)
                 stream = res.content
-                streams[vf] = dict()
-                streams[vf]['file'] = stream
+
+            streams[vf] = dict()
+            streams[vf]['file'] = stream
 
         streams['error'] = ''
     except Exception as err:
