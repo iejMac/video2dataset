@@ -21,19 +21,19 @@ def retrier(runf, failed_shards, max_shard_retry):
         )
 
 
-def multiprocessing_distributor(processes_count, downloader, reader, _, max_shard_retry):
+def multiprocessing_distributor(processes_count, worker, input_sharder, _, max_shard_retry):
     """Distribute the work to the processes using multiprocessing"""
     ctx = get_context("spawn")
     with ctx.Pool(processes_count, maxtasksperchild=5) as process_pool:
 
         def run(gen):
             failed_shards = []
-            for (status, row) in tqdm(process_pool.imap_unordered(downloader, gen)):
+            for (status, row) in tqdm(process_pool.imap_unordered(worker, gen)):
                 if status is False:
                     failed_shards.append(row)
             return failed_shards
 
-        failed_shards = run(reader)
+        failed_shards = run(input_sharder)
 
         retrier(run, failed_shards, max_shard_retry)
 
@@ -42,7 +42,7 @@ def multiprocessing_distributor(processes_count, downloader, reader, _, max_shar
         del process_pool
 
 
-def pyspark_distributor(processes_count, downloader, reader, subjob_size, max_shard_retry):
+def pyspark_distributor(processes_count, worker, input_sharder, subjob_size, max_shard_retry):
     """Distribute the work to the processes using pyspark"""
 
     with _spark_session(processes_count) as spark:
@@ -56,12 +56,12 @@ def pyspark_distributor(processes_count, downloader, reader, subjob_size, max_sh
             failed_shards = []
             for batch in batcher(gen, subjob_size):
                 rdd = spark.sparkContext.parallelize(batch, len(batch))
-                for (status, row) in rdd.map(downloader).collect():
+                for (status, row) in rdd.map(worker).collect():
                     if status is False:
                         failed_shards.append(row)
             return failed_shards
 
-        failed_shards = run(reader)
+        failed_shards = run(input_sharder)
 
         retrier(run, failed_shards, max_shard_retry)
 

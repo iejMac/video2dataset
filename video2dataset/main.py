@@ -117,7 +117,7 @@ def video2dataset(
     else:
         raise ValueError(f"Invalid output format {output_format}")
 
-    downloader = Worker(
+    worker = Worker(
         sample_writer_class=sample_writer_class,
         save_caption=save_caption,
         output_folder=output_folder,
@@ -139,7 +139,7 @@ def video2dataset(
 
     distributor_fn(
         processes_count,
-        downloader,
+        worker,
         input_sharder,
         subjob_size,
         max_shard_retry,
