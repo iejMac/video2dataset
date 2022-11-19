@@ -10,6 +10,7 @@ import fsspec
 from video2dataset.data_reader import VideoDataReader
 from .logger import CappedCounter
 from .logger import write_stats
+from .subsampler import NoOpSubsampler
 
 
 def compute_key(key, shard_id, oom_sample_per_shard, oom_shard_count):
@@ -46,6 +47,7 @@ class Worker:
         self.encode_format = encode_format
         self.retries = retries
         self.data_reader = VideoDataReader()
+        self.subsampler = NoOpSubsampler()
 
     def __call__(
         self,
@@ -132,6 +134,8 @@ class Worker:
                         meta,
                     )
                     continue
+
+                subsampled_video, error_message = self.subsampler(vid_stream)
                 if error_message is not None:
                     failed_to_resize += 1
                     status = "failed_to_resize"
@@ -152,7 +156,7 @@ class Worker:
                 meta["status"] = status
 
                 sample_writer.write(
-                    vid_stream,
+                    subsampled_video,
                     str_key,
                     sample_data[caption_indice] if caption_indice is not None else None,
                     meta,
