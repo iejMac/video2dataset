@@ -54,10 +54,13 @@ def handle_url(url):
     else:
         print("Warning: Incorrect URL type")
         return None, None, ""
-    
+
     return file.name, file, name
 
+
 class VideoDataReader:
+    """Video data reader provide data for a video"""
+
     def __init__(self) -> None:
         pass
 

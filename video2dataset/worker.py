@@ -12,7 +12,6 @@ from .logger import CappedCounter
 from .logger import write_stats
 
 
-
 def compute_key(key, shard_id, oom_sample_per_shard, oom_shard_count):
     true_key = (10**oom_sample_per_shard) * shard_id + key
     key_format = oom_sample_per_shard + oom_shard_count
@@ -47,7 +46,6 @@ class Worker:
         self.encode_format = encode_format
         self.retries = retries
         self.data_reader = VideoDataReader()
-
 
     def __call__(
         self,
