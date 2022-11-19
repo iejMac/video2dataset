@@ -54,10 +54,21 @@ def handle_url(url):
     else:
         print("Warning: Incorrect URL type")
         return None, None, ""
-    
+
     return file.name, file, name
 
 
-class Downloader:
-  def __init__(self):
-    pass
+class VideoDataReader:
+    """Video data reader provide data for a video"""
+
+    def __init__(self) -> None:
+        pass
+
+    def __call__(self, row, timeout, retries):
+        key, url = row
+        file_name, file, _ = handle_url(url)
+        with open(file_name, "rb") as vid_file:
+            vid_bytes = vid_file.read()
+        if file is not None:  # for python files that need to be closed
+            file.close()
+        return key, vid_bytes, None
