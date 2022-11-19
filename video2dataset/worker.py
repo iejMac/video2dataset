@@ -36,6 +36,8 @@ class Worker:
         oom_shard_count,
         encode_format,
         retries,
+        video_height,
+        video_width,
     ) -> None:
         self.sample_writer_class = sample_writer_class
         self.save_caption = save_caption
@@ -46,7 +48,7 @@ class Worker:
         self.oom_shard_count = oom_shard_count
         self.encode_format = encode_format
         self.retries = retries
-        self.data_reader = VideoDataReader()
+        self.data_reader = VideoDataReader(video_height, video_width, timeout, retries)
         self.subsampler = NoOpSubsampler()
 
     def __call__(
@@ -112,7 +114,7 @@ class Worker:
         )
         oom_sample_per_shard = math.ceil(math.log10(self.number_sample_per_shard))
         for key in loader:
-            key, vid_stream, error_message = self.data_reader(key, timeout=self.timeout, retries=self.retries)
+            key, vid_stream, error_message = self.data_reader(key)
             try:
                 _, sample_data = shard_to_dl[key]
                 str_key = compute_key(key, shard_id, oom_sample_per_shard, self.oom_shard_count)

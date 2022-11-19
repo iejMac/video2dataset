@@ -39,6 +39,8 @@ def video2dataset(
     retries: int = 0,
     incremental_mode: str = "incremental",
     max_shard_retry: int = 1,
+    video_height: int = 360,
+    video_width: int = 640,
     timeout: int = 60,
 ):
     """
@@ -127,6 +129,8 @@ def video2dataset(
         oom_shard_count=oom_shard_count,
         encode_format="mp4",
         retries=retries,
+        video_height=video_height,
+        video_width=video_width,
     )
 
     print("Starting the downloading of this file")
