@@ -88,7 +88,7 @@ This module exposes a single function `download` which takes the same arguments 
 * **number_sample_per_shard** the number of sample that will be downloaded in one shard (default *10000*)
 * **save_additional_columns** list of additional columns to take from the csv/parquet files and save in metadata files (default *None*)
 * **timeout** maximum time (in seconds) to wait when trying to download an image (default *10*)
-* **max_format_tries** maximum amount of YouTube formats to try (discarding slow downloading formats)
+* **max_format_tries** maximum amount of formats to try (discarding slow downloading formats)
 * **video_height** height of video frames
 * **video_width** width of video frames 
 * **enable_wandb** whether to enable wandb logging (default *False*)
