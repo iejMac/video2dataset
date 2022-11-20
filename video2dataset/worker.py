@@ -36,6 +36,7 @@ class Worker:
         oom_shard_count,
         encode_format,
         retries,
+        max_format_tries,
         video_height,
         video_width,
     ) -> None:
@@ -48,7 +49,7 @@ class Worker:
         self.oom_shard_count = oom_shard_count
         self.encode_format = encode_format
         self.retries = retries
-        self.data_reader = VideoDataReader(video_height, video_width, timeout, retries)
+        self.data_reader = VideoDataReader(video_height, video_width, timeout, max_format_tries)
         self.subsampler = NoOpSubsampler()
 
     def __call__(

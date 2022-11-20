@@ -31,7 +31,7 @@ def get_fast_format(formats, dl_timeout):
     return format_id
 
 
-def handle_youtube(youtube_url, retries, timeout, video_height, video_width):
+def handle_youtube(youtube_url, max_format_tries, timeout, video_height, video_width):
     """returns file and destination name from youtube url."""
     # Probe download speed:
     ydl_opts = {
@@ -46,7 +46,7 @@ def handle_youtube(youtube_url, retries, timeout, video_height, video_width):
     filtered_formats = [f for f in formats if f['height'] is not None and f['height'] >= video_height and f['width'] >= video_width]
 
     # TODO: how do we drop the video when format_id is None (all retires timed out)
-    format_id = get_fast_format(filtered_formats[:retries+1], timeout)
+    format_id = get_fast_format(filtered_formats[:max_format_tries], timeout)
     if format_id is None:
         return None, "No format available given input constraints"
 
@@ -78,7 +78,7 @@ def handle_mp4_link(mp4_link):
     return ntf, None
 
 
-def handle_url(url, retries, timeout, format_args):
+def handle_url(url, max_format_tries, timeout, format_args):
     """
     Input:
         url: url of video
@@ -89,7 +89,7 @@ def handle_url(url, retries, timeout, format_args):
         name - fname to save frames to.
     """
     if "youtube" in url:  # youtube link
-        file, error_message = handle_youtube(url, retries, timeout, **format_args)
+        file, error_message = handle_youtube(url, max_format_tries, timeout, **format_args)
     # TODO: add .avi, .webm, should also work
     elif url.endswith(".mp4"):  # mp4 link
         file, error_message = handle_mp4_link(url)
@@ -100,17 +100,17 @@ def handle_url(url, retries, timeout, format_args):
 
 class VideoDataReader:
     """Video data reader provide data for a video"""
-    def __init__(self, video_height, video_width, timeout, retries) -> None:
+    def __init__(self, video_height, video_width, timeout, max_format_tries) -> None:
         self.format_args = {
             "video_height": video_height,
             "video_width": video_width,
         }
         self.timeout = timeout
-        self.retries = retries
+        self.max_format_tries = max_format_tries
 
     def __call__(self, row):
         key, url = row
-        file, error_message = handle_url(url, self.retries, self.timeout, self.format_args)
+        file, error_message = handle_url(url, self.max_format_tries, self.timeout, self.format_args)
         if error_message is None:
             with open(file.name, "rb") as vid_file:
                 vid_bytes = vid_file.read()
