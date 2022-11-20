@@ -66,7 +66,7 @@ def handle_youtube(youtube_url, retries, timeout, video_height, video_width):
 
     # For video2dataset we need the bytes:
     ntf, _ = handle_mp4_link(vid_url)
-    return ntf, ""
+    return ntf, None
 
 
 def handle_mp4_link(mp4_link):
@@ -75,7 +75,7 @@ def handle_mp4_link(mp4_link):
     ntf.write(resp.content)
     ntf.seek(0)
     dst_name = mp4_link.split("/")[-1][:-4]
-    return ntf, ""
+    return ntf, None
 
 
 def handle_url(url, retries, timeout, format_args):
@@ -111,7 +111,7 @@ class VideoDataReader:
     def __call__(self, row):
         key, url = row
         file, error_message = handle_url(url, self.retries, self.timeout, self.format_args)
-        if error_message == "":
+        if error_message is None:
             with open(file.name, "rb") as vid_file:
                 vid_bytes = vid_file.read()
             file.close()
