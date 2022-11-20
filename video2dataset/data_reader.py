@@ -3,11 +3,12 @@ import requests
 import tempfile
 import yt_dlp
 
-from timeout_decorator import timeout, TimeoutError #pylint: disable=redefined-builtin
+from timeout_decorator import timeout, TimeoutError  # pylint: disable=redefined-builtin
 
 
 def get_fast_format(formats, find_fmt_timeout):
     """returns the closest format that downloads quickly"""
+
     @timeout(find_fmt_timeout)
     def check_speed(f):
         url = f.get("url")
@@ -106,11 +107,7 @@ class VideoDataReader:
     def __call__(self, row):
         key, url = row
         file, error_message = handle_url(
-            url,
-            self.max_format_tries,
-            self.dl_timeout,
-            self.find_fmt_timeout,
-            self.format_args
+            url, self.max_format_tries, self.dl_timeout, self.find_fmt_timeout, self.format_args
         )
         if error_message is None:
             with open(file.name, "rb") as vid_file:
