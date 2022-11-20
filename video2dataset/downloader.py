@@ -9,9 +9,9 @@ QUALITY = "360p"
 
 def handle_youtube(youtube_url):
     """returns file and destination name from youtube url."""
-    yt_dlp.utils.std_headers['Referer'] = "https://www.youtube.com/"
-    yt_dlp.utils.std_headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36'
 
+    # it selects best video in mp4 format but no better than 480p
+    # or the worst video if there is no video under 360p with the best audio in m4a format
     ydl_opts = {
         'quiet': True,
         'format': 'bv*[height<=360][ext=mp4]+ba[ext=m4a]/b[height<=360]'
@@ -19,9 +19,7 @@ def handle_youtube(youtube_url):
 
     ydl = yt_dlp.YoutubeDL(ydl_opts)
     info = ydl.extract_info(youtube_url, download=False)
-    formats = info.get("formats", None)
-    cv2_vid = [f for f in formats if f['format_note']
-               == QUALITY and f['ext'] == 'mp4'][0]['url']
+    cv2_vid = info['url']
     dst_name = info.get("id") + ".npy"
     return cv2_vid, dst_name
 
