@@ -21,7 +21,6 @@ def get_fast_format(formats, dl_timeout):
 
     format_id = None
     for f in formats:
-
         try:
             check_speed(f)
             format_id = f.get('format_id')
@@ -46,9 +45,10 @@ def handle_youtube(youtube_url, retries, timeout, video_height, video_width):
     formats = info.get("formats", None)
     filtered_formats = [f for f in formats if f['height'] is not None and f['height'] >= video_height and f['width'] >= video_width]
 
-    print(len(filtered_formats)) 
     # TODO: how do we drop the video when format_id is None (all retires timed out)
     format_id = get_fast_format(filtered_formats[:retries+1], timeout)
+    if format_id is None:
+        return None, "No format available given input constraints"
 
     # Get actual video:
     # TODO: figure out a way of just requesting the format by format_id
@@ -66,7 +66,7 @@ def handle_youtube(youtube_url, retries, timeout, video_height, video_width):
 
     # For video2dataset we need the bytes:
     ntf, _ = handle_mp4_link(vid_url)
-    return ntf, dst_name
+    return ntf, ""
 
 
 def handle_mp4_link(mp4_link):
@@ -75,7 +75,7 @@ def handle_mp4_link(mp4_link):
     ntf.write(resp.content)
     ntf.seek(0)
     dst_name = mp4_link.split("/")[-1][:-4]
-    return ntf, dst_name
+    return ntf, ""
 
 
 def handle_url(url, retries, timeout, format_args):
@@ -89,15 +89,13 @@ def handle_url(url, retries, timeout, format_args):
         name - fname to save frames to.
     """
     if "youtube" in url:  # youtube link
-        file, name = handle_youtube(url, retries, timeout, **format_args)
+        file, error_message = handle_youtube(url, retries, timeout, **format_args)
     # TODO: add .avi, .webm, should also work
     elif url.endswith(".mp4"):  # mp4 link
-        file, name = handle_mp4_link(url)
+        file, error_message = handle_mp4_link(url)
     else:
-        print("Warning: Incorrect URL type")
-        return None, None, ""
-
-    return file.name, file, name
+        file, error_message = None, "Warning: Incorrect URL type"
+    return file, error_message
 
 
 class VideoDataReader:
@@ -112,10 +110,11 @@ class VideoDataReader:
 
     def __call__(self, row):
         key, url = row
-        file_name, file, _ = handle_url(url, self.retries, self.timeout, self.format_args)
-        t0 = time.time()
-        with open(file_name, "rb") as vid_file:
-            vid_bytes = vid_file.read()
-        print(f"video downloading took {time.time() - t0}")
-        file.close()
-        return key, vid_bytes, None
+        file, error_message = handle_url(url, self.retries, self.timeout, self.format_args)
+        if error_message == "":
+            with open(file.name, "rb") as vid_file:
+                vid_bytes = vid_file.read()
+            file.close()
+        else:
+            vid_bytes = None
+        return key, vid_bytes, error_message
