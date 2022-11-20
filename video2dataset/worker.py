@@ -32,6 +32,7 @@ class Worker:
         output_folder,
         column_list,
         timeout,
+        find_fmt_timeout,
         number_sample_per_shard,
         oom_shard_count,
         encode_format,
@@ -43,11 +44,10 @@ class Worker:
         self.save_caption = save_caption
         self.output_folder = output_folder
         self.column_list = column_list
-        self.timeout = timeout
         self.number_sample_per_shard = number_sample_per_shard
         self.oom_shard_count = oom_shard_count
         self.encode_format = encode_format
-        self.data_reader = VideoDataReader(video_height, video_width, timeout, max_format_tries)
+        self.data_reader = VideoDataReader(video_height, video_width, timeout, find_fmt_timeout, max_format_tries)
         self.subsampler = NoOpSubsampler()
 
     def __call__(

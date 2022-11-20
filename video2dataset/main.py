@@ -36,13 +36,13 @@ def video2dataset(
     oom_shard_count: int = 5,
     distributor: str = "multiprocessing",
     subjob_size: int = 1000,
-    retries: int = 0,
     max_format_tries: int = 10,
     incremental_mode: str = "incremental",
     max_shard_retry: int = 1,
     video_height: int = 360,
     video_width: int = 640,
     timeout: int = 60,
+    find_fmt_timeout: int = 2,
 ):
     """
     create video dataset from video links
@@ -126,6 +126,7 @@ def video2dataset(
         output_folder=output_folder,
         column_list=input_sharder.column_list,
         timeout=timeout,
+        find_fmt_timeout=find_fmt_timeout,
         number_sample_per_shard=number_sample_per_shard,
         oom_shard_count=oom_shard_count,
         encode_format="mp4",
