@@ -25,26 +25,10 @@ def get_fast_format(formats, dl_timeout):
         try:
             check_speed(f)
             format_id = f.get('format_id')
+            break
         except TimeoutError as e:
             pass
 
-        '''
-        ctx = get_context("spawn")
-        p = ctx.Process(target=check_speed, args=(f,))
-
-        p.start()
-        t0 = time.time()
-        while time.time() - t0 <= timeout:
-            if not p.is_alive():
-                format_id = f.get("format_id")
-                break
-            time.sleep(.1)
-        p.terminate()
-        p.join()
-        '''
-
-        if format_id is not None:
-            break
     return format_id
 
 
