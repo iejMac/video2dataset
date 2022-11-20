@@ -9,3 +9,4 @@ webdataset
 wandb
 pandas
 tqdm
+timeout-decorator
