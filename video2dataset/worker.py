@@ -35,7 +35,6 @@ class Worker:
         number_sample_per_shard,
         oom_shard_count,
         encode_format,
-        retries,
         max_format_tries,
         video_height,
         video_width,
@@ -48,7 +47,6 @@ class Worker:
         self.number_sample_per_shard = number_sample_per_shard
         self.oom_shard_count = oom_shard_count
         self.encode_format = encode_format
-        self.retries = retries
         self.data_reader = VideoDataReader(video_height, video_width, timeout, max_format_tries)
         self.subsampler = NoOpSubsampler()
 

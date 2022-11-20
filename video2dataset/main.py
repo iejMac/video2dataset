@@ -129,7 +129,6 @@ def video2dataset(
         number_sample_per_shard=number_sample_per_shard,
         oom_shard_count=oom_shard_count,
         encode_format="mp4",
-        retries=retries,
         max_format_tries=max_format_tries,
         video_height=video_height,
         video_width=video_width,
