@@ -13,5 +13,4 @@ video2dataset --url_list="benchmark_vids.parquet" \
         --video_height=360 \
         --video_width=640 \
         --number_sample_per_shard=10 \
-        --timeout 2 \
         --processes_count 10 
