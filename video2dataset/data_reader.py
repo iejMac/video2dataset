@@ -6,9 +6,11 @@ import yt_dlp
 
 from multiprocessing import get_context
 
+from timeout_decorator import timeout, TimeoutError
 
-def get_fast_format(formats, timeout):
 
+def get_fast_format(formats, dl_timeout):
+    @timeout(dl_timeout)
     def check_speed(f):
         url = f.get('url')
         ntf, _ = handle_mp4_link(url)
@@ -19,6 +21,14 @@ def get_fast_format(formats, timeout):
 
     format_id = None
     for f in formats:
+
+        try:
+            check_speed(f)
+            format_id = f.get('format_id')
+        except TimeoutError as e:
+            pass
+
+        '''
         ctx = get_context("spawn")
         p = ctx.Process(target=check_speed, args=(f,))
 
@@ -31,6 +41,7 @@ def get_fast_format(formats, timeout):
             time.sleep(.1)
         p.terminate()
         p.join()
+        '''
 
         if format_id is not None:
             break
