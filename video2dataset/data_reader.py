@@ -6,10 +6,10 @@ import yt_dlp
 from timeout_decorator import timeout, TimeoutError  # pylint: disable=redefined-builtin
 
 
-def get_fast_format(formats, find_fmt_timeout):
+def get_fast_format(formats, find_format_timeout):
     """returns the closest format that downloads quickly"""
 
-    @timeout(find_fmt_timeout)
+    @timeout(find_format_timeout)
     def check_speed(f):
         url = f.get("url")
         ntf, _ = handle_mp4_link(url, 10)
@@ -29,7 +29,7 @@ def get_fast_format(formats, find_fmt_timeout):
     return format_id
 
 
-def handle_youtube(youtube_url, max_format_tries, dl_timeout, find_fmt_timeout, video_height, video_width):
+def handle_youtube(youtube_url, max_format_tries, dl_timeout, find_format_timeout, video_height, video_width):
     """returns file and destination name from youtube url."""
     # Probe download speed:
     ydl_opts = {
@@ -45,7 +45,7 @@ def handle_youtube(youtube_url, max_format_tries, dl_timeout, find_fmt_timeout, 
     ]
 
     # TODO: how do we drop the video when format_id is None (all retires timed out)
-    format_id = get_fast_format(filtered_formats[:max_format_tries], find_fmt_timeout)
+    format_id = get_fast_format(filtered_formats[:max_format_tries], find_format_timeout)
     if format_id is None:
         return None, "No format available given input constraints"
 
@@ -72,7 +72,7 @@ def handle_mp4_link(mp4_link, dl_timeout):
     return ntf, None
 
 
-def handle_url(url, max_format_tries, dl_timeout, find_fmt_timeout, format_args):
+def handle_url(url, max_format_tries, dl_timeout, find_format_timeout, format_args):
     """
     Input:
         url: url of video
@@ -83,7 +83,7 @@ def handle_url(url, max_format_tries, dl_timeout, find_fmt_timeout, format_args)
         name - fname to save frames to.
     """
     if "youtube" in url:  # youtube link
-        file, error_message = handle_youtube(url, max_format_tries, dl_timeout, find_fmt_timeout, **format_args)
+        file, error_message = handle_youtube(url, max_format_tries, dl_timeout, find_format_timeout, **format_args)
     # TODO: add .avi, .webm, should also work
     elif url.endswith(".mp4"):  # mp4 link
         file, error_message = handle_mp4_link(url, dl_timeout)
@@ -95,19 +95,19 @@ def handle_url(url, max_format_tries, dl_timeout, find_fmt_timeout, format_args)
 class VideoDataReader:
     """Video data reader provide data for a video"""
 
-    def __init__(self, video_height, video_width, dl_timeout, find_fmt_timeout, max_format_tries) -> None:
+    def __init__(self, video_height, video_width, dl_timeout, find_format_timeout, max_format_tries) -> None:
         self.format_args = {
             "video_height": video_height,
             "video_width": video_width,
         }
         self.dl_timeout = dl_timeout
-        self.find_fmt_timeout = find_fmt_timeout
+        self.find_format_timeout = find_format_timeout
         self.max_format_tries = max_format_tries
 
     def __call__(self, row):
         key, url = row
         file, error_message = handle_url(
-            url, self.max_format_tries, self.dl_timeout, self.find_fmt_timeout, self.format_args
+            url, self.max_format_tries, self.dl_timeout, self.find_format_timeout, self.format_args
         )
         if error_message is None:
             with open(file.name, "rb") as vid_file:

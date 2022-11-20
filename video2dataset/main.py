@@ -42,7 +42,7 @@ def video2dataset(
     video_height: int = 360,
     video_width: int = 640,
     timeout: int = 60,
-    find_fmt_timeout: int = 2,
+    find_format_timeout: int = 2,
 ):
     """
     create video dataset from video links
@@ -126,7 +126,7 @@ def video2dataset(
         output_folder=output_folder,
         column_list=input_sharder.column_list,
         timeout=timeout,
-        find_fmt_timeout=find_fmt_timeout,
+        find_format_timeout=find_format_timeout,
         number_sample_per_shard=number_sample_per_shard,
         oom_shard_count=oom_shard_count,
         encode_format="mp4",
