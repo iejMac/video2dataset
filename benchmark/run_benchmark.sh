@@ -9,8 +9,10 @@ video2dataset --url_list="benchmark_vids.parquet" \
         --url_col="videoLoc" \
         --caption_col="title" \
         --save_additional_columns='[videoID,description,start,end]' \
-        --enable_wandb=False \
+        --enable_wandb=True \
         --video_height=360 \
         --video_width=640 \
+        --number_sample_per_shard=10 \
         --timeout 2 \
         --retries 2 \
+        --processes_count 10 
