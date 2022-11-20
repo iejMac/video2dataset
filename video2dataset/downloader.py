@@ -21,7 +21,9 @@ def get_info_and_resample(url: str, sample_rate: int) -> tuple:
 
     sample_rate_str = f'-ar {sample_rate}' if sample_rate else ''
 
-    command = f'ffmpeg -headers {headers}  -i {url} -vn -ac 2 -f wav -acodec pcm_s16le {sample_rate_str} - -hide_banner -loglevel panic'
+    headers_str = f'-headers {headers}' if 'http' in url else ''
+
+    command = f'ffmpeg {headers_str} -i {url} -vn -ac 2 -f wav -acodec pcm_s16le {sample_rate_str} - -hide_banner -loglevel panic'
 
     ffmpeg_cmd = subprocess.Popen(
         shlex.split(command),
