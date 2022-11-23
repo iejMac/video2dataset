@@ -1,0 +1,16 @@
+#!/bin/bash
+
+wget -nc http://www.robots.ox.ac.uk/~maxbain/webvid/results_2M_val.csv
+
+video2dataset --url_list="results_2M_val.csv" \
+        --input_format="csv" \
+        --output-format="files" \
+	--output_folder="dataset" \
+        --url_col="contentUrl" \
+        --caption_col="name" \
+        --save_additional_columns='[videoid,page_idx,page_dir,duration]' \
+        --enable_wandb=False \
+        --video_height=360 \
+        --video_width=640 \
+        --number_sample_per_shard=10 \
+        --processes_count 10 
