@@ -1,4 +1,4 @@
-""""writer module handle writing the images to disk"""
+""""writer module handle writing the videos to disk"""
 
 import json
 import os
@@ -54,7 +54,7 @@ class BufferedParquetWriter:
 
 
 class ParquetSampleWriter:
-    """ParquetSampleWriter is a image+caption writer to parquet"""
+    """ParquetSampleWriter is a video+caption writer to parquet"""
 
     def __init__(
         self,
@@ -93,7 +93,7 @@ class ParquetSampleWriter:
 
 
 class WebDatasetSampleWriter:
-    """WebDatasetSampleWriter is a image+caption writer to webdataset"""
+    """WebDatasetSampleWriter is a video+caption writer to webdataset"""
 
     def __init__(
         self,
@@ -137,7 +137,7 @@ class WebDatasetSampleWriter:
 
 
 class TFRecordSampleWriter:
-    """TFRecordSampleWriter is a image+caption writer to TFRecord"""
+    """TFRecordSampleWriter is a video+caption writer to TFRecord"""
 
     def __init__(
         self,
@@ -245,7 +245,7 @@ class TFRecordSampleWriter:
 
 
 class FilesSampleWriter:
-    """FilesSampleWriter is a caption+image writer to files"""
+    """FilesSampleWriter is a caption+video writer to files"""
 
     def __init__(
         self,

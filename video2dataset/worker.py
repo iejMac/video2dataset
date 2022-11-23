@@ -66,7 +66,7 @@ class Worker:
         self,
         row,
     ):
-        """Function to start an image downloading in one process"""
+        """Function to start an video downloading in one process"""
 
         shard_id, shard_file = row
         start_time = time.time()

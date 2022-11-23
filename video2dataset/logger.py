@@ -123,7 +123,7 @@ class SpeedLogger(Logger):
                     f"success: {success_ratio:.3f}",
                     f"failed to download: {failed_to_download_ratio:.3f}",
                     f"failed to resize: {failed_to_resize_ratio:.3f}",
-                    f"images per sec: {vid_per_sec:.0f}",
+                    f"videos per sec: {vid_per_sec:.0f}",
                     f"count: {count}",
                 ]
             )
