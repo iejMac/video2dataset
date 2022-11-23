@@ -1,2 +1,5 @@
-def test_hello_world():
-    print("hi")
+import pytest
+
+
+def test_e2e():
+    pass
