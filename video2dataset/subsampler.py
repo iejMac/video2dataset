@@ -1,5 +1,5 @@
 """all subsampler for video and audio
-Transform video and audio by reducing fps, extracting images, changing resolution, reducing bitrate, etc.
+Transform video and audio by reducing fps, extracting videos, changing resolution, reducing bitrate, etc.
 """
 
 
