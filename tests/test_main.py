@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 import pytest
 import tarfile
@@ -7,8 +9,10 @@ from video2dataset.main import video2dataset
 
 
 def test_e2e():
+    current_folder = os.path.dirname(__file__)
+    url_list = os.path.join(current_folder, "test_files/test_webvid.csv")
+
     with tempfile.TemporaryDirectory() as tmpdir:
-        url_list = "tests/test_files/test_webvid.csv"
         samples_per_shard = 10
 
         video2dataset(
