@@ -20,7 +20,8 @@ class ClippingSubsampler:
         clips = metadata.pop("clips")
         video_clips, metadata_clips = [], []
         for clip_id, clip in enumerate(clips):
-            video_clips.append(video_bytes) # TODO take videos and fragment into clips using ffmpeg
+            video_fragment = video_bytes # TODO take videos and fragment into clips using ffmpeg
+            video_clips.append(video_fragment)
 
             clip_key = "{clip_id:0{oom_clip_count}d}".format(  # pylint: disable=consider-using-f-string
                 clip_id=clip_id, oom_clip_count=self.oom_clip_count
