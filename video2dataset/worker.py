@@ -39,6 +39,7 @@ class Worker:
         max_format_tries,
         video_height,
         video_width,
+        oom_clip_count=5
     ) -> None:
         self.sample_writer_class = sample_writer_class
         self.save_caption = save_caption
@@ -48,7 +49,7 @@ class Worker:
         self.oom_shard_count = oom_shard_count
         self.encode_format = encode_format
         self.data_reader = VideoDataReader(video_height, video_width, timeout, find_format_timeout, max_format_tries)
-        self.subsampler = ClippingSubsampler()
+        self.clipping_subsampler = ClippingSubsampler(oom_clip_count)
 
     def __call__(
         self,
@@ -137,7 +138,7 @@ class Worker:
                     )
                     continue
 
-                subsampled_videos, metas, error_message = self.subsampler(vid_stream, meta)
+                subsampled_videos, metas, error_message = self.clipping_subsampler(vid_stream, meta)
 
                 if error_message is not None:
                     failed_to_subsample += 1
