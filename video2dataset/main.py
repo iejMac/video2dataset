@@ -102,6 +102,7 @@ def video2dataset(
         input_format,
         url_col,
         caption_col,
+        clip_col,
         save_additional_columns,
         number_sample_per_shard,
         done_shards,

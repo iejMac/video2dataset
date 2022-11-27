@@ -4,6 +4,7 @@ import tempfile
 import yt_dlp
 
 from timeout_decorator import timeout, TimeoutError  # pylint: disable=redefined-builtin
+from yt_dlp.utils import DownloadError
 
 
 def get_fast_format(formats, find_format_timeout):
@@ -83,7 +84,10 @@ def handle_url(url, max_format_tries, dl_timeout, find_format_timeout, format_ar
         name - fname to save frames to.
     """
     if "youtube" in url:  # youtube link
-        file, error_message = handle_youtube(url, max_format_tries, dl_timeout, find_format_timeout, **format_args)
+        try:
+            file, error_message = handle_youtube(url, max_format_tries, dl_timeout, find_format_timeout, **format_args)
+        except DownloadError as e:
+            file, error_message = None, str(e)
     # TODO: add .avi, .webm, should also work
     elif url.endswith(".mp4"):  # mp4 link
         file, error_message = handle_mp4_link(url, dl_timeout)

@@ -9,3 +9,9 @@ class NoOpSubsampler:
 
     def __call__(self, video_bytes):
         return video_bytes, None
+
+class ClippingSubsampler:
+    def __init__(self):
+        pass
+    def __call__(self, video_bytes, metadata):
+        return video_bytes, metadata, None
