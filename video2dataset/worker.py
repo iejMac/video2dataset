@@ -149,6 +149,7 @@ class Worker:
                     status = "failed_to_subsample"
                     status_dict.increment(error_message)
                     meta["status"] = status
+                    meta["clips"] = []
                     meta["error_message"] = error_message
                     sample_writer.write(
                         None,

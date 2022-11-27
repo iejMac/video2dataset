@@ -25,35 +25,38 @@ class ClippingSubsampler:
         # TODO: This can be done better using pipes I just don't feel like sinking too much time into this rn
         video_bytes_file = tempfile.NamedTemporaryFile(suffix=".mp4")
         video_bytes_file.write(video_bytes)
-        for clip_id, clip in enumerate(clips):
-            s, e = clip
-            # NOTES:
-            # - can't do format="mp4" because mp4 expects read_only medium
-            # - flv works and you can write as .mp4 but cv2 frame count showed one less frame than if you directly write to mp4...
+        try:
+            for clip_id, clip in enumerate(clips):
+                s, e = clip
+                # NOTES:
+                # - can't do format="mp4" because mp4 expects read_only medium
+                # - flv works and you can write as .mp4 but cv2 frame count showed one less frame than if you directly write to mp4...
 
-            # TODO: make much faster, right now it takes up to a few seconds per video since you're reading and outputting every time you want to make a clip
-            
-            video_fragment, _ = (
-                ffmpeg.input(video_bytes_file.name)
-                .trim(start=s, end=e)
-                .output("pipe:", format="flv", pix_fmt="rgb24", loglevel="error") # TODO: investigate this flv format more
-                .run(capture_stdout=True)
-            )
+                # TODO: make much faster, right now it takes up to a few seconds per video since you're reading and outputting every time you want to make a clip
 
-            video_clips.append(video_fragment)
+                video_fragment, _ = (
+                    ffmpeg.input(video_bytes_file.name)
+                    .trim(start=s, end=e)
+                    .output("pipe:", format="flv", pix_fmt="rgb24", loglevel="error") # TODO: investigate this flv format more
+                    .run(capture_stdout=True)
+                )
 
-            clip_key = "{clip_id:0{oom_clip_count}d}".format(  # pylint: disable=consider-using-f-string
-                clip_id=clip_id, oom_clip_count=self.oom_clip_count
-            ) 
+                video_clips.append(video_fragment)
 
-            meta_clip = metadata.copy()
-            meta_clip["clips"] = [clip] # set the timeframe of this clip
-            meta_clip["key"] = f"{meta_clip['key']}_{clip_key}"
-            metadata_clips.append(meta_clip)
+                clip_key = "{clip_id:0{oom_clip_count}d}".format(  # pylint: disable=consider-using-f-string
+                    clip_id=clip_id, oom_clip_count=self.oom_clip_count
+                ) 
 
-        video_bytes_file.close()
-        tf = time.time() 
-        print(f"Trimming {len(clips)} clips took {tf-t0}")
+                meta_clip = metadata.copy()
+                meta_clip["clips"] = [clip] # set the timeframe of this clip
+                meta_clip["key"] = f"{meta_clip['key']}_{clip_key}"
+                metadata_clips.append(meta_clip)
 
-        # TODO: subtitle chopping
-        return video_clips, metadata_clips, None
+            video_bytes_file.close()
+            tf = time.time() 
+            print(f"Trimming {len(clips)} clips took {tf-t0}")
+
+            # TODO: subtitle chopping
+            return video_clips, metadata_clips, None
+        except Exception as err:  # pylint: disable=broad-except
+            return [], [], str(err)
