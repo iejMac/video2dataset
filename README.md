@@ -85,8 +85,9 @@ This module exposes a single function `download` which takes the same arguments 
   * **parquet** loads the urls and optional caption as a parquet
 * **url_col** the name of the url column for parquet and csv (default *url*)
 * **caption_col** the name of the caption column for parquet and csv (default *None*)
-* **number_sample_per_shard** the number of sample that will be downloaded in one shard (default *10000*)
+* **clip_col** the name of the column with a list of timespans for each clip (defualt *None*)
 * **save_additional_columns** list of additional columns to take from the csv/parquet files and save in metadata files (default *None*)
+* **number_sample_per_shard** the number of sample that will be downloaded in one shard (default *10000*)
 * **timeout** maximum time (in seconds) to wait when trying to download an image (default *10*)
 * **find_format_timeout** time (in seconds) to download a 2s clip of a video (during download speed testing)
 * **max_format_tries** maximum amount of formats to try (discarding slow downloading formats) 
