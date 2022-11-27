@@ -91,7 +91,7 @@ class Worker:
         count = len(shard_to_dl)
         successes = 0
         failed_to_download = 0
-        failed_to_resize = 0
+        failed_to_subsample = 0
         url_indice = self.column_list.index("url")
         caption_indice = self.column_list.index("caption") if "caption" in self.column_list else None
         key_url_list = [(key, x[url_indice]) for key, x in shard_to_dl]
@@ -124,7 +124,6 @@ class Worker:
                     "error_message": error_message,
                 }
 
-                # print(meta["clips"])
                 if error_message is not None:
                     failed_to_download += 1
                     status = "failed_to_download"
@@ -138,10 +137,11 @@ class Worker:
                     )
                     continue
 
-                subsampled_video, meta, error_message = self.subsampler(vid_stream, meta)
+                subsampled_videos, metas, error_message = self.subsampler(vid_stream, meta)
+
                 if error_message is not None:
-                    failed_to_resize += 1
-                    status = "failed_to_resize"
+                    failed_to_subsample += 1
+                    status = "failed_to_subsample"
                     status_dict.increment(error_message)
                     meta["status"] = status
                     meta["error_message"] = error_message
@@ -152,18 +152,19 @@ class Worker:
                         meta,
                     )
                     continue
+
                 successes += 1
                 status = "success"
                 status_dict.increment(status)
-
-                meta["status"] = status
-
-                sample_writer.write(
-                    subsampled_video,
-                    str_key,
-                    sample_data[caption_indice] if caption_indice is not None else None,
-                    meta,
-                )
+                for subsampled_video, meta in zip(subsampled_videos, metas):
+                    meta["status"] = status
+                    
+                    sample_writer.write(
+                        subsampled_video,
+                        meta["key"],
+                        sample_data[caption_indice] if caption_indice is not None else None,
+                        meta,
+                    )
             except Exception as err:  # pylint: disable=broad-except
                 traceback.print_exc()
                 print(f"Sample {key} failed to download: {err}")
@@ -177,7 +178,7 @@ class Worker:
             count,
             successes,
             failed_to_download,
-            failed_to_resize,
+            failed_to_subsample,
             start_time,
             end_time,
             status_dict,

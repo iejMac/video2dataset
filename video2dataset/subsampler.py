@@ -14,4 +14,13 @@ class ClippingSubsampler:
     def __init__(self):
         pass
     def __call__(self, video_bytes, metadata):
-        return video_bytes, metadata, None
+        if "clips" not in metadata:
+            return [video_bytes], [metadata], None
+        
+        # TODO: use meta["key"] to change the key according to clip count
+        clip_id = 0
+
+        # TODO: take videos and frament into clips according to metadata["clips"]
+        # TODO: change metadata["clips"] to be it's own timeframe
+        # TODO: subtitle chopping
+        return [video_bytes], [metadata], None
