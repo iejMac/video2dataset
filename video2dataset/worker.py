@@ -49,6 +49,7 @@ class Worker:
         self.oom_shard_count = oom_shard_count
         self.encode_format = encode_format
         self.data_reader = VideoDataReader(video_height, video_width, timeout, find_format_timeout, max_format_tries)
+        self.noop_subsampler = NoOpSubsampler()
         self.clipping_subsampler = ClippingSubsampler(oom_clip_count)
 
     def __call__(
@@ -138,7 +139,10 @@ class Worker:
                     )
                     continue
 
-                subsampled_videos, metas, error_message = self.clipping_subsampler(vid_stream, meta)
+                if "clips" in self.column_list:
+                    subsampled_videos, metas, error_message = self.clipping_subsampler(vid_stream, meta)
+                else:
+                    subsampled_videos, metas, error_message = self.noop_subsampler(vid_stream, meta)
 
                 if error_message is not None:
                     failed_to_subsample += 1
