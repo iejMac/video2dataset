@@ -26,9 +26,8 @@ def test_clipping_subsampler():
         "clips": clips,
     }
 
-    assert len(video_bytes) > 0
-
     video_fragments, meta_fragments, error_message = subsampler(video_bytes, metadata)
+    assert error_message is None
     assert len(video_fragments) == len(meta_fragments) == len(clips)
 
     for vid_frag, meta_frag in zip(video_fragments, meta_fragments):
