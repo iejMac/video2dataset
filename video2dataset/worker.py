@@ -39,7 +39,7 @@ class Worker:
         max_format_tries,
         video_height,
         video_width,
-        oom_clip_count=5
+        oom_clip_count=5,
     ) -> None:
         self.sample_writer_class = sample_writer_class
         self.save_caption = save_caption
@@ -164,7 +164,6 @@ class Worker:
                 status_dict.increment(status)
                 for subsampled_video, meta in zip(subsampled_videos, metas):
                     meta["status"] = status
-                    
                     sample_writer.write(
                         subsampled_video,
                         meta["key"],

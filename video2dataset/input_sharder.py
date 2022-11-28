@@ -60,7 +60,9 @@ class InputSharder:
             self.column_list = ["url"]
         elif self.input_format in ["json", "csv", "tsv", "tsv.gz", "parquet"]:
             self.column_list = self.save_additional_columns if self.save_additional_columns is not None else []
-            self.column_list = self.column_list + ["clips"] * bool(self.clip_col) + ["caption"] * bool(self.caption_col) + ["url"]
+            self.column_list = (
+                self.column_list + ["clips"] * bool(self.clip_col) + ["caption"] * bool(self.caption_col) + ["url"]
+            )
         else:
             raise ValueError(f"Invalid input format {self.input_format}")
 
@@ -85,7 +87,7 @@ class InputSharder:
             with self.fs.open(input_file, mode="rb") as file:
                 columns_to_read = [self.url_col]
                 if self.caption_col is not None:
-                    columns_to_read += [self.caption_col] 
+                    columns_to_read += [self.caption_col]
                 if self.clip_col is not None:
                     columns_to_read += [self.clip_col]
                 if self.save_additional_columns is not None:
