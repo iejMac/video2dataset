@@ -42,8 +42,8 @@ class Worker:
         max_format_tries,
         video_height,
         video_width,
+        thread_count,
         oom_clip_count=5,
-        thread_count
     ) -> None:
         self.sample_writer_class = sample_writer_class
         self.save_caption = save_caption
