@@ -7,6 +7,8 @@ import traceback
 
 import fsspec
 
+from multiprocessing.pool import ThreadPool
+
 from video2dataset.data_reader import VideoDataReader
 from .logger import CappedCounter
 from .logger import write_stats
@@ -31,6 +33,7 @@ class Worker:
         save_caption,
         output_folder,
         column_list,
+        thread_count,
         timeout,
         find_format_timeout,
         number_sample_per_shard,
@@ -40,6 +43,7 @@ class Worker:
         video_height,
         video_width,
         oom_clip_count=5,
+        thread_count
     ) -> None:
         self.sample_writer_class = sample_writer_class
         self.save_caption = save_caption
@@ -48,6 +52,7 @@ class Worker:
         self.number_sample_per_shard = number_sample_per_shard
         self.oom_shard_count = oom_shard_count
         self.encode_format = encode_format
+        self.thread_count = thread_count
         self.data_reader = VideoDataReader(video_height, video_width, timeout, find_format_timeout, max_format_tries)
         self.noop_subsampler = NoOpSubsampler()
         self.clipping_subsampler = ClippingSubsampler(oom_clip_count)
@@ -114,8 +119,12 @@ class Worker:
             self.encode_format,
         )
         oom_sample_per_shard = math.ceil(math.log10(self.number_sample_per_shard))
-        for key in loader:
-            key, vid_stream, error_message = self.data_reader(key)
+
+        with ThreadPool(self.thread_count) as thread_pool:
+	    for key, vid_stream, error_message in thread_pool.imap_unordered(
+		lambda x: self.data_loader(x),
+		loader,
+	    ):
             try:
                 _, sample_data = shard_to_dl[key]
                 str_key = compute_key(key, shard_id, oom_sample_per_shard, self.oom_shard_count)
