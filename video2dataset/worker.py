@@ -121,7 +121,7 @@ class Worker:
 
         with ThreadPool(self.thread_count) as thread_pool:
             for key, vid_stream, error_message in thread_pool.imap_unordered(
-                lambda x: self.data_reader(x),
+                lambda x: self.data_reader(x),  #  pylint: disable=(unnecessary-lambda)
                 loader,
             ):
                 try:
