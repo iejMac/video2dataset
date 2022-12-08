@@ -10,7 +10,7 @@ import fsspec
 from video2dataset.data_reader import VideoDataReader
 from .logger import CappedCounter
 from .logger import write_stats
-from .subsampler import NoOpSubsampler
+from .subsampler import NoOpSubsampler, ClippingSubsampler
 
 
 def compute_key(key, shard_id, oom_sample_per_shard, oom_shard_count):
@@ -39,6 +39,7 @@ class Worker:
         max_format_tries,
         video_height,
         video_width,
+        oom_clip_count=5,
     ) -> None:
         self.sample_writer_class = sample_writer_class
         self.save_caption = save_caption
@@ -48,7 +49,8 @@ class Worker:
         self.oom_shard_count = oom_shard_count
         self.encode_format = encode_format
         self.data_reader = VideoDataReader(video_height, video_width, timeout, find_format_timeout, max_format_tries)
-        self.subsampler = NoOpSubsampler()
+        self.noop_subsampler = NoOpSubsampler()
+        self.clipping_subsampler = ClippingSubsampler(oom_clip_count)
 
     def __call__(
         self,
@@ -91,7 +93,7 @@ class Worker:
         count = len(shard_to_dl)
         successes = 0
         failed_to_download = 0
-        failed_to_resize = 0
+        failed_to_subsample = 0
         url_indice = self.column_list.index("url")
         caption_indice = self.column_list.index("caption") if "caption" in self.column_list else None
         key_url_list = [(key, x[url_indice]) for key, x in shard_to_dl]
@@ -123,6 +125,7 @@ class Worker:
                     "status": None,
                     "error_message": error_message,
                 }
+
                 if error_message is not None:
                     failed_to_download += 1
                     status = "failed_to_download"
@@ -136,12 +139,17 @@ class Worker:
                     )
                     continue
 
-                subsampled_video, error_message = self.subsampler(vid_stream)
+                if "clips" in self.column_list:
+                    subsampled_videos, metas, error_message = self.clipping_subsampler(vid_stream, meta)
+                else:
+                    subsampled_videos, metas, error_message = self.noop_subsampler(vid_stream, meta)
+
                 if error_message is not None:
-                    failed_to_resize += 1
-                    status = "failed_to_resize"
+                    failed_to_subsample += 1
+                    status = "failed_to_subsample"
                     status_dict.increment(error_message)
                     meta["status"] = status
+                    meta["clips"] = []
                     meta["error_message"] = error_message
                     sample_writer.write(
                         None,
@@ -150,18 +158,18 @@ class Worker:
                         meta,
                     )
                     continue
+
                 successes += 1
                 status = "success"
                 status_dict.increment(status)
-
-                meta["status"] = status
-
-                sample_writer.write(
-                    subsampled_video,
-                    str_key,
-                    sample_data[caption_indice] if caption_indice is not None else None,
-                    meta,
-                )
+                for subsampled_video, meta in zip(subsampled_videos, metas):
+                    meta["status"] = status
+                    sample_writer.write(
+                        subsampled_video,
+                        meta["key"],
+                        sample_data[caption_indice] if caption_indice is not None else None,
+                        meta,
+                    )
             except Exception as err:  # pylint: disable=broad-except
                 traceback.print_exc()
                 print(f"Sample {key} failed to download: {err}")
@@ -175,7 +183,7 @@ class Worker:
             count,
             successes,
             failed_to_download,
-            failed_to_resize,
+            failed_to_subsample,
             start_time,
             end_time,
             status_dict,

@@ -1,3 +1,4 @@
+"""end2end test"""
 import os
 
 import pandas as pd
@@ -22,7 +23,7 @@ def test_e2e():
             output_format="webdataset",
             url_col="contentUrl",
             caption_col="name",
-            save_additional_columns=["videoid","page_idx","page_dir","duration"],
+            save_additional_columns=["videoid", "page_idx", "page_dir", "duration"],
             video_height=360,
             video_width=640,
             number_sample_per_shard=samples_per_shard,
