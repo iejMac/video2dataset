@@ -107,7 +107,7 @@ class Worker:
 
         def data_generator():
             for e in key_url_list:
-                semaphore.acquire()
+                semaphore.acquire()  #  pylint: disable=(consider-using-with)
                 yield e
 
         loader = data_generator()
