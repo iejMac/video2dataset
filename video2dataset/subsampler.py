@@ -14,7 +14,7 @@ class NoOpSubsampler:
         pass
 
     def __call__(self, video_bytes, metadata):
-        return [video_bytes], [metadata], None
+        return [video_bytes.name], [metadata], None
 
 
 def get_seconds(t):
@@ -66,9 +66,9 @@ class ClippingSubsampler:
 
         try:
             _ = (
-                ffmpeg.input(video_file.name, ss=s_0, to=e_f)
+                ffmpeg.input(str(video_file.name), ss=s_0, to=e_f)
                 .output(
-                    f"{tmpdir}/clip_%d.mp4",
+                    f"{tmpdir.name}/clip_%d.mp4",
                     c="copy",
                     map=0,
                     f="segment",
@@ -78,9 +78,10 @@ class ClippingSubsampler:
                 .run(capture_stdout=True, quiet=True)
             )
         except Exception as err:  # pylint: disable=broad-except
-            return [], [], str(err)
+            print(err)
+            return None, [], [], str(err)
 
-        video_clips = glob.glob(f"{tmpdir}/clip*")
+        video_clips = glob.glob(f"{tmpdir.name}/clip*")
         correct_clips = []
         for clip_id, (clip, ind) in enumerate(zip(clips, take_inds)):
             if ind < len(video_clips):

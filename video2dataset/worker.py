@@ -187,7 +187,8 @@ class Worker:
                             sample_data[caption_indice] if caption_indice is not None else None,
                             meta,
                         )
-                    tmpdir.close()
+                    if tmpdir is not None:
+                        tmpdir.close()
                 except Exception as err:  # pylint: disable=broad-except
                     traceback.print_exc()
                     print(f"Sample {key} failed to download: {err}")

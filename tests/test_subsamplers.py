@@ -13,6 +13,9 @@ def test_clipping_subsampler():
     with open(video, "rb") as vid_f:
         video_bytes = vid_f.read()
 
+    ntf = tempfile.NamedTemporaryFile(suffix=".mp4")
+    ntf.write(video_bytes)
+
     subsampler = ClippingSubsampler(3)
     clips = [
         ["00:00:03.330", "00:00:13.500"],
@@ -26,20 +29,24 @@ def test_clipping_subsampler():
         "clips": clips,
     }
 
-    video_fragments, meta_fragments, error_message = subsampler(video_bytes, metadata)
+    # video_fragments, meta_fragments, error_message = subsampler(video_bytes, metadata)
+    tmpdir, video_fragments, meta_fragments, error_message = subsampler(ntf, metadata)
     assert error_message is None
     assert len(video_fragments) == len(meta_fragments) == len(clips)
 
     for vid_frag, meta_frag in zip(video_fragments, meta_fragments):
-        with tempfile.NamedTemporaryFile() as tmp:
-            tmp.write(vid_frag)
+        # with tempfile.NamedTemporaryFile() as tmp:
+        # tmp.write(vid_frag)
 
-            key_ind = int(meta_frag["key"].split("_")[-1])
-            s, e = meta_frag["clips"][0]
+        key_ind = int(meta_frag["key"].split("_")[-1])
+        s, e = meta_frag["clips"][0]
 
-            assert clips[key_ind] == [s, e]  # correct order
+        assert clips[key_ind] == [s, e]  # correct order
 
-            s_s, e_s = get_seconds(s), get_seconds(e)
-            frag_len = get_seconds(ffprobe.FFProbe(tmp.name).metadata["Duration"])
+        s_s, e_s = get_seconds(s), get_seconds(e)
+        # frag_len = get_seconds(ffprobe.FFProbe(tmp.name).metadata["Duration"])
+        frag_len = get_seconds(ffprobe.FFProbe(vid_frag).metadata["Duration"])
 
-            assert abs(frag_len - (e_s - s_s)) < 20.0  # currently some segments can be pretty innacurate
+        assert abs(frag_len - (e_s - s_s)) < 20.0  # currently some segments can be pretty innacurate
+    ntf.close()
+    tmpdir.cleanup()

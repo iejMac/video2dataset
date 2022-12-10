@@ -118,7 +118,7 @@ class VideoDataReader:
             # with open(file.name, "rb") as vid_file:
             #     vid_bytes = vid_file.read()
             # file.close()
-            vid_bytes = vid_file
+            vid_bytes = file
         else:
             vid_bytes = None
         return key, vid_bytes, error_message
