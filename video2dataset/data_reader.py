@@ -8,7 +8,6 @@ import yt_dlp
 def get_fast_format(formats, find_format_timeout):
     """returns the closest format that downloads quickly"""
 
-    # @timeout(find_format_timeout)
     def check_speed(f):
         url = f.get("url")
         ntf, _ = handle_mp4_link(url, 10)
