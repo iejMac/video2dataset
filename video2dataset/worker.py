@@ -103,7 +103,7 @@ class Worker:
         caption_indice = self.column_list.index("caption") if "caption" in self.column_list else None
         key_url_list = [(key, x[url_indice]) for key, x in shard_to_dl]
 
-        semaphore = Semaphore(self.thread_count * 2)
+        semaphore = Semaphore(self.thread_count)
 
         def data_generator():
             for e in key_url_list:
@@ -149,6 +149,7 @@ class Worker:
                             sample_data[caption_indice] if caption_indice is not None else None,
                             meta,
                         )
+                        semaphore.release()
                         continue
 
                     if "clips" in self.column_list:
