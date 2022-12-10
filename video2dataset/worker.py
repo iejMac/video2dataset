@@ -7,6 +7,9 @@ import traceback
 
 import fsspec
 
+from multiprocessing.pool import ThreadPool
+from threading import Semaphore
+
 from video2dataset.data_reader import VideoDataReader
 from .logger import CappedCounter
 from .logger import write_stats
@@ -31,6 +34,7 @@ class Worker:
         save_caption,
         output_folder,
         column_list,
+        thread_count,
         timeout,
         find_format_timeout,
         number_sample_per_shard,
@@ -48,6 +52,7 @@ class Worker:
         self.number_sample_per_shard = number_sample_per_shard
         self.oom_shard_count = oom_shard_count
         self.encode_format = encode_format
+        self.thread_count = thread_count
         self.data_reader = VideoDataReader(video_height, video_width, timeout, find_format_timeout, max_format_tries)
         self.noop_subsampler = NoOpSubsampler()
         self.clipping_subsampler = ClippingSubsampler(oom_clip_count)
@@ -98,8 +103,11 @@ class Worker:
         caption_indice = self.column_list.index("caption") if "caption" in self.column_list else None
         key_url_list = [(key, x[url_indice]) for key, x in shard_to_dl]
 
+        semaphore = Semaphore(self.thread_count)
+
         def data_generator():
             for e in key_url_list:
+                semaphore.acquire()  #  pylint: disable=(consider-using-with)
                 yield e
 
         loader = data_generator()
@@ -114,67 +122,77 @@ class Worker:
             self.encode_format,
         )
         oom_sample_per_shard = math.ceil(math.log10(self.number_sample_per_shard))
-        for key in loader:
-            key, vid_stream, error_message = self.data_reader(key)
-            try:
-                _, sample_data = shard_to_dl[key]
-                str_key = compute_key(key, shard_id, oom_sample_per_shard, self.oom_shard_count)
-                meta = {
-                    **{self.column_list[i]: sample_data[i] for i in range(len(self.column_list))},
-                    "key": str_key,
-                    "status": None,
-                    "error_message": error_message,
-                }
 
-                if error_message is not None:
-                    failed_to_download += 1
-                    status = "failed_to_download"
-                    status_dict.increment(error_message)
-                    meta["status"] = status
-                    sample_writer.write(
-                        None,
-                        str_key,
-                        sample_data[caption_indice] if caption_indice is not None else None,
-                        meta,
-                    )
-                    continue
+        with ThreadPool(self.thread_count) as thread_pool:
+            for key, vid_stream, error_message in thread_pool.imap_unordered(
+                lambda x: self.data_reader(x),  #  pylint: disable=(unnecessary-lambda)
+                loader,
+            ):
+                try:
+                    _, sample_data = shard_to_dl[key]
+                    str_key = compute_key(key, shard_id, oom_sample_per_shard, self.oom_shard_count)
+                    meta = {
+                        **{self.column_list[i]: sample_data[i] for i in range(len(self.column_list))},
+                        "key": str_key,
+                        "status": None,
+                        "error_message": error_message,
+                    }
 
-                if "clips" in self.column_list:
-                    subsampled_videos, metas, error_message = self.clipping_subsampler(vid_stream, meta)
-                else:
-                    subsampled_videos, metas, error_message = self.noop_subsampler(vid_stream, meta)
+                    if error_message is not None:
+                        failed_to_download += 1
+                        status = "failed_to_download"
+                        status_dict.increment(error_message)
+                        meta["status"] = status
+                        sample_writer.write(
+                            None,
+                            str_key,
+                            sample_data[caption_indice] if caption_indice is not None else None,
+                            meta,
+                        )
+                        semaphore.release()
+                        continue
 
-                if error_message is not None:
-                    failed_to_subsample += 1
-                    status = "failed_to_subsample"
-                    status_dict.increment(error_message)
-                    meta["status"] = status
-                    meta["clips"] = []
-                    meta["error_message"] = error_message
-                    sample_writer.write(
-                        None,
-                        str_key,
-                        sample_data[caption_indice] if caption_indice is not None else None,
-                        meta,
-                    )
-                    continue
+                    if "clips" in self.column_list:
+                        subsampled_videos, metas, error_message = self.clipping_subsampler(vid_stream, meta)
+                    else:
+                        subsampled_videos, metas, error_message = self.noop_subsampler(vid_stream, meta)
 
-                successes += 1
-                status = "success"
-                status_dict.increment(status)
-                for subsampled_video, meta in zip(subsampled_videos, metas):
-                    meta["status"] = status
-                    sample_writer.write(
-                        subsampled_video,
-                        meta["key"],
-                        sample_data[caption_indice] if caption_indice is not None else None,
-                        meta,
-                    )
-            except Exception as err:  # pylint: disable=broad-except
-                traceback.print_exc()
-                print(f"Sample {key} failed to download: {err}")
+                    if error_message is not None:
+                        failed_to_subsample += 1
+                        status = "failed_to_subsample"
+                        status_dict.increment(error_message)
+                        meta["status"] = status
+                        meta["clips"] = []
+                        meta["error_message"] = error_message
+                        sample_writer.write(
+                            None,
+                            str_key,
+                            sample_data[caption_indice] if caption_indice is not None else None,
+                            meta,
+                        )
+                        semaphore.release()
+                        continue
 
-        sample_writer.close()
+                    successes += 1
+                    status = "success"
+                    status_dict.increment(status)
+                    for subsampled_video, meta in zip(subsampled_videos, metas):
+                        meta["status"] = status
+                        sample_writer.write(
+                            subsampled_video,
+                            meta["key"],
+                            sample_data[caption_indice] if caption_indice is not None else None,
+                            meta,
+                        )
+                except Exception as err:  # pylint: disable=broad-except
+                    traceback.print_exc()
+                    print(f"Sample {key} failed to download: {err}")
+                semaphore.release()
+
+            sample_writer.close()
+            thread_pool.terminate()
+            thread_pool.join()
+            del thread_pool
 
         end_time = time.time()
         write_stats(

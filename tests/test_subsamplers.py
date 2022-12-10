@@ -9,7 +9,7 @@ from video2dataset.subsampler import ClippingSubsampler, get_seconds
 
 def test_clipping_subsampler():
     current_folder = os.path.dirname(__file__)
-    video = os.path.join(current_folder, "test_files/test_video.mp4") # video lenght - 2:02
+    video = os.path.join(current_folder, "test_files/test_video.mp4")  # video lenght - 2:02
     with open(video, "rb") as vid_f:
         video_bytes = vid_f.read()
 
@@ -37,9 +37,9 @@ def test_clipping_subsampler():
             key_ind = int(meta_frag["key"].split("_")[-1])
             s, e = meta_frag["clips"][0]
 
-            assert clips[key_ind] == [s, e] # correct order
+            assert clips[key_ind] == [s, e]  # correct order
 
             s_s, e_s = get_seconds(s), get_seconds(e)
             frag_len = get_seconds(ffprobe.FFProbe(tmp.name).metadata["Duration"])
 
-            assert abs(frag_len - (e_s - s_s)) < 20.0 # currently some segments can be pretty innacurate
+            assert abs(frag_len - (e_s - s_s)) < 20.0  # currently some segments can be pretty innacurate
