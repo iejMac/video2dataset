@@ -4,8 +4,6 @@ import requests
 import tempfile
 import yt_dlp
 
-from yt_dlp.utils import DownloadError
-
 
 def get_fast_format(formats, find_format_timeout):
     """returns the closest format that downloads quickly"""
@@ -25,8 +23,8 @@ def get_fast_format(formats, find_format_timeout):
             check_speed(fmt)
             format_id = fmt.get("format_id")
             tf = time.time()
-            if tf-t0 > find_format_timeout:
-                continue # fake riase TimeoutError
+            if tf - t0 > find_format_timeout:
+                continue  # fake riase TimeoutError
             break
         except TimeoutError as _:
             pass
@@ -90,7 +88,7 @@ def handle_url(url, max_format_tries, dl_timeout, find_format_timeout, format_ar
     if "youtube" in url:  # youtube link
         try:
             file, error_message = handle_youtube(url, max_format_tries, dl_timeout, find_format_timeout, **format_args)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=(broad-except)
             file, error_message = None, str(e)
     # TODO: add .avi, .webm, should also work
     elif url.endswith(".mp4"):  # mp4 link
