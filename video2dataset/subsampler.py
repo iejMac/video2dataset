@@ -35,7 +35,7 @@ class ClippingSubsampler:
     def __init__(self, oom_clip_count):
         self.oom_clip_count = oom_clip_count
 
-    def __call__(self, video_bytes, metadata):
+    def __call__(self, video_file, metadata):
         clips = metadata.pop("clips")
 
         s_0, e_f = get_seconds(clips[0][0]), get_seconds(clips[-1][1])
@@ -62,47 +62,44 @@ class ClippingSubsampler:
 
         segment_times = ",".join([str(spl) for spl in splits])
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # TODO: we need to put the extension into the metadata
-            # TODO: This can be done better using pipes I just don't feel like sinking too much time into this rn
-            with open(os.path.join(tmpdir, "input.mp4"), "wb") as f:
-                f.write(video_bytes)
-            try:
-                _ = (
-                    ffmpeg.input(f"{tmpdir}/input.mp4", ss=s_0, to=e_f)
-                    .output(
-                        f"{tmpdir}/clip_%d.mp4",
-                        c="copy",
-                        map=0,
-                        f="segment",
-                        segment_times=segment_times,
-                        reset_timestamps=1,
-                    )
-                    .run(capture_stdout=True, quiet=True)
+        tmpdir = tempfile.TemporaryDirectory()
+
+        try:
+            _ = (
+                ffmpeg.input(video_file.name, ss=s_0, to=e_f)
+                .output(
+                    f"{tmpdir}/clip_%d.mp4",
+                    c="copy",
+                    map=0,
+                    f="segment",
+                    segment_times=segment_times,
+                    reset_timestamps=1,
                 )
-            except Exception as err:  # pylint: disable=broad-except
-                return [], [], str(err)
+                .run(capture_stdout=True, quiet=True)
+            )
+        except Exception as err:  # pylint: disable=broad-except
+            return [], [], str(err)
 
-            video_clips = glob.glob(f"{tmpdir}/clip*")
-            correct_clips = []
-            for clip_id, (clip, ind) in enumerate(zip(clips, take_inds)):
-                if ind < len(video_clips):
-                    correct_clips.append((clip_id, clip, video_clips[ind]))
-            # clips_lost = len(take_inds) - len(correct_clips) # TODO report this somehow
+        video_clips = glob.glob(f"{tmpdir}/clip*")
+        correct_clips = []
+        for clip_id, (clip, ind) in enumerate(zip(clips, take_inds)):
+            if ind < len(video_clips):
+                correct_clips.append((clip_id, clip, video_clips[ind]))
+        # clips_lost = len(take_inds) - len(correct_clips) # TODO report this somehow
 
-            video_clips, metadata_clips = [], []
-            for clip_id, clip_span, clip_pth in correct_clips:
-                with open(clip_pth, "rb") as vid_f:
-                    clip_bytes = vid_f.read()
-                video_clips.append(clip_bytes)
+        video_clips, metadata_clips = [], []
+        for clip_id, clip_span, clip_pth in correct_clips:
+            # with open(clip_pth, "rb") as vid_f:
+            #     clip_bytes = vid_f.read()
+            video_clips.append(clip_pth)
 
-                clip_key = "{clip_id:0{oom_clip_count}d}".format(  # pylint: disable=consider-using-f-string
-                    clip_id=clip_id, oom_clip_count=self.oom_clip_count
-                )
-                meta_clip = metadata.copy()
-                meta_clip["clips"] = [clip_span]  # set the timeframe of this clip
-                meta_clip["key"] = f"{meta_clip['key']}_{clip_key}"
-                metadata_clips.append(meta_clip)
+            clip_key = "{clip_id:0{oom_clip_count}d}".format(  # pylint: disable=consider-using-f-string
+                clip_id=clip_id, oom_clip_count=self.oom_clip_count
+            )
+            meta_clip = metadata.copy()
+            meta_clip["clips"] = [clip_span]  # set the timeframe of this clip
+            meta_clip["key"] = f"{meta_clip['key']}_{clip_key}"
+            metadata_clips.append(meta_clip)
 
         # TODO: subtitle chopping
-        return video_clips, metadata_clips, None
+        return tmpdir, video_clips, metadata_clips, None

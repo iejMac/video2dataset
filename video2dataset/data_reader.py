@@ -115,9 +115,10 @@ class VideoDataReader:
             url, self.max_format_tries, self.dl_timeout, self.find_format_timeout, self.format_args
         )
         if error_message is None:
-            with open(file.name, "rb") as vid_file:
-                vid_bytes = vid_file.read()
-            file.close()
+            # with open(file.name, "rb") as vid_file:
+            #     vid_bytes = vid_file.read()
+            # file.close()
+            vid_bytes = vid_file
         else:
             vid_bytes = None
         return key, vid_bytes, error_message

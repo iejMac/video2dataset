@@ -152,8 +152,9 @@ class Worker:
                         semaphore.release()
                         continue
 
+                    tmpdir = None
                     if "clips" in self.column_list:
-                        subsampled_videos, metas, error_message = self.clipping_subsampler(vid_stream, meta)
+                        tmpdir, subsampled_videos, metas, error_message = self.clipping_subsampler(vid_stream, meta)
                     else:
                         subsampled_videos, metas, error_message = self.noop_subsampler(vid_stream, meta)
 
@@ -171,6 +172,8 @@ class Worker:
                             meta,
                         )
                         semaphore.release()
+                        if tmpdir is not None:
+                            tmpdir.close()
                         continue
 
                     successes += 1
@@ -184,6 +187,7 @@ class Worker:
                             sample_data[caption_indice] if caption_indice is not None else None,
                             meta,
                         )
+                    tmpdir.close()
                 except Exception as err:  # pylint: disable=broad-except
                     traceback.print_exc()
                     print(f"Sample {key} failed to download: {err}")

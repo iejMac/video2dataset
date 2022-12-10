@@ -119,6 +119,8 @@ class WebDatasetSampleWriter:
     def write(self, img_str, key, caption, meta):
         """write sample to tars"""
         if img_str is not None:
+            with open(img_str, "rb") as f:
+                img_str = f.read()
             sample = {"__key__": key, self.encode_format: img_str}
             if self.save_caption:
                 sample["txt"] = str(caption) if caption is not None else ""
