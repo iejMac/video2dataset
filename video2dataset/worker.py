@@ -8,6 +8,7 @@ import traceback
 import fsspec
 
 from multiprocessing.pool import ThreadPool
+from threading import Semaphore
 
 from video2dataset.data_reader import VideoDataReader
 from .logger import CappedCounter
@@ -102,8 +103,11 @@ class Worker:
         caption_indice = self.column_list.index("caption") if "caption" in self.column_list else None
         key_url_list = [(key, x[url_indice]) for key, x in shard_to_dl]
 
+        semaphore = Semaphore(self.thread_count * 2)
+
         def data_generator():
             for e in key_url_list:
+                semaphore.acquire()
                 yield e
 
         loader = data_generator()
@@ -165,6 +169,7 @@ class Worker:
                             sample_data[caption_indice] if caption_indice is not None else None,
                             meta,
                         )
+                        semaphore.release()
                         continue
 
                     successes += 1
@@ -181,6 +186,7 @@ class Worker:
                 except Exception as err:  # pylint: disable=broad-except
                     traceback.print_exc()
                     print(f"Sample {key} failed to download: {err}")
+                semaphore.release()
 
             sample_writer.close()
             thread_pool.terminate()
