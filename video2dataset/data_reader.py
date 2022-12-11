@@ -1,9 +1,7 @@
 """classes and functions for downloading videos"""
 import os
-
 import uuid
 import requests
-import tempfile
 import yt_dlp
 
 
@@ -57,6 +55,7 @@ def handle_url(url, dl_timeout, format_args, tmp_dir):
 
 class VideoDataReader:
     """Video data reader provide data for a video"""
+
     def __init__(self, video_height, video_width, dl_timeout, tmp_dir) -> None:
         self.format_args = {
             "video_height": video_height,
@@ -74,6 +73,6 @@ class VideoDataReader:
         else:
             vid_bytes = None
 
-        if file_path is not None: # manually remove tempfile
+        if file_path is not None:  # manually remove tempfile
             os.remove(file_path)
         return key, vid_bytes, error_message

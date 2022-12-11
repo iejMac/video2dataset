@@ -8,6 +8,7 @@ import tempfile
 
 from video2dataset.main import video2dataset
 
+
 @pytest.mark.parametrize("input_file", ["test_webvid.csv", "test_yt.csv"])
 def test_e2e(input_file):
     current_folder = os.path.dirname(__file__)
@@ -32,7 +33,7 @@ def test_e2e(input_file):
             processes_count=1,
         )
 
-        for shard in (["00000", "00001"] if sample_count/samples_per_shard > 1.0 else ["00000"]):
+        for shard in ["00000", "00001"] if sample_count / samples_per_shard > 1.0 else ["00000"]:
             for ext in ["mp4", "json", "txt"]:
                 assert (
                     len([x for x in tarfile.open(tmpdir + f"/{shard}.tar").getnames() if x.endswith(f".{ext}")])
