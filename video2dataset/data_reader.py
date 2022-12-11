@@ -4,17 +4,22 @@ import tempfile
 import yt_dlp
 
 
-def handle_youtube(youtube_url, dl_timeout, video_height, video_width):
+def handle_youtube(youtube_url, video_height, video_width):
     """returns file and destination name from youtube url."""
     ntf = tempfile.NamedTemporaryFile()  # pylint: disable=consider-using-with
+
+    format_string = (
+        f"bv*[height<={video_height}][width<={video_width}][ext=mp4]"
+        + f"+ba[ext=m4a]/b[height<={video_height}][width<={video_width}]"
+    )
     ydl_opts = {
         "outtmpl": ntf.name,
-        "format": f'bv*[height<={height}][width<={width}][ext=mp4]+ba[ext=m4a]/b[height<={height}][width<={width}]',
+        "format": format_string,
         "overwrites": True,
         "quiet": True,
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl_download(youtube_url)
+        ydl.download(youtube_url)
     return ntf, None
 
 
