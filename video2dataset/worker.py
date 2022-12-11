@@ -128,6 +128,7 @@ class Worker:
                 lambda x: self.data_reader(x),  #  pylint: disable=(unnecessary-lambda)
                 loader,
             ):
+                # print(semaphore._Semaphore__value)
                 try:
                     _, sample_data = shard_to_dl[key]
                     str_key = compute_key(key, shard_id, oom_sample_per_shard, self.oom_shard_count)
@@ -143,20 +144,24 @@ class Worker:
                         status = "failed_to_download"
                         status_dict.increment(error_message)
                         meta["status"] = status
+                        '''
                         sample_writer.write(
                             None,
                             str_key,
                             sample_data[caption_indice] if caption_indice is not None else None,
                             meta,
                         )
+                        '''
                         semaphore.release()
                         continue
 
                     tmpdir = None
+                    '''
                     if "clips" in self.column_list:
                         tmpdir, subsampled_videos, metas, error_message = self.clipping_subsampler(vid_stream, meta)
                     else:
                         subsampled_videos, metas, error_message = self.noop_subsampler(vid_stream, meta)
+                    '''
 
                     if error_message is not None:
                         failed_to_subsample += 1
@@ -165,20 +170,23 @@ class Worker:
                         meta["status"] = status
                         meta["clips"] = []
                         meta["error_message"] = error_message
+                        '''
                         sample_writer.write(
                             None,
                             str_key,
                             sample_data[caption_indice] if caption_indice is not None else None,
                             meta,
                         )
+                        '''
                         semaphore.release()
                         if tmpdir is not None:
-                            tmpdir.close()
+                            tmpdir.cleanup()
                         continue
 
                     successes += 1
                     status = "success"
                     status_dict.increment(status)
+                    '''
                     for subsampled_video, meta in zip(subsampled_videos, metas):
                         meta["status"] = status
                         sample_writer.write(
@@ -187,8 +195,9 @@ class Worker:
                             sample_data[caption_indice] if caption_indice is not None else None,
                             meta,
                         )
+                    '''
                     if tmpdir is not None:
-                        tmpdir.close()
+                        tmpdir.cleanup()
                 except Exception as err:  # pylint: disable=broad-except
                     traceback.print_exc()
                     print(f"Sample {key} failed to download: {err}")

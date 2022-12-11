@@ -47,9 +47,12 @@ def handle_youtube(youtube_url, max_format_tries, dl_timeout, find_format_timeou
     ]
 
     # TODO: how do we drop the video when format_id is None (all retires timed out)
-    format_id = get_fast_format(filtered_formats[:max_format_tries], find_format_timeout)
+    # format_id = get_fast_format(filtered_formats[:max_format_tries], find_format_timeout)
+    format_id = filtered_formats[0].get("format_id")
     if format_id is None:
         return None, "No format available given input constraints"
+
+    # return None, None
 
     # Get actual video:
     # TODO: figure out a way of just requesting the format by format_id
@@ -62,7 +65,8 @@ def handle_youtube(youtube_url, max_format_tries, dl_timeout, find_format_timeou
     vid_url = f.get("url", None)
 
     # For video2dataset we need the bytes:
-    ntf, _ = handle_mp4_link(vid_url, dl_timeout)
+    # ntf, _ = handle_mp4_link(vid_url, dl_timeout)
+    ntf = None
     return ntf, None
 
 

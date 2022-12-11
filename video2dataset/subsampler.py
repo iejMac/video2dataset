@@ -78,7 +78,6 @@ class ClippingSubsampler:
                 .run(capture_stdout=True, quiet=True)
             )
         except Exception as err:  # pylint: disable=broad-except
-            print(err)
             return None, [], [], str(err)
 
         video_clips = glob.glob(f"{tmpdir.name}/clip*")
