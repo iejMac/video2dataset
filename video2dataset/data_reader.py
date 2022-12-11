@@ -13,7 +13,7 @@ def handle_youtube(youtube_url, dl_timeout, video_height, video_width):
         "overwrites": True,
         "quiet": True,
     }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl_download(youtube_url)
     return ntf, None
 
