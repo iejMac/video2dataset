@@ -41,6 +41,7 @@ class Worker:
         encode_format,
         video_height,
         video_width,
+        tmp_dir,
         oom_clip_count=5,
     ) -> None:
         self.sample_writer_class = sample_writer_class
@@ -51,7 +52,7 @@ class Worker:
         self.oom_shard_count = oom_shard_count
         self.encode_format = encode_format
         self.thread_count = thread_count
-        self.data_reader = VideoDataReader(video_height, video_width, timeout)
+        self.data_reader = VideoDataReader(video_height, video_width, timeout, tmp_dir)
         self.noop_subsampler = NoOpSubsampler()
         self.clipping_subsampler = ClippingSubsampler(oom_clip_count)
 
