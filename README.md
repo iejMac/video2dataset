@@ -99,6 +99,7 @@ This module exposes a single function `download` which takes the same arguments 
   * **pyspark** use a pyspark session to create workers on a spark cluster (see details below)
 * **subjob_size** the number of shards to download in each subjob supporting it, a subjob can be a pyspark job for example (default *1000*)
 * **incremental_mode** Can be "incremental" or "overwrite". For "incremental", video2dataset will download all the shards that were not downloaded, for "overwrite" video2dataset will delete recursively the output folder then start from zero (default *incremental*)
+* **tmp_dir** name of temporary directory in your file system (default */tmp*)
 
 ## Incremental mode
 

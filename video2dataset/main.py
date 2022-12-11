@@ -43,6 +43,7 @@ def video2dataset(
     video_height: int = 360,
     video_width: int = 640,
     timeout: int = 60,
+    tmp_dir: str = "/tmp",
 ):
     """
     create video dataset from video links
@@ -133,6 +134,7 @@ def video2dataset(
         encode_format="mp4",
         video_height=video_height,
         video_width=video_width,
+        tmp_dir=tmp_dir,
     )
 
     print("Starting the downloading of this file")

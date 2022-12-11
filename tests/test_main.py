@@ -9,12 +9,15 @@ import tempfile
 from video2dataset.main import video2dataset
 
 
-def test_e2e():
+@pytest.mark.parametrize("input_file", ["test_webvid.csv", "test_yt.csv"])
+def test_e2e(input_file):
     current_folder = os.path.dirname(__file__)
-    url_list = os.path.join(current_folder, "test_files/test_webvid.csv")
+    url_list = os.path.join(current_folder, f"test_files/{input_file}")
+
+    sample_count = len(pd.read_csv(url_list))
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        samples_per_shard = 10
+        samples_per_shard = 10 if "webvid" in input_file else 3
 
         video2dataset(
             url_list,
@@ -23,14 +26,14 @@ def test_e2e():
             output_format="webdataset",
             url_col="contentUrl",
             caption_col="name",
-            save_additional_columns=["videoid", "page_idx", "page_dir", "duration"],
+            save_additional_columns=["videoid"],
             video_height=360,
             video_width=640,
             number_sample_per_shard=samples_per_shard,
             processes_count=1,
         )
 
-        for shard in ["00000", "00001"]:
+        for shard in ["00000", "00001"] if sample_count / samples_per_shard > 1.0 else ["00000"]:
             for ext in ["mp4", "json", "txt"]:
                 assert (
                     len([x for x in tarfile.open(tmpdir + f"/{shard}.tar").getnames() if x.endswith(f".{ext}")])
