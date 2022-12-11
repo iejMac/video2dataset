@@ -4,7 +4,7 @@ import tempfile
 import yt_dlp
 
 
-def handle_youtube(youtube_url, max_format_tries, dl_timeout, find_format_timeout, video_height, video_width):
+def handle_youtube(youtube_url, dl_timeout, video_height, video_width):
     """returns file and destination name from youtube url."""
     ydl_opts = {  # TODO: specify height width here and and just extract requested format
         "quiet": True,
@@ -30,7 +30,7 @@ def handle_mp4_link(mp4_link, dl_timeout):
     return ntf, None
 
 
-def handle_url(url, max_format_tries, dl_timeout, find_format_timeout, format_args):
+def handle_url(url, dl_timeout, format_args):
     """
     Input:
         url: url of video
@@ -42,7 +42,7 @@ def handle_url(url, max_format_tries, dl_timeout, find_format_timeout, format_ar
     """
     if "youtube" in url:  # youtube link
         try:
-            file, error_message = handle_youtube(url, max_format_tries, dl_timeout, find_format_timeout, **format_args)
+            file, error_message = handle_youtube(url, dl_timeout, **format_args)
         except Exception as e:  # pylint: disable=(broad-except)
             file, error_message = None, str(e)
     # TODO: add .avi, .webm, should also work
@@ -56,19 +56,17 @@ def handle_url(url, max_format_tries, dl_timeout, find_format_timeout, format_ar
 class VideoDataReader:
     """Video data reader provide data for a video"""
 
-    def __init__(self, video_height, video_width, dl_timeout, find_format_timeout, max_format_tries) -> None:
+    def __init__(self, video_height, video_width, dl_timeout) -> None:
         self.format_args = {
             "video_height": video_height,
             "video_width": video_width,
         }
         self.dl_timeout = dl_timeout
-        self.find_format_timeout = find_format_timeout
-        self.max_format_tries = max_format_tries
 
     def __call__(self, row):
         key, url = row
         file, error_message = handle_url(
-            url, self.max_format_tries, self.dl_timeout, self.find_format_timeout, self.format_args
+            url, self.dl_timeout, self.format_args
         )
         if error_message is None:
             with open(file.name, "rb") as vid_file:

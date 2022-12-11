@@ -36,11 +36,9 @@ class Worker:
         column_list,
         thread_count,
         timeout,
-        find_format_timeout,
         number_sample_per_shard,
         oom_shard_count,
         encode_format,
-        max_format_tries,
         video_height,
         video_width,
         oom_clip_count=5,
@@ -53,7 +51,7 @@ class Worker:
         self.oom_shard_count = oom_shard_count
         self.encode_format = encode_format
         self.thread_count = thread_count
-        self.data_reader = VideoDataReader(video_height, video_width, timeout, find_format_timeout, max_format_tries)
+        self.data_reader = VideoDataReader(video_height, video_width, timeout)
         self.noop_subsampler = NoOpSubsampler()
         self.clipping_subsampler = ClippingSubsampler(oom_clip_count)
 
