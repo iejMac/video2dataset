@@ -6,19 +6,15 @@ import yt_dlp
 
 def handle_youtube(youtube_url, dl_timeout, video_height, video_width):
     """returns file and destination name from youtube url."""
-    ydl_opts = {  # TODO: specify height width here and and just extract requested format
+    ntf = tempfile.NamedTemporaryFile()  # pylint: disable=consider-using-with
+    ydl_opts = {
+        "outtmpl": ntf.name,
+        "format": f'bv*[height<={height}][width<={width}][ext=mp4]+ba[ext=m4a]/b[height<={height}][width<={width}]',
+        "overwrites": True,
         "quiet": True,
     }
-    ydl = yt_dlp.YoutubeDL(ydl_opts)
-    info = ydl.extract_info(youtube_url, download=False)
-    formats = info.get("formats", None)
-    filtered_formats = [
-        f for f in formats if f["height"] is not None and f["height"] >= video_height and f["width"] >= video_width
-    ]
-    vid_url = filtered_formats[0].get("url")
-
-    # For video2dataset we need the bytes:
-    ntf, _ = handle_mp4_link(vid_url, dl_timeout)
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl
+        ydl_download(youtube_url)
     return ntf, None
 
 
