@@ -13,6 +13,8 @@ def test_e2e(input_file):
     current_folder = os.path.dirname(__file__)
     url_list = os.path.join(current_folder, f"test_files/{input_file}")
 
+    sample_count = len(pd.read_csv(url_list))
+
     with tempfile.TemporaryDirectory() as tmpdir:
         samples_per_shard = 10 if "webvid" in input_file else 3
 
@@ -30,7 +32,7 @@ def test_e2e(input_file):
             processes_count=1,
         )
 
-        for shard in ["00000", "00001"]:
+        for shard in (["00000", "00001"] if sample_count/samples_per_shard > 1.0 else ["00000"]):
             for ext in ["mp4", "json", "txt"]:
                 assert (
                     len([x for x in tarfile.open(tmpdir + f"/{shard}.tar").getnames() if x.endswith(f".{ext}")])

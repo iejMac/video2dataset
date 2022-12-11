@@ -43,7 +43,7 @@ def handle_url(url, dl_timeout, format_args):
     """
     if "youtube" in url:  # youtube link
         try:
-            file, error_message = handle_youtube(url, dl_timeout, **format_args)
+            file, error_message = handle_youtube(url, **format_args)
         except Exception as e:  # pylint: disable=(broad-except)
             file, error_message = None, str(e)
     # TODO: add .avi, .webm, should also work
