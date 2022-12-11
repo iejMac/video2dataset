@@ -65,9 +65,7 @@ class VideoDataReader:
 
     def __call__(self, row):
         key, url = row
-        file, error_message = handle_url(
-            url, self.dl_timeout, self.format_args
-        )
+        file, error_message = handle_url(url, self.dl_timeout, self.format_args)
         if error_message is None:
             with open(file.name, "rb") as vid_file:
                 vid_bytes = vid_file.read()
