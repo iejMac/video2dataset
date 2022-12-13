@@ -25,26 +25,26 @@ def video2dataset(
     url_list: str,
     output_folder: str = "videos",
     processes_count: int = 1,
+    thread_count: int = 16,
     output_format: str = "files",
     input_format: str = "txt",
     url_col: str = "url",
     caption_col: Optional[str] = None,
-    number_sample_per_shard: int = 10000,
+    clip_col: Optional[str] = None,
     save_additional_columns: Optional[List[str]] = None,
+    number_sample_per_shard: int = 10000,
     enable_wandb: bool = False,
     wandb_project: str = "video2dataset",
     oom_shard_count: int = 5,
     distributor: str = "multiprocessing",
     subjob_size: int = 1000,
-    max_format_tries: int = 10,
     incremental_mode: str = "incremental",
     max_shard_retry: int = 1,
     video_height: int = 360,
     video_width: int = 640,
     timeout: int = 60,
-    find_format_timeout: int = 2,
-    encode_format: str = "mp4",
-    sample_rate: int = None,
+    tmp_dir: str = "/tmp",
+    yt_metadata_args: dict = None
 ):
     """
     create video dataset from video links
@@ -60,7 +60,6 @@ def video2dataset(
 
     output_folder = make_path_absolute(output_folder)
     url_list = make_path_absolute(url_list)
-    encode_format = encode_format.split(', ')
 
     logger_process = LoggerProcess(
         output_folder, enable_wandb, wandb_project, config_parameters)
@@ -106,6 +105,7 @@ def video2dataset(
         input_format,
         url_col,
         caption_col,
+        clip_col,
         save_additional_columns,
         number_sample_per_shard,
         done_shards,
@@ -130,15 +130,15 @@ def video2dataset(
         save_caption=save_caption,
         output_folder=output_folder,
         column_list=input_sharder.column_list,
+        thread_count=thread_count,
         timeout=timeout,
-        find_format_timeout=find_format_timeout,
         number_sample_per_shard=number_sample_per_shard,
         oom_shard_count=oom_shard_count,
-        encode_format=encode_format,
-        max_format_tries=max_format_tries,
+        encode_format="mp4",
         video_height=video_height,
         video_width=video_width,
-        sample_rate=sample_rate
+        tmp_dir=tmp_dir,
+        yt_metadata_args=yt_metadata_args
     )
 
     print("Starting the downloading of this file")
