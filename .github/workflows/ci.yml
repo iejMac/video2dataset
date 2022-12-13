@@ -23,6 +23,7 @@ jobs:
           source .env/bin/activate
           python -m pip install -U pip
           make install-dev
+          sudo apt-get install -y ffmpeg
       - name: Lint
         run: |
           source .env/bin/activate
@@ -31,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.8]
 
     steps:
     - uses: actions/checkout@v2
@@ -45,6 +46,7 @@ jobs:
         source .env/bin/activate
         make install
         make install-dev
+        sudo apt-get install -y ffmpeg
     - name: Unit tests
       run: |
         source .env/bin/activate
