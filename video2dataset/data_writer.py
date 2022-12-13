@@ -72,7 +72,8 @@ class ParquetSampleWriter:
             shard_id=shard_id, oom_shard_count=oom_shard_count
         )
         output_file = f"{output_folder}/{shard_name}.parquet"
-        self.buffered_parquet_writer = BufferedParquetWriter(output_file, schema, 100)
+        self.buffered_parquet_writer = BufferedParquetWriter(
+            output_file, schema, 100)
         self.save_caption = save_caption
 
     def write(self, img_str, key, caption, meta):
@@ -113,7 +114,8 @@ class WebDatasetSampleWriter:
         self.tar_fd = fs.open(f"{output_path}/{shard_name}.tar", "wb")
         self.tarwriter = wds.TarWriter(self.tar_fd)
         self.save_caption = save_caption
-        self.buffered_parquet_writer = BufferedParquetWriter(output_folder + "/" + shard_name + ".parquet", schema, 100)
+        self.buffered_parquet_writer = BufferedParquetWriter(
+            output_folder + "/" + shard_name + ".parquet", schema, 100)
         self.encode_format = encode_format
 
     def write(self, img_str, key, caption, meta):
@@ -178,9 +180,11 @@ class TFRecordSampleWriter:
             shard_id=shard_id, oom_shard_count=oom_shard_count
         )
         self.shard_id = shard_id
-        self.tf_writer = TFRecordWriter(f"{output_folder}/{shard_name}.tfrecord")
+        self.tf_writer = TFRecordWriter(
+            f"{output_folder}/{shard_name}.tfrecord")
         self.save_caption = save_caption
-        self.buffered_parquet_writer = BufferedParquetWriter(output_folder + "/" + shard_name + ".parquet", schema, 100)
+        self.buffered_parquet_writer = BufferedParquetWriter(
+            output_folder + "/" + shard_name + ".parquet", schema, 100)
         self.encode_format = encode_format
 
     def write(self, img_str, key, caption, meta):
@@ -191,7 +195,8 @@ class TFRecordSampleWriter:
                 self.encode_format: self._bytes_feature(img_str),
             }
             if self.save_caption:
-                sample["txt"] = self._bytes_feature(str(caption) if caption is not None else "")
+                sample["txt"] = self._bytes_feature(
+                    str(caption) if caption is not None else "")
             for k, v in meta.items():
                 sample[k] = self._feature(v)
             tf_example = self._Example(features=self._Features(feature=sample))
@@ -261,11 +266,13 @@ class FilesSampleWriter:
             shard_id=shard_id, oom_shard_count=oom_shard_count
         )
         self.shard_id = shard_id
-        self.fs, self.subfolder = fsspec.core.url_to_fs(f"{output_folder}/{shard_name}")
+        self.fs, self.subfolder = fsspec.core.url_to_fs(
+            f"{output_folder}/{shard_name}")
         if not self.fs.exists(self.subfolder):
             self.fs.mkdir(self.subfolder)
         self.save_caption = save_caption
-        self.buffered_parquet_writer = BufferedParquetWriter(output_folder + "/" + shard_name + ".parquet", schema, 100)
+        self.buffered_parquet_writer = BufferedParquetWriter(
+            output_folder + "/" + shard_name + ".parquet", schema, 100)
         self.encode_format = encode_format
 
     def write(self, img_str, key, caption, meta):

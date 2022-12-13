@@ -44,6 +44,7 @@ def video2dataset(
     video_width: int = 640,
     timeout: int = 60,
     tmp_dir: str = "/tmp",
+    yt_metadata_args: dict = None
 ):
     """
     create video dataset from video links
@@ -60,7 +61,8 @@ def video2dataset(
     output_folder = make_path_absolute(output_folder)
     url_list = make_path_absolute(url_list)
 
-    logger_process = LoggerProcess(output_folder, enable_wandb, wandb_project, config_parameters)
+    logger_process = LoggerProcess(
+        output_folder, enable_wandb, wandb_project, config_parameters)
 
     tmp_path = output_folder + "/_tmp"
     fs, tmp_dir = fsspec.core.url_to_fs(tmp_path)
@@ -86,7 +88,8 @@ def video2dataset(
         done_shards = set()
     else:
         if incremental_mode == "incremental":
-            done_shards = set(int(x.split("/")[-1].split("_")[0]) for x in fs.glob(output_path + "/*.json"))
+            done_shards = set(int(x.split("/")[-1].split("_")[0])
+                              for x in fs.glob(output_path + "/*.json"))
         elif incremental_mode == "overwrite":
             fs.rm(output_path, recursive=True)
             fs.mkdir(output_path)
@@ -135,6 +138,7 @@ def video2dataset(
         video_height=video_height,
         video_width=video_width,
         tmp_dir=tmp_dir,
+        yt_metadata_args=yt_metadata_args
     )
 
     print("Starting the downloading of this file")
