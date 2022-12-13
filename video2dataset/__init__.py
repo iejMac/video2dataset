@@ -1,3 +1,3 @@
 """video2dataset"""
 
-from .video2dataset import video2dataset
+from .main import video2dataset
