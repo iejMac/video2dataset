@@ -113,7 +113,6 @@ if __name__ == '__main__':
 
     yt_metadata_args = {
         'writesubtitles': True, # whether to write subtitles to a file
-        'subtitles_dir': 'subtitles', # creates a dir if doesn't exists
         'subtitleslangs': ['en'], # languages of subtitles (right now support only one language)
         'writeautomaticsub': True, # whether to write automatic subtitles
         'get_info': True # whether to save a video meta data into the output JSON file
