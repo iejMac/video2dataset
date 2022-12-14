@@ -106,14 +106,15 @@ This module exposes a single function `download` which takes the same arguments 
 ### Download YouTube metadata & subtitles:
 #### Usage
 
+**Note.** Requires webvtt installed for subtitles formatting: `pip install webvtt-py`.
+
 ```py
 if __name__ == '__main__':
 
     yt_metadata_args = {
         'writesubtitles': True, # whether to write subtitles to a file
         'subtitles_dir': 'subtitles', # creates a dir if doesn't exists
-        'allsubtitles': False, # if true downloads all subtitles in all languages
-        'subtitleslangs': ['en'], # languages of subtitles
+        'subtitleslangs': ['en'], # languages of subtitles (right now support only one language)
         'writeautomaticsub': True, # whether to write automatic subtitles
         'get_info': True # whether to save a video meta data into the output JSON file
     }
@@ -175,6 +176,27 @@ For every sample save the info dict into an output file:
        ...
     }
 }
+```
+
+And subtitles:
+```json
+"subtitles": [
+            {
+                "start": "00:00:02.389",
+                "end": "00:00:02.399",
+                "lines": [
+                    "hello and welcome if you want to study"
+                ]
+            },
+            {
+                "start": "00:00:04.280",
+                "end": "00:00:04.290",
+                "lines": [
+                    "different phasma learning don't go"
+                ]
+            },
+            ...
+]
 ```
 
 
