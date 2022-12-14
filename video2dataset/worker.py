@@ -53,8 +53,7 @@ class Worker:
         self.oom_shard_count = oom_shard_count
         self.encode_format = encode_format
         self.thread_count = thread_count
-        self.data_reader = VideoDataReader(
-            video_height, video_width, timeout, tmp_dir, yt_metadata_args)
+        self.data_reader = VideoDataReader(video_height, video_width, timeout, tmp_dir, yt_metadata_args)
         self.noop_subsampler = NoOpSubsampler()
         self.clipping_subsampler = ClippingSubsampler(oom_clip_count)
 
@@ -90,8 +89,7 @@ class Worker:
         )
 
         pydict = df.select(self.column_list).to_pydict()
-        shard_to_dl = list(
-            enumerate(zip(*(pydict[col] for col in self.column_list))))
+        shard_to_dl = list(enumerate(zip(*(pydict[col] for col in self.column_list))))
         del pydict
         del df
 
@@ -102,8 +100,7 @@ class Worker:
         failed_to_download = 0
         failed_to_subsample = 0
         url_indice = self.column_list.index("url")
-        caption_indice = self.column_list.index(
-            "caption") if "caption" in self.column_list else None
+        caption_indice = self.column_list.index("caption") if "caption" in self.column_list else None
         key_url_list = [(key, x[url_indice]) for key, x in shard_to_dl]
 
         semaphore = Semaphore(self.thread_count)
@@ -124,25 +121,23 @@ class Worker:
             schema,
             self.encode_format,
         )
-        oom_sample_per_shard = math.ceil(
-            math.log10(self.number_sample_per_shard))
+        oom_sample_per_shard = math.ceil(math.log10(self.number_sample_per_shard))
 
         with ThreadPool(self.thread_count) as thread_pool:
-            for key, vid_stream, info_dict, error_message in thread_pool.imap_unordered(
-                lambda x: self.data_reader(
-                    x),  # pylint: disable=(unnecessary-lambda)
+            for key, vid_stream, info_dict, sub_dict, error_message in thread_pool.imap_unordered(
+                lambda x: self.data_reader(x),  # pylint: disable=(unnecessary-lambda)
                 loader,
             ):
                 try:
                     _, sample_data = shard_to_dl[key]
-                    str_key = compute_key(
-                        key, shard_id, oom_sample_per_shard, self.oom_shard_count)
+                    str_key = compute_key(key, shard_id, oom_sample_per_shard, self.oom_shard_count)
                     meta = {
                         **{self.column_list[i]: sample_data[i] for i in range(len(self.column_list))},
                         "key": str_key,
                         "status": None,
                         "error_message": error_message,
-                        "info": info_dict
+                        "info": info_dict,
+                        "subtitles": sub_dict,
                     }
 
                     if error_message is not None:
@@ -160,11 +155,9 @@ class Worker:
                         continue
 
                     if "clips" in self.column_list:
-                        subsampled_videos, metas, error_message = self.clipping_subsampler(
-                            vid_stream, meta)
+                        subsampled_videos, metas, error_message = self.clipping_subsampler(vid_stream, meta)
                     else:
-                        subsampled_videos, metas, error_message = self.noop_subsampler(
-                            vid_stream, meta)
+                        subsampled_videos, metas, error_message = self.noop_subsampler(vid_stream, meta)
 
                     if error_message is not None:
                         failed_to_subsample += 1

@@ -3,51 +3,85 @@ import os
 import uuid
 import requests
 import yt_dlp
+import io
+
+
+def sub_to_dict(sub, dedupe=True, single=False):
+    """Convert WebVTT to JSON, optionally removing duplicate lines"""
+    try:
+        import webvtt  # pip install webvtt-py
+    except:
+        raise ImportError("Please install webvtt with `pip install webvtt-py`!")
+
+    captions = webvtt.read_buffer(io.StringIO(sub))
+    dicts = [{"start": c.start, "end": c.end, "lines": c.lines} for c in captions]
+    if dedupe:
+        dicts = []
+        prev_line = None
+        for c in captions:
+            if any("<c>" in l for l in c.lines):
+                continue
+            # Collect lines that are not dupes
+            not_dupe_lines = []
+            for line in c.lines:
+                if not line.strip():
+                    continue
+                if line != prev_line:
+                    not_dupe_lines.append(line)
+                prev_line = line
+            if not_dupe_lines:
+                dicts.append({"start": c.start, "end": c.end, "lines": not_dupe_lines})
+    if single:
+        for d in dicts:
+            d["line"] = "\n".join(d.pop("lines"))
+    return dicts
 
 
 def get_yt_meta(url, yt_metadata_args: dict) -> dict:
     """Return info dict and/or downloads subtitles
-        yt_metadata_args is a dict of follwing format:
-        yt_metadata_args = {
-            'writesubtitles': True,
-            'subtitleslangs': ['en'],
-            'subtitles_dir': 'subtitles',
-            'writeautomaticsub': True,
-            'get_info': True
-        }
+    yt_metadata_args is a dict of follwing format:
+    yt_metadata_args = {
+        'writesubtitles': True,
+        'subtitleslangs': ['en'],
+        'writeautomaticsub': True,
+        'get_info': True
+    }
 
-        writesubtitles:    Write the video subtitles to a file
-        writeautomaticsub: Write the automatically generated subtitles to a file
-        subtitleslangs:    List of languages of the subtitles to download (can be regex). The list may contain "all" to refer to all the available
-                            subtitles. 
-        subtitles_dir: a folder to save subtitles to (will be created if doesn't exist)
-        get_info: whether to add info (title, description, tags etc) to the output.
+    writesubtitles:    Whether to write subtitles
+    writeautomaticsub: Write the automatically generated subtitles to a file
+    subtitleslangs:    List of languages of the subtitles to download (can be regex). The list may contain "all" to refer to all the available
+                        subtitles.
+    get_info: whether to add info (title, description, tags etc) to the output.
 
     """
 
-    subtitles_dir = yt_metadata_args.get('subtitles_dir', None)
+    write_subs = yt_metadata_args.get("writesubtitles", None)
 
-    if subtitles_dir:
-        if not os.path.exists(subtitles_dir):
-            os.makedirs(subtitles_dir)
-        yt_metadata_args['outtmpl'] = subtitles_dir + '/'+'%(id)s.%(ext)s'
+    yt_metadata_args["skip_download"] = True
+    yt_metadata_args["ignoreerrors"] = True
+    yt_metadata_args["quiet"] = True
 
-    yt_metadata_args['skip_download'] = True
-    yt_metadata_args['ignoreerrors'] = True
-    yt_metadata_args['quiet'] = True
-
-    info_dict = None
+    info_dict, sub_dict = None, None
 
     with yt_dlp.YoutubeDL(yt_metadata_args) as yt:
-        yt.download([url])
-        if yt_metadata_args['get_info']:
-            info_dict = yt.extract_info(url, download=False)
-            info_dict.pop('subtitles')
-            info_dict.pop('requested_formats')
-            info_dict.pop('formats')
-            info_dict.pop('thumbnails')
-            info_dict.pop('automatic_captions')
-    return info_dict
+
+        info_dict = yt.extract_info(url, download=False)
+        if write_subs:
+            sub_url = info_dict["requested_subtitles"][yt_metadata_args["subtitleslangs"][0]]["url"]
+            res = requests.get(sub_url)
+            sub = io.TextIOWrapper(io.BytesIO(res.content)).read()
+            sub_dict = sub_to_dict(sub)
+
+        if yt_metadata_args["get_info"]:
+            info_dict.pop("subtitles")
+            info_dict.pop("requested_formats")
+            info_dict.pop("formats")
+            info_dict.pop("thumbnails")
+            info_dict.pop("automatic_captions")
+        else:
+            info_dict = None
+
+        return info_dict, sub_dict
 
 
 def handle_youtube(youtube_url, tmp_dir, yt_metadata_args, video_height, video_width):
@@ -65,10 +99,10 @@ def handle_youtube(youtube_url, tmp_dir, yt_metadata_args, video_height, video_w
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download(youtube_url)
     if yt_metadata_args:
-        info_dict = get_yt_meta(youtube_url, yt_metadata_args)
+        info_dict, sub_dict = get_yt_meta(youtube_url, yt_metadata_args)
     else:
-        info_dict = None
-    return path, info_dict, None
+        info_dict, sub_dict = None, None
+    return path, info_dict, sub_dict, None
 
 
 def handle_mp4_link(mp4_link, tmp_dir, dl_timeout):
@@ -90,19 +124,18 @@ def handle_url(url, dl_timeout, format_args, tmp_dir, yt_metadata_args=None):
         name - fname to save frames to.
     """
 
-    info_dict = None
+    info_dict, sub_dict = None, None
     if "youtube" in url:  # youtube link
         try:
-            file, info_dict, error_message = handle_youtube(
-                url, tmp_dir, yt_metadata_args, **format_args)
+            file, info_dict, sub_dict, error_message = handle_youtube(url, tmp_dir, yt_metadata_args, **format_args)
         except Exception as e:  # pylint: disable=(broad-except)
-            file, info_dict, error_message = None,  None, str(e)
+            file, info_dict, sub_dict, error_message = None, None, None, str(e)
     # TODO: add .avi, .webm, should also work
     elif url.endswith(".mp4"):  # mp4 link
         file, error_message = handle_mp4_link(url, tmp_dir, dl_timeout)
     else:
         file, error_message = None, "Warning: Incorrect URL type"
-    return file, error_message, info_dict
+    return file, error_message, info_dict, sub_dict
 
 
 class VideoDataReader:
@@ -119,8 +152,9 @@ class VideoDataReader:
 
     def __call__(self, row):
         key, url = row
-        file_path, error_message, info_dict = handle_url(
-            url, self.dl_timeout, self.format_args, self.tmp_dir, self.yt_meta_args)
+        file_path, error_message, info_dict, sub_dict = handle_url(
+            url, self.dl_timeout, self.format_args, self.tmp_dir, self.yt_meta_args
+        )
         if error_message is None:
             with open(file_path, "rb") as vid_file:
                 vid_bytes = vid_file.read()
@@ -129,4 +163,4 @@ class VideoDataReader:
 
         if file_path is not None:  # manually remove tempfile
             os.remove(file_path)
-        return key, vid_bytes, info_dict, error_message
+        return key, vid_bytes, info_dict, sub_dict, error_message
