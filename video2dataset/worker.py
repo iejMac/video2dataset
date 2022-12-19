@@ -139,7 +139,7 @@ class Worker:
 
                     if error_message is not None:
                         if "[youtube]" in error_message: # video-specific error, remove videoID
-                            error_message = "ERROR: [youtube]" + error_message[len("ERROR: [youtube] FCMEClg-doU"):]
+                            error_message = "ERROR: [youtube]:" + error_message.split(":")[-1]
                         failed_to_download += 1
                         status = "failed_to_download"
                         status_dict.increment(error_message)
