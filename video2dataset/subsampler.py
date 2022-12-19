@@ -59,6 +59,9 @@ class ClippingSubsampler:
             e_p = e
         segment_times = ",".join([str(spl) for spl in splits])
 
+        print(segment_times)
+        print(take_inds)
+
         with tempfile.TemporaryDirectory() as tmpdir:
             # TODO: we need to put the extension into the metadata
             # TODO: This can be done better using pipes I just don't feel like sinking too much time into this rn
@@ -66,7 +69,6 @@ class ClippingSubsampler:
                 f.write(video_bytes)
             try:
                 _ = (
-                    # ffmpeg.input(f"{tmpdir}/input.mp4", ss=s_0, to=e_f)
                     ffmpeg.input(f"{tmpdir}/input.mp4")
                     .output(
                         f"{tmpdir}/clip_%d.mp4",
