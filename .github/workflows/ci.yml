@@ -23,7 +23,7 @@ jobs:
           source .env/bin/activate
           python -m pip install -U pip
           make install-dev
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg=3.3.9
       - name: Lint
         run: |
           source .env/bin/activate
@@ -46,7 +46,7 @@ jobs:
         source .env/bin/activate
         make install
         make install-dev
-        sudo apt-get install -y ffmpeg
+        sudo apt-get install -y ffmpeg=3.3.9
     - name: Unit tests
       run: |
         source .env/bin/activate
