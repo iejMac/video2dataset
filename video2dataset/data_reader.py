@@ -6,7 +6,7 @@ import yt_dlp
 import io
 
 
-def sub_to_dict(sub, dedupe=True, single=False):
+def sub_to_dict(sub, dedupe=True, single=False) -> list:
     """Convert WebVTT to JSON, optionally removing duplicate lines"""
     try:
         import webvtt  # pip install webvtt-py
@@ -37,7 +37,7 @@ def sub_to_dict(sub, dedupe=True, single=False):
     return dicts
 
 
-def get_yt_meta(url, yt_metadata_args: dict) -> dict:
+def get_yt_meta(url, yt_metadata_args: dict) -> tuple:
     """Return info dict and/or downloads subtitles
     yt_metadata_args is a dict of follwing format:
     yt_metadata_args = {
