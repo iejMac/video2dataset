@@ -83,7 +83,8 @@ class ClippingSubsampler:
             except Exception as err:  # pylint: disable=broad-except
                 return [], [], str(err)
 
-            video_clips = glob.glob(f"{tmpdir}/clip*").sort()
+            video_clips = glob.glob(f"{tmpdir}/clip*")
+            video_clips.sort()
             print(video_clips)
             correct_clips = []
             for clip_id, (clip, ind) in enumerate(zip(clips, take_inds)):
