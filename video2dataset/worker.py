@@ -42,6 +42,7 @@ class Worker:
         video_height,
         video_width,
         tmp_dir,
+        yt_metadata_args,
         oom_clip_count=5,
     ) -> None:
         self.sample_writer_class = sample_writer_class
@@ -52,7 +53,7 @@ class Worker:
         self.oom_shard_count = oom_shard_count
         self.encode_format = encode_format
         self.thread_count = thread_count
-        self.data_reader = VideoDataReader(video_height, video_width, timeout, tmp_dir)
+        self.data_reader = VideoDataReader(video_height, video_width, timeout, tmp_dir, yt_metadata_args)
         self.noop_subsampler = NoOpSubsampler()
         self.clipping_subsampler = ClippingSubsampler(oom_clip_count)
 
@@ -106,7 +107,7 @@ class Worker:
 
         def data_generator():
             for e in key_url_list:
-                semaphore.acquire()  #  pylint: disable=(consider-using-with)
+                semaphore.acquire()  # pylint: disable=(consider-using-with)
                 yield e
 
         loader = data_generator()
@@ -123,8 +124,8 @@ class Worker:
         oom_sample_per_shard = math.ceil(math.log10(self.number_sample_per_shard))
 
         with ThreadPool(self.thread_count) as thread_pool:
-            for key, vid_stream, error_message in thread_pool.imap_unordered(
-                lambda x: self.data_reader(x),  #  pylint: disable=(unnecessary-lambda)
+            for key, vid_stream, yt_meta_dict, error_message in thread_pool.imap_unordered(
+                self.data_reader,  # pylint: disable=(unnecessary-lambda)
                 loader,
             ):
                 try:
@@ -135,6 +136,7 @@ class Worker:
                         "key": str_key,
                         "status": None,
                         "error_message": error_message,
+                        "yt_meta_dict": yt_meta_dict,
                     }
 
                     if error_message is not None:
