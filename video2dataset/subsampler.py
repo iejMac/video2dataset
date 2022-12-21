@@ -90,6 +90,8 @@ class ClippingSubsampler:
                     correct_clips.append((clip_id, clip, video_clips[ind]))
             # clips_lost = len(take_inds) - len(correct_clips) # TODO report this somehow
 
+            print(correct_clips)
+
             video_clips, metadata_clips = [], []
             for clip_id, clip_span, clip_pth in correct_clips:
                 with open(clip_pth, "rb") as vid_f:
