@@ -5,16 +5,18 @@ import requests
 import yt_dlp
 import io
 
+try:
+    import webvtt  # pip install webvtt-py
+except ImportError as err:
+    print(err)
+
 
 def sub_to_dict(sub, dedupe=True, single=False) -> list:
     """Convert WebVTT to JSON, optionally removing duplicate lines"""
-    try:
-        import webvtt  # pip install webvtt-py
-    except:
-        raise ImportError("Please install webvtt with `pip install webvtt-py`!")
 
     captions = webvtt.read_buffer(io.StringIO(sub))
-    dicts = [{"start": c.start, "end": c.end, "lines": c.lines} for c in captions]
+    dicts = [{"start": c.start, "end": c.end, "lines": c.lines}
+             for c in captions]
     if dedupe:
         dicts = []
         prev_line = None
@@ -30,7 +32,8 @@ def sub_to_dict(sub, dedupe=True, single=False) -> list:
                     not_dupe_lines.append(line)
                 prev_line = line
             if not_dupe_lines:
-                dicts.append({"start": c.start, "end": c.end, "lines": not_dupe_lines})
+                dicts.append({"start": c.start, "end": c.end,
+                             "lines": not_dupe_lines})
     if single:
         for d in dicts:
             d["line"] = "\n".join(d.pop("lines"))
@@ -49,8 +52,7 @@ def get_yt_meta(url, yt_metadata_args: dict) -> tuple:
 
     writesubtitles:    Whether to write subtitles
     writeautomaticsub: Write the automatically generated subtitles to a file
-    subtitleslangs:    List of languages of the subtitles to download (can be regex). The list may contain "all" to refer to all the available
-                        subtitles.
+    subtitleslangs:    List of languages of the subtitles to download.
     get_info: whether to add info (title, description, tags etc) to the output.
 
     """
@@ -127,7 +129,8 @@ def handle_url(url, dl_timeout, format_args, tmp_dir, yt_metadata_args=None):
     info_dict, sub_dict = None, None
     if "youtube" in url:  # youtube link
         try:
-            file, info_dict, sub_dict, error_message = handle_youtube(url, tmp_dir, yt_metadata_args, **format_args)
+            file, info_dict, sub_dict, error_message = handle_youtube(
+                url, tmp_dir, yt_metadata_args, **format_args)
         except Exception as e:  # pylint: disable=(broad-except)
             file, info_dict, sub_dict, error_message = None, None, None, str(e)
     # TODO: add .avi, .webm, should also work
