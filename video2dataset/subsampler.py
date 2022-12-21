@@ -59,9 +59,6 @@ class ClippingSubsampler:
             e_p = e
         segment_times = ",".join([str(spl) for spl in splits])
 
-        print(segment_times)
-        print(take_inds)
-
         with tempfile.TemporaryDirectory() as tmpdir:
             # TODO: we need to put the extension into the metadata
             # TODO: This can be done better using pipes I just don't feel like sinking too much time into this rn
@@ -85,14 +82,11 @@ class ClippingSubsampler:
 
             video_clips = glob.glob(f"{tmpdir}/clip*")
             video_clips.sort()
-            print(video_clips)
             correct_clips = []
             for clip_id, (clip, ind) in enumerate(zip(clips, take_inds)):
                 if ind < len(video_clips):
                     correct_clips.append((clip_id, clip, video_clips[ind]))
             # clips_lost = len(take_inds) - len(correct_clips) # TODO report this somehow
-
-            print(correct_clips)
 
             video_clips, metadata_clips = [], []
             for clip_id, clip_span, clip_pth in correct_clips:
