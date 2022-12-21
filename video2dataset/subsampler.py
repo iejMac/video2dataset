@@ -84,6 +84,7 @@ class ClippingSubsampler:
                 return [], [], str(err)
 
             video_clips = glob.glob(f"{tmpdir}/clip*")
+            print(video_clips)
             correct_clips = []
             for clip_id, (clip, ind) in enumerate(zip(clips, take_inds)):
                 if ind < len(video_clips):
