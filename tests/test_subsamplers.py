@@ -42,6 +42,4 @@ def test_clipping_subsampler():
             s_s, e_s = get_seconds(s), get_seconds(e)
             frag_len = get_seconds(ffprobe.FFProbe(tmp.name).metadata["Duration"])
 
-            print(frag_len, e_s - s_s)
-
             assert abs(frag_len - (e_s - s_s)) < 5.0  # currently some segments can be pretty innacurate
