@@ -124,8 +124,8 @@ class Worker:
         oom_sample_per_shard = math.ceil(math.log10(self.number_sample_per_shard))
 
         with ThreadPool(self.thread_count) as thread_pool:
-            for key, vid_stream, info_dict, sub_dict, error_message in thread_pool.imap_unordered(
-                lambda x: self.data_reader(x),  # pylint: disable=(unnecessary-lambda)
+            for key, vid_stream, yt_meta_dict, error_message in thread_pool.imap_unordered(
+                self.data_reader,  # pylint: disable=(unnecessary-lambda)
                 loader,
             ):
                 try:
@@ -136,8 +136,7 @@ class Worker:
                         "key": str_key,
                         "status": None,
                         "error_message": error_message,
-                        "info": info_dict,
-                        "subtitles": sub_dict,
+                        "yt_meta_dict": yt_meta_dict,
                     }
 
                     if error_message is not None:

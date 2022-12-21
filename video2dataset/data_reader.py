@@ -38,8 +38,8 @@ def sub_to_dict(sub, dedupe=True, single=False) -> list:
     return dicts
 
 
-def get_yt_meta(url, yt_metadata_args: dict) -> tuple:
-    """Return info dict and/or downloads subtitles
+def get_yt_meta(url, yt_metadata_args: dict) -> dict:
+    """Return yt meta dict with meta data and/or subtitles
     yt_metadata_args is a dict of follwing format:
     yt_metadata_args = {
         'writesubtitles': True,
@@ -81,7 +81,9 @@ def get_yt_meta(url, yt_metadata_args: dict) -> tuple:
         else:
             info_dict = None
 
-        return info_dict, sub_dict
+        yt_meta_dict = {"info": info_dict, "subtitles": sub_dict}
+
+        return yt_meta_dict
 
 
 def handle_youtube(youtube_url, tmp_dir, yt_metadata_args, video_height, video_width):
@@ -99,10 +101,10 @@ def handle_youtube(youtube_url, tmp_dir, yt_metadata_args, video_height, video_w
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download(youtube_url)
     if yt_metadata_args:
-        info_dict, sub_dict = get_yt_meta(youtube_url, yt_metadata_args)
+        yt_meta_dict = get_yt_meta(youtube_url, yt_metadata_args)
     else:
-        info_dict, sub_dict = None, None
-    return path, info_dict, sub_dict, None
+        yt_meta_dict = None, None
+    return path, yt_meta_dict, None
 
 
 def handle_mp4_link(mp4_link, tmp_dir, dl_timeout):
@@ -124,18 +126,18 @@ def handle_url(url, dl_timeout, format_args, tmp_dir, yt_metadata_args=None):
         name - fname to save frames to.
     """
 
-    info_dict, sub_dict = None, None
+    yt_meta_dict = None
     if "youtube" in url:  # youtube link
         try:
-            file, info_dict, sub_dict, error_message = handle_youtube(url, tmp_dir, yt_metadata_args, **format_args)
+            file, yt_meta_dict, error_message = handle_youtube(url, tmp_dir, yt_metadata_args, **format_args)
         except Exception as e:  # pylint: disable=(broad-except)
-            file, info_dict, sub_dict, error_message = None, None, None, str(e)
+            file, yt_meta_dict, error_message = None, None, str(e)
     # TODO: add .avi, .webm, should also work
     elif url.endswith(".mp4"):  # mp4 link
         file, error_message = handle_mp4_link(url, tmp_dir, dl_timeout)
     else:
         file, error_message = None, "Warning: Incorrect URL type"
-    return file, error_message, info_dict, sub_dict
+    return file, error_message, yt_meta_dict
 
 
 class VideoDataReader:
@@ -152,7 +154,7 @@ class VideoDataReader:
 
     def __call__(self, row):
         key, url = row
-        file_path, error_message, info_dict, sub_dict = handle_url(
+        file_path, error_message, yt_meta_dict = handle_url(
             url, self.dl_timeout, self.format_args, self.tmp_dir, self.yt_meta_args
         )
         if error_message is None:
@@ -163,4 +165,4 @@ class VideoDataReader:
 
         if file_path is not None:  # manually remove tempfile
             os.remove(file_path)
-        return key, vid_bytes, info_dict, sub_dict, error_message
+        return key, vid_bytes, yt_meta_dict, error_message

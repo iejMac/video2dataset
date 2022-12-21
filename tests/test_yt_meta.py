@@ -14,11 +14,12 @@ def test_meta(input_file):
     current_folder = os.path.dirname(__file__)
     url_list = pd.read_csv(os.path.join(current_folder, f"test_files/{input_file}"))["contentUrl"]
     for url in url_list:
-        info_dict, _ = get_yt_meta(url, yt_metadata_args)
+        yt_meta_dict = get_yt_meta(url, yt_metadata_args)
 
-        assert type(info_dict) == dict
-        assert "id" in info_dict.keys()
-        assert "title" in info_dict.keys()
+        assert type(yt_meta_dict) == dict
+        assert type(yt_meta_dict["info"]) == dict
+        assert "id" in yt_meta_dict["info"].keys()
+        assert "title" in yt_meta_dict["info"].keys()
 
 
 @pytest.mark.parametrize("input_file", ["test_yt.csv"])
@@ -30,9 +31,10 @@ def test_no_meta(input_file):
     current_folder = os.path.dirname(__file__)
     url_list = pd.read_csv(os.path.join(current_folder, f"test_files/{input_file}"))["contentUrl"]
     for url in url_list:
-        info_dict, _ = get_yt_meta(url, yt_metadata_args)
+        yt_meta_dict = get_yt_meta(url, yt_metadata_args)
 
-        assert info_dict == None
+        assert type(yt_meta_dict) == dict
+        assert yt_meta_dict["info"] == None
 
 
 @pytest.mark.parametrize("input_file", ["test_yt.csv"])
@@ -46,10 +48,11 @@ def test_subtitles(input_file):
     current_folder = os.path.dirname(__file__)
     url_list = pd.read_csv(os.path.join(current_folder, f"test_files/{input_file}"))["contentUrl"]
     for url in url_list:
-        _, sub_dict = get_yt_meta(url, yt_metadata_args)
+        yt_meta_dict = get_yt_meta(url, yt_metadata_args)
 
-        assert type(sub_dict) == list
-        assert type(sub_dict[0]) == dict
+        assert type(yt_meta_dict) == dict
+        assert type(yt_meta_dict["subtitles"]) == list
+        assert type(yt_meta_dict["subtitles"][0]) == dict
 
 
 @pytest.mark.parametrize("input_file", ["test_yt.csv"])
@@ -63,6 +66,7 @@ def test_no_subtitles(input_file):
     current_folder = os.path.dirname(__file__)
     url_list = pd.read_csv(os.path.join(current_folder, f"test_files/{input_file}"))["contentUrl"]
     for url in url_list:
-        _, sub_dict = get_yt_meta(url, yt_metadata_args)
+        yt_meta_dict = get_yt_meta(url, yt_metadata_args)
 
-        assert sub_dict == None
+        assert type(yt_meta_dict) == dict
+        assert yt_meta_dict["subtitles"] == None
