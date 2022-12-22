@@ -19,7 +19,7 @@ class NoOpSubsampler:
 
 def get_seconds(t):
     if not isinstance(t, str):
-        return float(t) # already seconds
+        return float(t)  # already seconds
     time_format = "%H:%M:%S.%f"  # TODO: maybe paramaterize this?
     t_obj = datetime.strptime(t, time_format).time()
     return t_obj.second + t_obj.microsecond / 1e6 + t_obj.minute * 60 + t_obj.hour * 3600
