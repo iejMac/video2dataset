@@ -126,9 +126,9 @@ class YtDlpDownloader:
             "quiet": True,
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download(youtube_url)
-        if yt_metadata_args:
-            yt_meta_dict = get_yt_meta(youtube_url, self.metadata_args)
+            ydl.download(url)
+        if self.metadata_args:
+            yt_meta_dict = get_yt_meta(url, self.metadata_args)
         else:
             yt_meta_dict = None, None
         return path, yt_meta_dict, None
@@ -159,7 +159,7 @@ class VideoDataReader:
         # TODO: make nice function to detect what type of link we're dealing with
         if "youtube" in url:  # youtube link
             try:
-                file_path, yt_meta_dict, error_message = handle_youtube(url, self.tmp_dir, self.yt_metadata_args, **self.format_args)
+                file_path, yt_meta_dict, error_message = self.yt_downloader(url)
             except Exception as e:  # pylint: disable=(broad-except)
                 file_path, yt_meta_dict, error_message = None, None, str(e)
         # TODO: add .avi, .webm, should also work
@@ -172,6 +172,11 @@ class VideoDataReader:
             with open(file_path, "rb") as vid_file:
                 vid_bytes = vid_file.read()
         else:
+            print("NOT NONE")
+            print(error_message)
+            print(error_message)
+            print(error_message)
+            print(error_message)
             vid_bytes = None
 
         if file_path is not None:  # manually remove tempfile
