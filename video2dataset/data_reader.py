@@ -115,29 +115,23 @@ def handle_mp4_link(mp4_link, tmp_dir, dl_timeout):
     return path, None
 
 
-def handle_url(url, dl_timeout, format_args, tmp_dir, yt_metadata_args=None):
-    """
-    Input:
-        url: url of video
+class Mp4Downloader:
+    def __init__(self, timeout, tmp_dir):
+        self.timeout = timeout
+        self.tmp_dir = tmp_dir
+    def __call__(self, url):
+        resp = requests.get(url, stream=True, timeout=dl_timeout)
+        path = f"{tmp_dir}/{str(uuid.uuid4())}.mp4"
+        with open(path, "wb") as f:
+            f.write(resp.content)
+        return path, None
 
-    Output:
-        load_file - variable used to load video.
-        file - the file itself (in cases where it needs to be closed after usage).
-        name - fname to save frames to.
-    """
 
-    yt_meta_dict = None
-    if "youtube" in url:  # youtube link
-        try:
-            file, yt_meta_dict, error_message = handle_youtube(url, tmp_dir, yt_metadata_args, **format_args)
-        except Exception as e:  # pylint: disable=(broad-except)
-            file, yt_meta_dict, error_message = None, None, str(e)
-    # TODO: add .avi, .webm, should also work
-    elif url.endswith(".mp4"):  # mp4 link
-        file, error_message = handle_mp4_link(url, tmp_dir, dl_timeout)
-    else:
-        file, error_message = None, "Warning: Incorrect URL type"
-    return file, error_message, yt_meta_dict
+class YtDlpDownloader:
+    def __init__(self):
+        pass
+    def __call__(self, url):
+        return url
 
 
 class VideoDataReader:
@@ -152,11 +146,26 @@ class VideoDataReader:
         self.tmp_dir = tmp_dir
         self.yt_meta_args = yt_meta_args
 
+
+        self.mp4_downloader = Mp4Downloader(dl_timeout, tmp_dir)
+        self.yt_downloader = YtDlpDownloader()
+
     def __call__(self, row):
         key, url = row
-        file_path, error_message, yt_meta_dict = handle_url(
-            url, self.dl_timeout, self.format_args, self.tmp_dir, self.yt_meta_args
-        )
+
+        yt_meta_dict = None
+        # TODO: make nice function to detect what type of link we're dealing with
+        if "youtube" in url:  # youtube link
+            try:
+                file_path, yt_meta_dict, error_message = handle_youtube(url, self.tmp_dir, self.yt_metadata_args, **self.format_args)
+            except Exception as e:  # pylint: disable=(broad-except)
+                file_path, yt_meta_dict, error_message = None, None, str(e)
+        # TODO: add .avi, .webm, should also work
+        elif url.endswith(".mp4"):  # mp4 link
+            file_path, error_message = handle_mp4_link(url, tmp_dir, dl_timeout)
+        else:
+            file_path, error_message = None, "Warning: Incorrect URL type"
+
         if error_message is None:
             with open(file_path, "rb") as vid_file:
                 vid_bytes = vid_file.read()
