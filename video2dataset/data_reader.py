@@ -86,34 +86,31 @@ def get_yt_meta(url, yt_metadata_args: dict) -> dict:
         return yt_meta_dict
 
 
-def handle_youtube(youtube_url, tmp_dir, yt_metadata_args, video_height, video_width):
-    """returns file and destination name from youtube url."""
-    path = f"{tmp_dir}/{str(uuid.uuid4())}.mp4"
-    format_string = (
-        f"bv*[height<={video_height}][width<={video_width}][ext=mp4]"
-        + f"+ba[ext=m4a]/b[height<={video_height}][width<={video_width}]"
-    )
-    ydl_opts = {
-        "outtmpl": path,
-        "format": format_string,
-        "quiet": True,
-    }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download(youtube_url)
-    if yt_metadata_args:
-        yt_meta_dict = get_yt_meta(youtube_url, yt_metadata_args)
-    else:
-        yt_meta_dict = None, None
-    return path, yt_meta_dict, None
+class Mp4Downloader:
+    """Downloader class for mp4 links"""
+
+    def __init__(self, timeout, tmp_dir):
+        self.timeout = timeout
+        self.tmp_dir = tmp_dir
+
+    def __call__(self, url):
+        resp = requests.get(url, stream=True, timeout=self.timeout)
+        path = f"{self.tmp_dir}/{str(uuid.uuid4())}.mp4"
+        with open(path, "wb") as f:
+            f.write(resp.content)
+        return path, None
 
 
 class YtDlpDownloader:
+    """Downloader class for yt-dlp links"""
+
     # TODO: maybe we just include height and width in the metadata_args
     def __init__(self, tmp_dir, metadata_args, video_height, video_width):
         self.tmp_dir = tmp_dir
         self.metadata_args = metadata_args
         self.video_height = video_height
         self.video_width = video_width
+
     def __call__(self, url):
         path = f"{self.tmp_dir}/{str(uuid.uuid4())}.mp4"
         format_string = (
@@ -134,20 +131,9 @@ class YtDlpDownloader:
         return path, yt_meta_dict, None
 
 
-class Mp4Downloader:
-    def __init__(self, timeout, tmp_dir):
-        self.timeout = timeout
-        self.tmp_dir = tmp_dir
-    def __call__(self, url):
-        resp = requests.get(url, stream=True, timeout=self.timeout)
-        path = f"{self.tmp_dir}/{str(uuid.uuid4())}.mp4"
-        with open(path, "wb") as f:
-            f.write(resp.content)
-        return path, None
-
-
 class VideoDataReader:
     """Video data reader provide data for a video"""
+
     def __init__(self, video_height, video_width, dl_timeout, tmp_dir, yt_meta_args) -> None:
         self.mp4_downloader = Mp4Downloader(dl_timeout, tmp_dir)
         self.yt_downloader = YtDlpDownloader(tmp_dir, yt_meta_args, video_height, video_width)
@@ -172,11 +158,6 @@ class VideoDataReader:
             with open(file_path, "rb") as vid_file:
                 vid_bytes = vid_file.read()
         else:
-            print("NOT NONE")
-            print(error_message)
-            print(error_message)
-            print(error_message)
-            print(error_message)
             vid_bytes = None
 
         if file_path is not None:  # manually remove tempfile
