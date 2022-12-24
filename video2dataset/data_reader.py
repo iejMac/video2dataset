@@ -4,11 +4,7 @@ import uuid
 import requests
 import yt_dlp
 import io
-
-try:
-    import webvtt  # pip install webvtt-py
-except ImportError as err:
-    print(err)
+import webvtt
 
 
 def sub_to_dict(sub, dedupe=True, single=False) -> list:
