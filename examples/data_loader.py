@@ -144,11 +144,8 @@ if __name__ == "__main__":
     t0 = time.time()
     for b in ds:
         ct += 1
-        print(ct)
-        print(b["video_tensor"].shape)
-        if ct > 96 * 2:
+        if ct > 180:
             break
     tf = time.time()
 
-    print("VID/S:")
-    print(ct*BS/(tf-t0))
+    print(f"VID/S: {ct*BS/(tf-t0)}") # VID/S: 57.58298260898271 (96 cores)
