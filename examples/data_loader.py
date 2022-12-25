@@ -48,7 +48,6 @@ def create_webdataset(
                 # video = torchvision.io.read_video(video_data)
                 video, audio, meta = torchvision.io.read_video(f.name)
             video_tensor = video_transform(video)
-            video_tensor = video_transform(video)
             output["video_filename"] = item["__key__"]
             output["video_tensor"] = video_tensor
 
