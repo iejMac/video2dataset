@@ -99,6 +99,7 @@ class Worker:
         successes = 0
         failed_to_download = 0
         failed_to_subsample = 0
+        bytes_downloaded = 0
         url_indice = self.column_list.index("url")
         caption_indice = self.column_list.index("caption") if "caption" in self.column_list else None
         key_url_list = [(key, x[url_indice]) for key, x in shard_to_dl]
@@ -155,6 +156,8 @@ class Worker:
                         semaphore.release()
                         continue
 
+                    bytes_downloaded += len(vid_stream)
+
                     if "clips" in self.column_list:
                         subsampled_videos, metas, error_message = self.clipping_subsampler(vid_stream, meta)
                     else:
@@ -205,6 +208,7 @@ class Worker:
             successes,
             failed_to_download,
             failed_to_subsample,
+            bytes_downloaded,
             start_time,
             end_time,
             status_dict,
