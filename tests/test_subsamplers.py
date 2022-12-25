@@ -8,7 +8,7 @@ import tempfile
 from video2dataset.subsampler import ClippingSubsampler, get_seconds
 
 
-SINGLE =  [[50.0, 60.0]]
+SINGLE = [[50.0, 60.0]]
 MULTI = [
     ["00:00:09.000", "00:00:13.500"],
     ["00:00:13.600", "00:00:24.000"],

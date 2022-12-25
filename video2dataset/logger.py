@@ -106,7 +106,13 @@ class SpeedLogger(Logger):
         self.start_time = min(start_time, self.start_time)
         self.end_time = max(end_time, self.end_time)
         super().__call__(
-            self.count, self.success, self.failed_to_download, self.failed_to_resize, self.bytes_downloaded, self.start_time, self.end_time
+            self.count,
+            self.success,
+            self.failed_to_download,
+            self.failed_to_resize,
+            self.bytes_downloaded,
+            self.start_time,
+            self.end_time,
         )
 
     def do_log(
