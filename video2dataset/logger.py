@@ -92,26 +92,29 @@ class SpeedLogger(Logger):
         self.success = 0
         self.failed_to_download = 0
         self.failed_to_resize = 0
+        self.bytes_downloaded = 0
         self.enable_wandb = enable_wandb
 
     def __call__(
-        self, count, success, failed_to_download, failed_to_resize, start_time, end_time
+        self, count, success, failed_to_download, failed_to_resize, bytes_downloaded, start_time, end_time
     ):  # pylint: disable=arguments-differ
         self.count += count
         self.success += success
         self.failed_to_download += failed_to_download
         self.failed_to_resize += failed_to_resize
+        self.bytes_downloaded += bytes_downloaded
         self.start_time = min(start_time, self.start_time)
         self.end_time = max(end_time, self.end_time)
         super().__call__(
-            self.count, self.success, self.failed_to_download, self.failed_to_resize, self.start_time, self.end_time
+            self.count, self.success, self.failed_to_download, self.failed_to_resize, self.bytes_downloaded, self.start_time, self.end_time
         )
 
     def do_log(
-        self, count, success, failed_to_download, failed_to_resize, start_time, end_time
+        self, count, success, failed_to_download, failed_to_resize, bytes_downloaded, start_time, end_time
     ):  # pylint: disable=arguments-differ
         duration = end_time - start_time
         vid_per_sec = count / duration
+        bytes_per_sec = 1.0 * bytes_downloaded / duration
         success_ratio = 1.0 * success / count
         failed_to_download_ratio = 1.0 * failed_to_download / count
         failed_to_resize_ratio = 1.0 * failed_to_resize / count
@@ -124,6 +127,7 @@ class SpeedLogger(Logger):
                     f"failed to download: {failed_to_download_ratio:.3f}",
                     f"failed to resize: {failed_to_resize_ratio:.3f}",
                     f"videos per sec: {vid_per_sec:.0f}",
+                    f"bytes per sec: {bytes_per_sec:.0f}",
                     f"count: {count}",
                 ]
             )
@@ -133,6 +137,7 @@ class SpeedLogger(Logger):
             wandb.log(
                 {
                     f"{self.prefix}/vid_per_sec": vid_per_sec,
+                    f"{self.prefix}/bytes_per_sec": bytes_per_sec,
                     f"{self.prefix}/success": success_ratio,
                     f"{self.prefix}/failed_to_download": failed_to_download_ratio,
                     f"{self.prefix}/failed_to_resize": failed_to_resize_ratio,
@@ -257,6 +262,7 @@ class LoggerProcess(multiprocessing.context.SpawnProcess):
                                 success=stats["successes"],
                                 failed_to_download=stats["failed_to_download"],
                                 failed_to_resize=stats["failed_to_resize"],
+                                bytes_downloaded=stats["bytes_downloaded"],
                                 start_time=stats["start_time"],
                                 end_time=stats["end_time"],
                             )
@@ -265,6 +271,7 @@ class LoggerProcess(multiprocessing.context.SpawnProcess):
                                 success=stats["successes"],
                                 failed_to_download=stats["failed_to_download"],
                                 failed_to_resize=stats["failed_to_resize"],
+                                bytes_downloaded=stats["bytes_downloaded"],
                                 start_time=stats["start_time"],
                                 end_time=stats["end_time"],
                             )
