@@ -129,10 +129,10 @@ if __name__ == "__main__":
 
     TARS = "pipe: aws s3 cp s3://s-laion/acav100m/mp4_acav100m/{00000..00100}.tar -"
 
-    BS = 32 
+    BS = 32
     ds = WebdatasetReader(
         sampler=lambda a: a,
-        preprocess= lambda a: a[0, :10, :10, :],
+        preprocess=lambda a: a[0, :10, :10, :],
         input_dataset=TARS,
         batch_size=BS,
         num_prepro_workers=96,
@@ -148,4 +148,4 @@ if __name__ == "__main__":
             break
     tf = time.time()
 
-    print(f"VID/S: {ct*BS/(tf-t0)}") # VID/S: 57.58298260898271 (96 cores)
+    print(f"VID/S: {ct*BS/(tf-t0)}")  # VID/S: 57.58298260898271 (96 cores)
