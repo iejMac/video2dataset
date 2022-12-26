@@ -13,7 +13,7 @@ from threading import Semaphore
 from video2dataset.data_reader import VideoDataReader
 from .logger import CappedCounter
 from .logger import write_stats
-from .subsamplers import NoOpSubsampler, ClippingSubsampler
+from .subsamplers import ClippingSubsampler, NoOpSubsampler, ResolutionSubsampler
 
 
 def compute_key(key, shard_id, oom_sample_per_shard, oom_shard_count):
@@ -158,10 +158,16 @@ class Worker:
 
                     bytes_downloaded += len(vid_stream)
 
-                    if "clips" in self.column_list:
+                    if "clips" in self.column_list: # Clipping
                         subsampled_videos, metas, error_message = self.clipping_subsampler(vid_stream, meta)
                     else:
                         subsampled_videos, metas, error_message = self.noop_subsampler(vid_stream, meta)
+
+                    # TODO: for now we make every video have same video_height and video_width but maybe we should add an arg that doesn't do this strict resolution subsampling and only takes what yt-dlp gives and allows for variance in this dimension. Some if statement like:
+                    # if resolution_strict:
+
+                    # Resolution subsampling
+                    subsamples_videos, metas, error_message = self.resolution_subsampler(subsampled_videos, metas)
 
                     if error_message is not None:
                         failed_to_subsample += 1
