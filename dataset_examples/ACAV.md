@@ -4,7 +4,13 @@ ACAV100M is a dataset of 100M videos with high audio-visual correspondance.
 ## Download the metdata
 Go to the [downloads](https://acav100m.github.io/#downloads) section of the dataset page and download the subset you wish. This just has the youtube ID, start time, and end time. For the current version of video2dataset you need to preprocess this file a bit:
 1. Create a column with the link instead of just the ID: f"youtube.com/watch?v={youtubeID}"
+```python
+df["clips"] = df.apply(lambda row: f"https://youtube.com/watch?v={row['videoID']}", axis=1)
+```
 2. Create a column for the timespan consistent with video2dataset expected clip format: [[start, end]]
+```python
+df["clip"] = df.apply(lambda row: [[row['start'], row['end']]], axis=1)
+```
 3. To get text captions for this dataset we do a preprocessing run extracting the title and description from these youtube videos and saving the title as the text caption but also saving the description to the metadata with pytube. In future versions of video2dataset we will include optional extraction of metadata via yt-dlp during execution so this point is likely to be removed soon.
 
 ## Download the videos with video2dataset
