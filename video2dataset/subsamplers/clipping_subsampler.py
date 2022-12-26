@@ -1,5 +1,7 @@
-"""all subsampler for video and audio
-Transform video and audio by reducing fps, extracting videos, changing resolution, reducing bitrate, etc.
+"""
+clipping subsampler turns full videos into clips of videos according to clip_col
+
+TODO: implement subtitle splitting (can be done just by indexing subtitle dict during clipping
 """
 import os
 import glob
@@ -7,14 +9,6 @@ import ffmpeg
 import tempfile
 
 from datetime import datetime
-
-
-class NoOpSubsampler:
-    def __init__(self):
-        pass
-
-    def __call__(self, video_bytes, metadata):
-        return [video_bytes], [metadata], None
 
 
 def get_seconds(t):

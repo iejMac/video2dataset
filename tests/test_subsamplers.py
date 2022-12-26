@@ -5,7 +5,7 @@ import ffprobe
 import tempfile
 
 
-from video2dataset.subsampler import ClippingSubsampler, get_seconds
+from video2dataset.subsamplers import ClippingSubsampler, get_seconds
 
 
 SINGLE = [[50.0, 60.0]]
