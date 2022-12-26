@@ -13,7 +13,7 @@ from threading import Semaphore
 from video2dataset.data_reader import VideoDataReader
 from .logger import CappedCounter
 from .logger import write_stats
-from .subsampler import NoOpSubsampler, ClippingSubsampler
+from .subsamplers import NoOpSubsampler, ClippingSubsampler
 
 
 def compute_key(key, shard_id, oom_sample_per_shard, oom_shard_count):
