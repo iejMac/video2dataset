@@ -1,11 +1,4 @@
-# Documentation of datasets that have been processed using video2dataset
-
-
-## [WebVid](https://m-bain.github.io/webvid-dataset/)
-Fill this out maybe with data from Robin's run when he does it.
-
-
-## [ACAV100M](https://acav100m.github.io)
+# [ACAV100M](https://acav100m.github.io)
 Here's the command used to process the ACAV100M dataset.
 
 ```python
