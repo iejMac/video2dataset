@@ -25,8 +25,8 @@ class ResolutionSubsampler:
                     f.write(vid_bytes)
                 _ = (
                     ffmpeg.input(f"{tmpdir}/input.mp4")
-                    .filter("scale", -2, self.video_size) # TODO: scael by height
-                    # .filter("crop", w=resize_size, h=resize_size) # TODO: crop to what you want
+                    .filter("scale", -2, self.video_size)
+                    .filter("crop", w=self.video_size, h=self.video_size)
                     .output(f"{tmpdir}/output.mp4", reset_timestamps=1)
                     .run(capture_stdout=True, quiet=True)
                 )

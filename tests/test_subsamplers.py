@@ -68,6 +68,7 @@ def test_resolution_subsampler(size):
 
         probe = ffmpeg.probe(tmp.name)
         video_stream = [stream for stream in probe["streams"] if stream["codec_type"] == "video"][0]
-        h_vid = video_stream["height"]
+        h_vid, w_vid = video_stream["height"], video_stream["width"]
 
         assert h_vid == size
+        assert w_vid == size
