@@ -2,7 +2,6 @@
 resolution subsampler adjusts the resolution of the videos to some constant value
 """
 import os
-import glob
 import ffmpeg
 import tempfile
 
@@ -29,7 +28,7 @@ class ResolutionSubsampler:
                     .filter("crop", w=self.video_size, h=self.video_size)
                     .filter("pad", w=self.video_size, h=self.video_size)
                     .output(f"{tmpdir}/output.mp4", reset_timestamps=1)
-                    .run(capture_stdout=True, quiet=False)
+                    .run(capture_stdout=True, quiet=True)
                 )
                 with open(f"{tmpdir}/output.mp4", "rb") as f:
                     subsampled_bytes.append(f.read())

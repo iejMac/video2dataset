@@ -168,7 +168,7 @@ class Worker:
                         subsampled_videos, metas, error_message = self.noop_subsampler(vid_stream, meta)
 
                     if self.strict_resize:  # Resolution subsampling
-                        subsamples_videos, error_message = self.resolution_subsampler(subsampled_videos)
+                        subsampled_videos, error_message = self.resolution_subsampler(subsampled_videos)
 
                     if error_message is not None:
                         failed_to_subsample += 1
