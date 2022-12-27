@@ -41,6 +41,7 @@ def video2dataset(
     incremental_mode: str = "incremental",
     max_shard_retry: int = 1,
     video_size: int = 360,
+    strict_resize: bool = True,
     timeout: int = 60,
     tmp_dir: str = "/tmp",
     yt_metadata_args: dict = None,
@@ -133,6 +134,7 @@ def video2dataset(
         oom_shard_count=oom_shard_count,
         encode_format="mp4",
         video_size=video_size,
+        strict_resize=strict_resize,
         tmp_dir=tmp_dir,
         yt_metadata_args=yt_metadata_args,
     )

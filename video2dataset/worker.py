@@ -40,6 +40,7 @@ class Worker:
         oom_shard_count,
         encode_format,
         video_size,
+        strict_resize,
         tmp_dir,
         yt_metadata_args,
         oom_clip_count=5,
@@ -52,6 +53,8 @@ class Worker:
         self.oom_shard_count = oom_shard_count
         self.encode_format = encode_format
         self.thread_count = thread_count
+        self.strict_resize = strict_resize
+
         self.data_reader = VideoDataReader(video_size, timeout, tmp_dir, yt_metadata_args)
 
         self.clipping_subsampler = ClippingSubsampler(oom_clip_count)
@@ -164,11 +167,8 @@ class Worker:
                     else:
                         subsampled_videos, metas, error_message = self.noop_subsampler(vid_stream, meta)
 
-                    # TODO: for now we make every video have same video_height and video_width but maybe we should add an arg that doesn't do this strict resolution subsampling and only takes what yt-dlp gives and allows for variance in this dimension. Some if statement like:
-                    # if resolution_strict:
-
-                    # Resolution subsampling
-                    subsamples_videos, error_message = self.resolution_subsampler(subsampled_videos)
+                    if self.strict_resize: # Resolution subsampling
+                        subsamples_videos, error_message = self.resolution_subsampler(subsampled_videos)
 
                     if error_message is not None:
                         failed_to_subsample += 1

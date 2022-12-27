@@ -27,8 +27,9 @@ class ResolutionSubsampler:
                     ffmpeg.input(f"{tmpdir}/input.mp4")
                     .filter("scale", -2, self.video_size)
                     .filter("crop", w=self.video_size, h=self.video_size)
+                    .filter("pad", w=self.video_size, h=self.video_size)
                     .output(f"{tmpdir}/output.mp4", reset_timestamps=1)
-                    .run(capture_stdout=True, quiet=True)
+                    .run(capture_stdout=True, quiet=False)
                 )
                 with open(f"{tmpdir}/output.mp4", "rb") as f:
                     subsampled_bytes.append(f.read())
