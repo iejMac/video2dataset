@@ -1,7 +1,6 @@
 """test video2dataset subsamplers"""
 import os
 import pytest
-import ffprobe
 import ffmpeg
 import tempfile
 
@@ -47,7 +46,9 @@ def test_clipping_subsampler(clips):
             assert clips[key_ind] == [s, e]  # correct order
 
             s_s, e_s = get_seconds(s), get_seconds(e)
-            frag_len = get_seconds(ffprobe.FFProbe(tmp.name).metadata["Duration"])
+            probe = ffmpeg.probe(tmp.name)
+            video_stream = [stream for stream in probe["streams"] if stream["codec_type"] == "video"][0]
+            frag_len = float(video_stream["duration"])
 
             assert abs(frag_len - (e_s - s_s)) < 5.0  # currently some segments can be pretty innacurate
 
