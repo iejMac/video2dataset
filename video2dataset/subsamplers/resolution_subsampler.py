@@ -14,9 +14,8 @@ class ResolutionSubsampler:
     TODO: for now will just implement keep_ratio + center_crop, in the future maybe add more options
     """
 
-    def __init__(self, video_height, video_width):
-        self.video_height = video_height
-        self.video_width = video_width
+    def __init__(self, video_size):
+        self.video_size = video_size
 
     def __call__(self, video_bytes):
         subsampled_bytes = []
@@ -26,7 +25,7 @@ class ResolutionSubsampler:
                     f.write(vid_bytes)
                 _ = (
                     ffmpeg.input(f"{tmpdir}/input.mp4")
-                    .filter("scale", self.video_width, self.video_height) # TODO: scael by height
+                    .filter("scale", -2, self.video_size) # TODO: scael by height
                     # .filter("crop", w=resize_size, h=resize_size) # TODO: crop to what you want
                     .output(f"{tmpdir}/output.mp4", reset_timestamps=1)
                     .run(capture_stdout=True, quiet=True)

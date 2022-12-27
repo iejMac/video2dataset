@@ -53,15 +53,14 @@ def test_clipping_subsampler(clips):
             assert abs(frag_len - (e_s - s_s)) < 5.0  # currently some segments can be pretty innacurate
 
 
-@pytest.mark.parametrize("dimensions", [(144, 192), (1080, 1920)])
-def test_resolution_subsampler(dimensions):
+@pytest.mark.parametrize("size", [144, 1080])
+def test_resolution_subsampler(size):
     current_folder = os.path.dirname(__file__)
     video = os.path.join(current_folder, "test_files/test_video.mp4")  # video lenght - 2:02
     with open(video, "rb") as vid_f:
         video_bytes = vid_f.read()
 
-    h, w = dimensions
-    subsampler = ResolutionSubsampler(h, w)
+    subsampler = ResolutionSubsampler(size)
 
     subsampled_videos, error_message = subsampler([video_bytes])
     with tempfile.NamedTemporaryFile() as tmp:
@@ -69,7 +68,6 @@ def test_resolution_subsampler(dimensions):
 
         probe = ffmpeg.probe(tmp.name)
         video_stream = [stream for stream in probe["streams"] if stream["codec_type"] == "video"][0]
-        h_vid, w_vid = video_stream["height"], video_stream["width"]
+        h_vid = video_stream["height"]
 
-        assert h == h_vid
-        assert w == w_vid
+        assert h_vid == size

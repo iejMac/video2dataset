@@ -39,8 +39,7 @@ class Worker:
         number_sample_per_shard,
         oom_shard_count,
         encode_format,
-        video_height,
-        video_width,
+        video_size,
         tmp_dir,
         yt_metadata_args,
         oom_clip_count=5,
@@ -53,11 +52,11 @@ class Worker:
         self.oom_shard_count = oom_shard_count
         self.encode_format = encode_format
         self.thread_count = thread_count
-        self.data_reader = VideoDataReader(video_height, video_width, timeout, tmp_dir, yt_metadata_args)
+        self.data_reader = VideoDataReader(video_size, timeout, tmp_dir, yt_metadata_args)
 
         self.clipping_subsampler = ClippingSubsampler(oom_clip_count)
         self.noop_subsampler = NoOpSubsampler()
-        self.resolution_subsampler = ResolutionSubsampler(video_height, video_width)
+        self.resolution_subsampler = ResolutionSubsampler(video_size)
 
     def __call__(
         self,
