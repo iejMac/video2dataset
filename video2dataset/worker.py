@@ -162,12 +162,12 @@ class Worker:
 
                     bytes_downloaded += len(vid_stream)
 
-                    if "clips" in self.column_list: # Clipping
+                    if "clips" in self.column_list:  # Clipping
                         subsampled_videos, metas, error_message = self.clipping_subsampler(vid_stream, meta)
                     else:
                         subsampled_videos, metas, error_message = self.noop_subsampler(vid_stream, meta)
 
-                    if self.strict_resize: # Resolution subsampling
+                    if self.strict_resize:  # Resolution subsampling
                         subsamples_videos, error_message = self.resolution_subsampler(subsampled_videos)
 
                     if error_message is not None:
