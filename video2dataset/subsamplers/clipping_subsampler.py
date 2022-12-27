@@ -25,7 +25,7 @@ class ClippingSubsampler:
 
     expects:
     - clips to be sorted in increasing order and non-overlapping
-    - time to be in the format "%H:%M:%S.%f"
+    - time to be in the format "%H:%M:%S.%f", or a number representing the second of the timestamp
     """
 
     def __init__(self, oom_clip_count):

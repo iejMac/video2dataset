@@ -54,8 +54,10 @@ class Worker:
         self.encode_format = encode_format
         self.thread_count = thread_count
         self.data_reader = VideoDataReader(video_height, video_width, timeout, tmp_dir, yt_metadata_args)
-        self.noop_subsampler = NoOpSubsampler()
+
         self.clipping_subsampler = ClippingSubsampler(oom_clip_count)
+        self.noop_subsampler = NoOpSubsampler()
+        self.resolution_subsampler = ResolutionSubsampler(video_height, video_width)
 
     def __call__(
         self,
@@ -167,7 +169,7 @@ class Worker:
                     # if resolution_strict:
 
                     # Resolution subsampling
-                    subsamples_videos, metas, error_message = self.resolution_subsampler(subsampled_videos, metas)
+                    subsamples_videos, error_message = self.resolution_subsampler(subsampled_videos)
 
                     if error_message is not None:
                         failed_to_subsample += 1
