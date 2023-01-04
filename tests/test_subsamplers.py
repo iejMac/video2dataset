@@ -1,11 +1,11 @@
 """test video2dataset subsamplers"""
 import os
 import pytest
-import ffprobe
+import ffmpeg
 import tempfile
 
 
-from video2dataset.subsamplers import ClippingSubsampler, get_seconds
+from video2dataset.subsamplers import ClippingSubsampler, get_seconds, ResolutionSubsampler
 
 
 SINGLE = [[50.0, 60.0]]
@@ -46,6 +46,29 @@ def test_clipping_subsampler(clips):
             assert clips[key_ind] == [s, e]  # correct order
 
             s_s, e_s = get_seconds(s), get_seconds(e)
-            frag_len = get_seconds(ffprobe.FFProbe(tmp.name).metadata["Duration"])
+            probe = ffmpeg.probe(tmp.name)
+            video_stream = [stream for stream in probe["streams"] if stream["codec_type"] == "video"][0]
+            frag_len = float(video_stream["duration"])
 
             assert abs(frag_len - (e_s - s_s)) < 5.0  # currently some segments can be pretty innacurate
+
+
+@pytest.mark.parametrize("size", [144, 1080])
+def test_resolution_subsampler(size):
+    current_folder = os.path.dirname(__file__)
+    video = os.path.join(current_folder, "test_files/test_video.mp4")  # video lenght - 2:02
+    with open(video, "rb") as vid_f:
+        video_bytes = vid_f.read()
+
+    subsampler = ResolutionSubsampler(size)
+
+    subsampled_videos, error_message = subsampler([video_bytes])
+    with tempfile.NamedTemporaryFile() as tmp:
+        tmp.write(subsampled_videos[0])
+
+        probe = ffmpeg.probe(tmp.name)
+        video_stream = [stream for stream in probe["streams"] if stream["codec_type"] == "video"][0]
+        h_vid, w_vid = video_stream["height"], video_stream["width"]
+
+        assert h_vid == size
+        assert w_vid == size
