@@ -101,18 +101,14 @@ class YtDlpDownloader:
     """Downloader class for yt-dlp links"""
 
     # TODO: maybe we just include height and width in the metadata_args
-    def __init__(self, tmp_dir, metadata_args, video_height, video_width):
+    def __init__(self, tmp_dir, metadata_args, video_size):
         self.tmp_dir = tmp_dir
         self.metadata_args = metadata_args
-        self.video_height = video_height
-        self.video_width = video_width
+        self.video_size = video_size
 
     def __call__(self, url):
         path = f"{self.tmp_dir}/{str(uuid.uuid4())}.mp4"
-        format_string = (
-            f"bv*[height<={self.video_height}][width<={self.video_width}][ext=mp4]"
-            + f"+ba[ext=m4a]/b[height<={self.video_height}][width<={self.video_width}]"
-        )
+        format_string = f"bv*[height<={self.video_size}][ext=mp4]" + f"+ba[ext=m4a]/b[height<={self.video_size}]"
         ydl_opts = {
             "outtmpl": path,
             "format": format_string,
@@ -130,9 +126,9 @@ class YtDlpDownloader:
 class VideoDataReader:
     """Video data reader provide data for a video"""
 
-    def __init__(self, video_height, video_width, dl_timeout, tmp_dir, yt_meta_args) -> None:
+    def __init__(self, video_size, dl_timeout, tmp_dir, yt_meta_args) -> None:
         self.mp4_downloader = Mp4Downloader(dl_timeout, tmp_dir)
-        self.yt_downloader = YtDlpDownloader(tmp_dir, yt_meta_args, video_height, video_width)
+        self.yt_downloader = YtDlpDownloader(tmp_dir, yt_meta_args, video_size)
 
     def __call__(self, row):
         key, url = row

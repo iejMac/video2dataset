@@ -13,7 +13,7 @@ from threading import Semaphore
 from video2dataset.data_reader import VideoDataReader
 from .logger import CappedCounter
 from .logger import write_stats
-from .subsamplers import NoOpSubsampler, ClippingSubsampler
+from .subsamplers import ClippingSubsampler, NoOpSubsampler, ResolutionSubsampler
 
 
 def compute_key(key, shard_id, oom_sample_per_shard, oom_shard_count):
@@ -39,8 +39,8 @@ class Worker:
         number_sample_per_shard,
         oom_shard_count,
         encode_format,
-        video_height,
-        video_width,
+        video_size,
+        strict_resize,
         tmp_dir,
         yt_metadata_args,
         oom_clip_count=5,
@@ -53,9 +53,13 @@ class Worker:
         self.oom_shard_count = oom_shard_count
         self.encode_format = encode_format
         self.thread_count = thread_count
-        self.data_reader = VideoDataReader(video_height, video_width, timeout, tmp_dir, yt_metadata_args)
-        self.noop_subsampler = NoOpSubsampler()
+        self.strict_resize = strict_resize
+
+        self.data_reader = VideoDataReader(video_size, timeout, tmp_dir, yt_metadata_args)
+
         self.clipping_subsampler = ClippingSubsampler(oom_clip_count)
+        self.noop_subsampler = NoOpSubsampler()
+        self.resolution_subsampler = ResolutionSubsampler(video_size)
 
     def __call__(
         self,
@@ -158,10 +162,13 @@ class Worker:
 
                     bytes_downloaded += len(vid_stream)
 
-                    if "clips" in self.column_list:
+                    if "clips" in self.column_list:  # Clipping
                         subsampled_videos, metas, error_message = self.clipping_subsampler(vid_stream, meta)
                     else:
                         subsampled_videos, metas, error_message = self.noop_subsampler(vid_stream, meta)
+
+                    if self.strict_resize:  # Resolution subsampling
+                        subsampled_videos, error_message = self.resolution_subsampler(subsampled_videos)
 
                     if error_message is not None:
                         failed_to_subsample += 1

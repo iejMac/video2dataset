@@ -27,8 +27,7 @@ def test_e2e(input_file):
             url_col="contentUrl",
             caption_col="name",
             save_additional_columns=["videoid"],
-            video_height=360,
-            video_width=640,
+            video_size=360,
             number_sample_per_shard=samples_per_shard,
             processes_count=1,
         )
