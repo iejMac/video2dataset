@@ -22,14 +22,18 @@ class ResolutionSubsampler:
             with tempfile.TemporaryDirectory() as tmpdir:
                 with open(os.path.join(tmpdir, "input.mp4"), "wb") as f:
                     f.write(vid_bytes)
-                _ = (
-                    ffmpeg.input(f"{tmpdir}/input.mp4")
-                    .filter("scale", -2, self.video_size)
-                    .filter("crop", w=self.video_size, h=self.video_size)
-                    .filter("pad", w=self.video_size, h=self.video_size)
-                    .output(f"{tmpdir}/output.mp4", reset_timestamps=1)
-                    .run(capture_stdout=True, quiet=True)
-                )
+                try:
+                    _ = (
+                        ffmpeg.input(f"{tmpdir}/input.mp4")
+                        .filter("scale", -2, self.video_size)
+                        .filter("crop", w=self.video_size, h=self.video_size)
+                        .filter("pad", w=self.video_size, h=self.video_size)
+                        .output(f"{tmpdir}/output.mp4", reset_timestamps=1)
+                        .run(capture_stdout=True, quiet=True)
+                    )
+                except Exception as err:  # pylint: disable=broad-except
+                    return [], str(err)
+
                 with open(f"{tmpdir}/output.mp4", "rb") as f:
                     subsampled_bytes.append(f.read())
         return subsampled_bytes, None
