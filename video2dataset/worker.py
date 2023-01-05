@@ -58,7 +58,7 @@ class Worker:
 
         self.clipping_subsampler = ClippingSubsampler(oom_clip_count)
         self.noop_subsampler = NoOpSubsampler()
-        self.resolution_subsampler = ResolutionSubsampler(video_size, resize_mode) if resize_mode != None else None
+        self.resolution_subsampler = ResolutionSubsampler(video_size, resize_mode) if resize_mode is not None else None
 
     def __call__(
         self,
