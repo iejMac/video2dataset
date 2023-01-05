@@ -8,13 +8,19 @@ import tempfile
 
 class ResolutionSubsampler:
     """
-    Adjusts the resolution of the videos to the specified height and width
+    Adjusts the resolution of the videos to the specified height and width.
 
-    TODO: for now will just implement keep_ratio + center_crop, in the future maybe add more options
+    Args:
+        video_size (int): Target resolution of the videos.
+        resize_mode (list[str]): List of resize modes to apply. Possible options are:
+            scale: scale video keeping aspect ratios
+            crop: center crop to video_size x video_size
+            pad: center pad to video_size x video_size
     """
 
-    def __init__(self, video_size):
+    def __init__(self, video_size, resize_mode):
         self.video_size = video_size
+        self.resize_mode = resize_mode
 
     def __call__(self, video_bytes):
         subsampled_bytes = []
@@ -25,11 +31,15 @@ class ResolutionSubsampler:
                 try:
                     _ = (
                         ffmpeg.input(f"{tmpdir}/input.mp4")
-                        .filter("scale", -2, self.video_size)
-                        .filter("crop", w=self.video_size, h=self.video_size)
-                        .filter("pad", w=self.video_size, h=self.video_size)
-                        .output(f"{tmpdir}/output.mp4", reset_timestamps=1)
-                        .run(capture_stdout=True, quiet=True)
+                    )
+                    if "scale" in self.resize_mode:
+                        _ = _.filter("scale", -2, self.video_size)
+                    if "crop" in self.resize_mode:
+                        _ = _.filter("crop", w=self.video_size, h=self.video_size)
+                    if "pad" in self.resize_mode:
+                        _ = _.filter("pad", w=self.video_size, h=self.video_size)
+                    _ = _.output(f"{tmpdir}/output.mp4", reset_timestamps=1).run(
+                        capture_stdout=True, quiet=True
                     )
                 except Exception as err:  # pylint: disable=broad-except
                     return [], str(err)
