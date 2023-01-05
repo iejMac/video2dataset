@@ -111,14 +111,10 @@ class YtDlpDownloader:
 
         # Download the best video available with the mp4 extension but no better than 480p,
         # or the worst video with the mp4 extension if there is no video under 480p
-        format_string = (
-            f"bv*[height<={self.video_size}][ext=mp4]/b[height<={self.video_size}][ext=mp4] / wv/w[ext=mp4]"
-        )
+        format_string = f"bv*[height<={self.video_size}][ext=mp4]/b[height<={self.video_size}][ext=mp4] / wv/w[ext=mp4]"
         # Download the worst video available with the mp4 extension but no worse than 480p,
         # or the best video with the mp4 extension if there is no video over 480p
-        format_string = (
-            f"wv*[height>={self.video_size}][ext=mp4]/w[height>={self.video_size}][ext=mp4] / bv/b[ext=mp4]"
-        )
+        format_string = f"wv*[height>={self.video_size}][ext=mp4]/w[height>={self.video_size}][ext=mp4] / bv/b[ext=mp4]"
 
         ydl_opts = {
             "outtmpl": path,

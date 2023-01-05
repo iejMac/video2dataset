@@ -74,6 +74,6 @@ def test_resolution_subsampler(size, resize_mode):
 
         assert h_vid == size
         if resize_mode == ["scale"]:
-            assert w_vid == 256 # 1920 / (1080/144)
+            assert w_vid == 256  # 1920 / (1080/144)
         else:
             assert w_vid == size
