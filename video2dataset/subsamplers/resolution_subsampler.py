@@ -13,7 +13,7 @@ class ResolutionSubsampler:
     Args:
         video_size (int): Target resolution of the videos.
         resize_mode (list[str]): List of resize modes to apply. Possible options are:
-            scale: scale video keeping aspect ratios
+            scale: scale video keeping aspect ratios (currently always picks video height)
             crop: center crop to video_size x video_size
             pad: center pad to video_size x video_size
     """
