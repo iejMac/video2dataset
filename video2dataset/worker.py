@@ -13,7 +13,7 @@ from threading import Semaphore
 from video2dataset.data_reader import VideoDataReader
 from .logger import CappedCounter
 from .logger import write_stats
-from .subsampler import NoOpSubsampler, ClippingSubsampler
+from .subsamplers import ClippingSubsampler, NoOpSubsampler, ResolutionSubsampler
 
 
 def compute_key(key, shard_id, oom_sample_per_shard, oom_shard_count):
@@ -39,9 +39,10 @@ class Worker:
         number_sample_per_shard,
         oom_shard_count,
         encode_format,
-        video_height,
-        video_width,
+        video_size,
+        strict_resize,
         tmp_dir,
+        yt_metadata_args,
         oom_clip_count=5,
     ) -> None:
         self.sample_writer_class = sample_writer_class
@@ -52,9 +53,13 @@ class Worker:
         self.oom_shard_count = oom_shard_count
         self.encode_format = encode_format
         self.thread_count = thread_count
-        self.data_reader = VideoDataReader(video_height, video_width, timeout, tmp_dir)
-        self.noop_subsampler = NoOpSubsampler()
+        self.strict_resize = strict_resize
+
+        self.data_reader = VideoDataReader(video_size, timeout, tmp_dir, yt_metadata_args)
+
         self.clipping_subsampler = ClippingSubsampler(oom_clip_count)
+        self.noop_subsampler = NoOpSubsampler()
+        self.resolution_subsampler = ResolutionSubsampler(video_size)
 
     def __call__(
         self,
@@ -98,6 +103,7 @@ class Worker:
         successes = 0
         failed_to_download = 0
         failed_to_subsample = 0
+        bytes_downloaded = 0
         url_indice = self.column_list.index("url")
         caption_indice = self.column_list.index("caption") if "caption" in self.column_list else None
         key_url_list = [(key, x[url_indice]) for key, x in shard_to_dl]
@@ -106,7 +112,7 @@ class Worker:
 
         def data_generator():
             for e in key_url_list:
-                semaphore.acquire()  #  pylint: disable=(consider-using-with)
+                semaphore.acquire()  # pylint: disable=(consider-using-with)
                 yield e
 
         loader = data_generator()
@@ -123,8 +129,8 @@ class Worker:
         oom_sample_per_shard = math.ceil(math.log10(self.number_sample_per_shard))
 
         with ThreadPool(self.thread_count) as thread_pool:
-            for key, vid_stream, error_message in thread_pool.imap_unordered(
-                lambda x: self.data_reader(x),  #  pylint: disable=(unnecessary-lambda)
+            for key, vid_stream, yt_meta_dict, error_message in thread_pool.imap_unordered(
+                self.data_reader,  # pylint: disable=(unnecessary-lambda)
                 loader,
             ):
                 try:
@@ -135,9 +141,12 @@ class Worker:
                         "key": str_key,
                         "status": None,
                         "error_message": error_message,
+                        "yt_meta_dict": yt_meta_dict,
                     }
 
                     if error_message is not None:
+                        if "[youtube]" in error_message:  # video-specific error, remove videoID
+                            error_message = "ERROR: [youtube]:" + error_message.split(":")[-1]
                         failed_to_download += 1
                         status = "failed_to_download"
                         status_dict.increment(error_message)
@@ -151,10 +160,15 @@ class Worker:
                         semaphore.release()
                         continue
 
-                    if "clips" in self.column_list:
+                    bytes_downloaded += len(vid_stream)
+
+                    if "clips" in self.column_list:  # Clipping
                         subsampled_videos, metas, error_message = self.clipping_subsampler(vid_stream, meta)
                     else:
                         subsampled_videos, metas, error_message = self.noop_subsampler(vid_stream, meta)
+
+                    if self.strict_resize:  # Resolution subsampling
+                        subsampled_videos, error_message = self.resolution_subsampler(subsampled_videos)
 
                     if error_message is not None:
                         failed_to_subsample += 1
@@ -201,6 +215,7 @@ class Worker:
             successes,
             failed_to_download,
             failed_to_subsample,
+            bytes_downloaded,
             start_time,
             end_time,
             status_dict,

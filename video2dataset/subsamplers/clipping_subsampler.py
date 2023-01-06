@@ -1,5 +1,7 @@
-"""all subsampler for video and audio
-Transform video and audio by reducing fps, extracting videos, changing resolution, reducing bitrate, etc.
+"""
+clipping subsampler turns full videos into clips of videos according to clip_col
+
+TODO: implement subtitle splitting (can be done just by indexing subtitle dict during clipping
 """
 import os
 import glob
@@ -9,15 +11,9 @@ import tempfile
 from datetime import datetime
 
 
-class NoOpSubsampler:
-    def __init__(self):
-        pass
-
-    def __call__(self, video_bytes, metadata):
-        return [video_bytes], [metadata], None
-
-
 def get_seconds(t):
+    if not isinstance(t, str):
+        return float(t)  # already seconds
     time_format = "%H:%M:%S.%f"  # TODO: maybe paramaterize this?
     t_obj = datetime.strptime(t, time_format).time()
     return t_obj.second + t_obj.microsecond / 1e6 + t_obj.minute * 60 + t_obj.hour * 3600
@@ -29,7 +25,7 @@ class ClippingSubsampler:
 
     expects:
     - clips to be sorted in increasing order and non-overlapping
-    - time to be in the format "%H:%M:%S.%f"
+    - time to be in the format "%H:%M:%S.%f", or a number representing the second of the timestamp
     """
 
     def __init__(self, oom_clip_count):
@@ -38,28 +34,25 @@ class ClippingSubsampler:
     def __call__(self, video_bytes, metadata):
         clips = metadata.pop("clips")
 
-        s_0, e_f = get_seconds(clips[0][0]), get_seconds(clips[-1][1])
-
-        ind = 1
-        _, e_p = clips[0]  # we assume there's always one clip which we want to take
-        e_p = get_seconds(e_p)
-        splits = [e_p]
-        take_inds = [0]  # list of indicies of clips to take, used to discard non-contiguous sections
+        ind = 2
+        s_p, e_p = clips[0]  # we assume there's always one clip which we want to take
+        s_p, e_p = get_seconds(s_p), get_seconds(e_p)
+        splits = [s_p, e_p]
+        take_inds = [1]  # list of indicies of clips to take, used to discard non-contiguous sections
 
         # TODO: make nicer
         for s, e in clips[1:]:
             s, e = get_seconds(s), get_seconds(e)
 
             if s - e_p <= 1.0:  # no one needs 1.0 second clips + creates less files
-                splits += [e] if e != e_f else []
+                splits += [e]
                 take_inds.append(ind)
             else:
-                splits += [s, e] if e != e_f else [s]
+                splits += [s, e]
                 take_inds.append(ind + 1)
 
             ind += 1 if s - e_p <= 1.0 else 2
             e_p = e
-
         segment_times = ",".join([str(spl) for spl in splits])
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -69,7 +62,7 @@ class ClippingSubsampler:
                 f.write(video_bytes)
             try:
                 _ = (
-                    ffmpeg.input(f"{tmpdir}/input.mp4", ss=s_0, to=e_f)
+                    ffmpeg.input(f"{tmpdir}/input.mp4")
                     .output(
                         f"{tmpdir}/clip_%d.mp4",
                         c="copy",
@@ -84,6 +77,7 @@ class ClippingSubsampler:
                 return [], [], str(err)
 
             video_clips = glob.glob(f"{tmpdir}/clip*")
+            video_clips.sort()
             correct_clips = []
             for clip_id, (clip, ind) in enumerate(zip(clips, take_inds)):
                 if ind < len(video_clips):
