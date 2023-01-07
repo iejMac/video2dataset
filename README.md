@@ -92,7 +92,10 @@ This module exposes a single function `download` which takes the same arguments 
 * **number_sample_per_shard** the number of sample that will be downloaded in one shard (default *10000*)
 * **timeout** maximum time (in seconds) to wait when trying to download an image (default *10*)
 * **video_size** size of video frames (default *360*)
-* **strict_resize** if True all frames will be exactly the same dimensions via scaling, cropping, and padding (default *False*)
+* **resize_mode** what resizing transformations to apply to video resolution (default *None*)
+  * **scale** scale video keeping aspect ratios (currently always picks video height)
+  * **crop** center crop to video_size x video_size
+  * **pad** center pad to video_size x video_size
 * **enable_wandb** whether to enable wandb logging (default *False*)
 * **wandb_project** name of W&B project used (default *video2dataset*)
 * **oom_shard_count** the order of magnitude of the number of shards, used only to decide what zero padding to use to name the shard files (default *5*)

@@ -53,16 +53,18 @@ def test_clipping_subsampler(clips):
             assert abs(frag_len - (e_s - s_s)) < 5.0  # currently some segments can be pretty innacurate
 
 
-@pytest.mark.parametrize("size", [144, 1080])
-def test_resolution_subsampler(size):
+@pytest.mark.parametrize("size,resize_mode", [(144, ["scale"]), (1620, ["scale", "crop", "pad"])])
+def test_resolution_subsampler(size, resize_mode):
     current_folder = os.path.dirname(__file__)
-    video = os.path.join(current_folder, "test_files/test_video.mp4")  # video lenght - 2:02
+    video = os.path.join(current_folder, "test_files/test_video.mp4")  # video lenght - 2:02, 1080x1920
     with open(video, "rb") as vid_f:
         video_bytes = vid_f.read()
 
-    subsampler = ResolutionSubsampler(size)
+    subsampler = ResolutionSubsampler(size, resize_mode)
 
     subsampled_videos, error_message = subsampler([video_bytes])
+    assert error_message is None
+
     with tempfile.NamedTemporaryFile() as tmp:
         tmp.write(subsampled_videos[0])
 
@@ -71,4 +73,7 @@ def test_resolution_subsampler(size):
         h_vid, w_vid = video_stream["height"], video_stream["width"]
 
         assert h_vid == size
-        assert w_vid == size
+        if resize_mode == ["scale"]:
+            assert w_vid == 256  # 1920 / (1080/144)
+        else:
+            assert w_vid == size
