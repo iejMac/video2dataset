@@ -108,7 +108,10 @@ class YtDlpDownloader:
 
     def __call__(self, url):
         path = f"{self.tmp_dir}/{str(uuid.uuid4())}.mp4"
-        format_string = f"bv*[height<={self.video_size}][ext=mp4]" + f"+ba[ext=m4a]/b[height<={self.video_size}]"
+
+        # format_string = f"bv*[height<={self.video_size}][ext=mp4]/b[height<={self.video_size}][ext=mp4] / wv/w[ext=mp4]"
+        format_string = f"wv*[height>={self.video_size}][ext=mp4]/w[height>={self.video_size}][ext=mp4] / bv/b[ext=mp4]"
+
         ydl_opts = {
             "outtmpl": path,
             "format": format_string,
@@ -151,7 +154,6 @@ class VideoDataReader:
                 vid_bytes = vid_file.read()
         else:
             vid_bytes = None
-
         if file_path is not None:  # manually remove tempfile
             os.remove(file_path)
         return key, vid_bytes, yt_meta_dict, error_message
