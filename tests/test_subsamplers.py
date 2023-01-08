@@ -77,3 +77,25 @@ def test_resolution_subsampler(size, resize_mode):
             assert w_vid == 256  # 1920 / (1080/144)
         else:
             assert w_vid == size
+
+
+@pytest.mark.parametrize("target_frame_rate", [6, 15, 30])
+def test_frame_rate_subsampler(target_frame_rate):
+    current_folder = os.path.dirname(__file__)
+    video = os.path.join(current_folder, "test_files/test_video.mp4")  # video length - 2:02, 1080x1920, 30 fps
+    with open(video, "rb") as vid_f:
+        video_bytes = vid_f.read()
+
+    subsampler = FrameRateSubsampler(target_frame_rate)
+
+    subsampled_videos, error_message = subsampler([video_bytes])
+    assert error_message is None
+
+    with tempfile.NamedTemporaryFile() as tmp:
+        tmp.write(subsampled_videos[0])
+
+        probe = ffmpeg.probe(tmp.name)
+        video_stream = [stream for stream in probe["streams"] if stream["codec_type"] == "video"][0]
+        frame_rate = int(video_stream["r_frame_rate"].split("/")[0])
+
+        assert frame_rate == target_frame_rate
