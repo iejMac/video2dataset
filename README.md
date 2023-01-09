@@ -287,3 +287,6 @@ You can use `make black` to reformat the code
 
 ## Benchmarks
 
+## Special Contributors:
+
+* [ChatGPT](https://chat.openai.com) - FrameSubsampler implementation
