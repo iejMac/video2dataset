@@ -5,7 +5,7 @@ import ffmpeg
 import tempfile
 
 
-from video2dataset.subsamplers import ClippingSubsampler, get_seconds, ResolutionSubsampler
+from video2dataset.subsamplers import ClippingSubsampler, get_seconds, ResolutionSubsampler, FrameRateSubsampler
 
 
 SINGLE = [[50.0, 60.0]]
