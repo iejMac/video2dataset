@@ -136,7 +136,7 @@ class YtDlpDownloader:
 
     def __call__(self, url):
         path = f"{self.tmp_dir}/{str(uuid.uuid4())}.mp4"
-        
+
         # format_string = f"bv*[height<={self.video_size}][ext=mp4]/b[height<={self.video_size}][ext=mp4] / wv/w[ext=mp4]"
         format_string = f"wv*[height>={self.video_size}][ext=mp4]/w[height>={self.video_size}][ext=mp4] / bv/b[ext=mp4]"
         ydl_opts = {
@@ -178,9 +178,9 @@ class VideoDataReader:
         # TODO: make nice function to detect what type of link we're dealing with
         if "youtube" in url:  # youtube link
             try:
-                file_path, yt_meta_dict, error_message = self.yt_downloader(url)
+                file_path, a_file_path, yt_meta_dict, error_message = self.yt_downloader(url)
             except Exception as e:  # pylint: disable=(broad-except)
-                file_path, yt_meta_dict, error_message = None, None, str(e)
+                file_path, a_file_path, yt_meta_dict, error_message = None, None, None, str(e)
         # TODO: add .avi, .webm, should also work
         elif url.endswith(".mp4"):  # mp4 link
             file_path, a_file_path, error_message = self.mp4_downloader(url)
