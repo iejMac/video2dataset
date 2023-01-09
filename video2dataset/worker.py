@@ -53,7 +53,8 @@ class Worker:
         self.thread_count = thread_count
         self.encode_formats = encode_formats
 
-        self.data_reader = VideoDataReader(video_size, timeout, tmp_dir, yt_metadata_args, encode_formats)
+        self.data_reader = VideoDataReader(
+            video_size, timeout, tmp_dir, yt_metadata_args, encode_formats)
 
         self.clipping_subsampler = ClippingSubsampler(oom_clip_count)
         self.noop_subsampler = NoOpSubsampler()
@@ -91,7 +92,8 @@ class Worker:
         )
 
         pydict = df.select(self.column_list).to_pydict()
-        shard_to_dl = list(enumerate(zip(*(pydict[col] for col in self.column_list))))
+        shard_to_dl = list(
+            enumerate(zip(*(pydict[col] for col in self.column_list))))
         del pydict
         del df
 
@@ -103,7 +105,8 @@ class Worker:
         failed_to_subsample = 0
         bytes_downloaded = 0
         url_indice = self.column_list.index("url")
-        caption_indice = self.column_list.index("caption") if "caption" in self.column_list else None
+        caption_indice = self.column_list.index(
+            "caption") if "caption" in self.column_list else None
         key_url_list = [(key, x[url_indice]) for key, x in shard_to_dl]
 
         semaphore = Semaphore(self.thread_count)
@@ -119,7 +122,8 @@ class Worker:
         sample_writer = self.sample_writer_class(
             shard_id, self.output_folder, self.save_caption, self.oom_shard_count, schema, self.encode_formats
         )
-        oom_sample_per_shard = math.ceil(math.log10(self.number_sample_per_shard))
+        oom_sample_per_shard = math.ceil(
+            math.log10(self.number_sample_per_shard))
 
         with ThreadPool(self.thread_count) as thread_pool:
             for key, vid_stream, aud_stream, yt_meta_dict, error_message in thread_pool.imap_unordered(
@@ -128,7 +132,8 @@ class Worker:
             ):
                 try:
                     _, sample_data = shard_to_dl[key]
-                    str_key = compute_key(key, shard_id, oom_sample_per_shard, self.oom_shard_count)
+                    str_key = compute_key(
+                        key, shard_id, oom_sample_per_shard, self.oom_shard_count)
                     meta = {
                         **{self.column_list[i]: sample_data[i] for i in range(len(self.column_list))},
                         "key": str_key,
@@ -139,7 +144,8 @@ class Worker:
 
                     if error_message is not None:
                         if "[youtube]" in error_message:  # video-specific error, remove videoID
-                            error_message = "ERROR: [youtube]:" + error_message.split(":")[-1]
+                            error_message = "ERROR: [youtube]:" + \
+                                error_message.split(":")[-1]
                         failed_to_download += 1
                         status = "failed_to_download"
                         status_dict.increment(error_message)
@@ -162,12 +168,15 @@ class Worker:
                     if vid_stream is not None:
 
                         if "clips" in self.column_list:  # Clipping
-                            subsampled_videos, metas, error_message = self.clipping_subsampler(vid_stream, meta)
+                            subsampled_videos, metas, error_message = self.clipping_subsampler(
+                                vid_stream, meta)
                         else:
-                            subsampled_videos, metas, error_message = self.noop_subsampler(vid_stream, meta)
+                            subsampled_videos, metas, error_message = self.noop_subsampler(
+                                vid_stream, meta)
 
-                        if self.resolution_subsampler is not None:  # Resolution subsampling
-                            subsampled_videos, error_message = self.resolution_subsampler(subsampled_videos)
+                    if self.resolution_subsampler is not None:  # Resolution subsampling
+                        subsampled_videos, error_message = self.resolution_subsampler(
+                            subsampled_videos)
 
                     if error_message is not None:
                         failed_to_subsample += 1
@@ -181,7 +190,8 @@ class Worker:
                             str_key,
                             sample_data[caption_indice] if caption_indice is not None else None,
                             meta,
-                            format_type="video" if self.encode_formats.get("video", None) else "audio",
+                            format_type="video" if self.encode_formats.get(
+                                "video", None) else "audio",
                         )
                         semaphore.release()
                         continue
