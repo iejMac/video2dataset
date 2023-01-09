@@ -51,6 +51,7 @@ class Worker:
         self.number_sample_per_shard = number_sample_per_shard
         self.oom_shard_count = oom_shard_count
         self.thread_count = thread_count
+
         self.encode_formats = encode_formats
 
         self.data_reader = VideoDataReader(
@@ -58,7 +59,7 @@ class Worker:
 
         self.clipping_subsampler = ClippingSubsampler(oom_clip_count)
         self.noop_subsampler = NoOpSubsampler()
-        self.resolution_subsampler = ResolutionSubsampler(video_size)
+        self.resolution_subsampler = ResolutionSubsampler(video_size, resize_mode) if resize_mode is not None else None
 
     def __call__(
         self,
@@ -158,6 +159,7 @@ class Worker:
                         )
                         semaphore.release()
                         continue
+                        
                     if vid_stream is not None:
                         bytes_downloaded += len(vid_stream)
                     if aud_stream is not None:

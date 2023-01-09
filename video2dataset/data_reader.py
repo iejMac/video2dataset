@@ -99,12 +99,6 @@ def get_yt_meta(url, yt_metadata_args: dict) -> dict:
 class Mp4Downloader:
     """Downloader class for mp4 links"""
 
-    # encode_formats = {
-    #     'video': 'mp4',
-    #     'audio': 'mp3',
-    #     'sample_rate': 16000
-    # }
-
     def __init__(self, timeout, tmp_dir, encode_formats):
         self.timeout = timeout
         self.tmp_dir = tmp_dir
@@ -142,6 +136,8 @@ class YtDlpDownloader:
 
     def __call__(self, url):
         path = f"{self.tmp_dir}/{str(uuid.uuid4())}.mp4"
+        
+        # format_string = f"bv*[height<={self.video_size}][ext=mp4]/b[height<={self.video_size}][ext=mp4] / wv/w[ext=mp4]"
         format_string = f"wv*[height>={self.video_size}][ext=mp4]/w[height>={self.video_size}][ext=mp4] / bv/b[ext=mp4]"
         ydl_opts = {
             "outtmpl": path,
@@ -181,10 +177,10 @@ class VideoDataReader:
         vid_bytes = None
         # TODO: make nice function to detect what type of link we're dealing with
         if "youtube" in url:  # youtube link
-            # try:
-            file_path, a_file_path, yt_meta_dict, error_message = self.yt_downloader(url)
-            # except Exception as e:  # pylint: disable=(broad-except)
-            #     file_path, yt_meta_dict, error_message = None, None, str(e)
+            try:
+                file_path, yt_meta_dict, error_message = self.yt_downloader(url)
+            except Exception as e:  # pylint: disable=(broad-except)
+                file_path, yt_meta_dict, error_message = None, None, str(e)
         # TODO: add .avi, .webm, should also work
         elif url.endswith(".mp4"):  # mp4 link
             file_path, a_file_path, error_message = self.mp4_downloader(url)
@@ -200,7 +196,6 @@ class VideoDataReader:
                     aud_bytes = aud_file.read()
         else:
             vid_bytes = None
-
         if file_path is not None:  # manually remove tempfile
             os.remove(file_path)
         return key, vid_bytes, aud_bytes, yt_meta_dict, error_message
