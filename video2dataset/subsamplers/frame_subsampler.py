@@ -8,7 +8,7 @@ import os
 import ffmpeg
 
 
-class FrameRateSubsampler:
+class FrameSubsampler:
     """
     Adjusts the frame rate of the videos to the specified frame rate.
     Args:

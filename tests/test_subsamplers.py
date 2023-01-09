@@ -5,7 +5,7 @@ import ffmpeg
 import tempfile
 
 
-from video2dataset.subsamplers import ClippingSubsampler, get_seconds, ResolutionSubsampler, FrameRateSubsampler
+from video2dataset.subsamplers import ClippingSubsampler, get_seconds, ResolutionSubsampler, FrameSubsampler
 
 
 SINGLE = [[50.0, 60.0]]
@@ -86,7 +86,7 @@ def test_frame_rate_subsampler(target_frame_rate):
     with open(video, "rb") as vid_f:
         video_bytes = vid_f.read()
 
-    subsampler = FrameRateSubsampler(target_frame_rate)
+    subsampler = FrameSubsampler(target_frame_rate)
 
     subsampled_videos, error_message = subsampler([video_bytes])
     assert error_message is None
