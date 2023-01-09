@@ -38,9 +38,7 @@ class Worker:
         timeout,
         number_sample_per_shard,
         oom_shard_count,
-        encode_format,
         video_size,
-        strict_resize,
         tmp_dir,
         yt_metadata_args,
         encode_formats,
@@ -52,9 +50,7 @@ class Worker:
         self.column_list = column_list
         self.number_sample_per_shard = number_sample_per_shard
         self.oom_shard_count = oom_shard_count
-        self.encode_format = encode_format
         self.thread_count = thread_count
-        self.strict_resize = strict_resize
         self.encode_formats = encode_formats
 
         self.data_reader = VideoDataReader(video_size, timeout, tmp_dir, yt_metadata_args, encode_formats)
@@ -170,7 +166,7 @@ class Worker:
                         else:
                             subsampled_videos, metas, error_message = self.noop_subsampler(vid_stream, meta)
 
-                        if self.strict_resize:  # Resolution subsampling
+                        if self.resolution_subsampler is not None:  # Resolution subsampling
                             subsampled_videos, error_message = self.resolution_subsampler(subsampled_videos)
 
                     if error_message is not None:
@@ -185,6 +181,7 @@ class Worker:
                             str_key,
                             sample_data[caption_indice] if caption_indice is not None else None,
                             meta,
+                            format_type="video" if self.encode_formats.get("video", None) else "audio",
                         )
                         semaphore.release()
                         continue

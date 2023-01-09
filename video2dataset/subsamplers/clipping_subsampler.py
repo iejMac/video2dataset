@@ -35,10 +35,12 @@ class ClippingSubsampler:
         clips = metadata.pop("clips")
 
         ind = 2
-        s_p, e_p = clips[0]  # we assume there's always one clip which we want to take
+        # we assume there's always one clip which we want to take
+        s_p, e_p = clips[0]
         s_p, e_p = get_seconds(s_p), get_seconds(e_p)
         splits = [s_p, e_p]
-        take_inds = [1]  # list of indicies of clips to take, used to discard non-contiguous sections
+        # list of indicies of clips to take, used to discard non-contiguous sections
+        take_inds = [1]
 
         # TODO: make nicer
         for s, e in clips[1:]:
@@ -94,7 +96,8 @@ class ClippingSubsampler:
                     clip_id=clip_id, oom_clip_count=self.oom_clip_count
                 )
                 meta_clip = metadata.copy()
-                meta_clip["clips"] = [clip_span]  # set the timeframe of this clip
+                # set the timeframe of this clip
+                meta_clip["clips"] = [clip_span]
                 meta_clip["key"] = f"{meta_clip['key']}_{clip_key}"
                 metadata_clips.append(meta_clip)
 
