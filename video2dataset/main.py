@@ -45,12 +45,16 @@ def video2dataset(
     timeout: int = 60,
     tmp_dir: str = "/tmp",
     yt_metadata_args: dict = None,
+    encode_formats: dict = None,
 ):
     """
     create video dataset from video links
     """
 
     config_parameters = dict(locals())
+
+    if encode_formats is None:
+        encode_formats = {"video": "mp4"}
 
     def make_path_absolute(path):
         fs, p = fsspec.core.url_to_fs(path)
@@ -137,6 +141,7 @@ def video2dataset(
         strict_resize=strict_resize,
         tmp_dir=tmp_dir,
         yt_metadata_args=yt_metadata_args,
+        encode_formats=encode_formats,
     )
 
     print("Starting the downloading of this file")

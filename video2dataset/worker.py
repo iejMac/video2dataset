@@ -43,6 +43,7 @@ class Worker:
         strict_resize,
         tmp_dir,
         yt_metadata_args,
+        encode_formats,
         oom_clip_count=5,
     ) -> None:
         self.sample_writer_class = sample_writer_class
@@ -54,8 +55,9 @@ class Worker:
         self.encode_format = encode_format
         self.thread_count = thread_count
         self.strict_resize = strict_resize
+        self.encode_formats = encode_formats
 
-        self.data_reader = VideoDataReader(video_size, timeout, tmp_dir, yt_metadata_args)
+        self.data_reader = VideoDataReader(video_size, timeout, tmp_dir, yt_metadata_args, encode_formats)
 
         self.clipping_subsampler = ClippingSubsampler(oom_clip_count)
         self.noop_subsampler = NoOpSubsampler()
@@ -119,17 +121,12 @@ class Worker:
 
         # give schema to writer
         sample_writer = self.sample_writer_class(
-            shard_id,
-            self.output_folder,
-            self.save_caption,
-            self.oom_shard_count,
-            schema,
-            self.encode_format,
+            shard_id, self.output_folder, self.save_caption, self.oom_shard_count, schema, self.encode_formats
         )
         oom_sample_per_shard = math.ceil(math.log10(self.number_sample_per_shard))
 
         with ThreadPool(self.thread_count) as thread_pool:
-            for key, vid_stream, yt_meta_dict, error_message in thread_pool.imap_unordered(
+            for key, vid_stream, aud_stream, yt_meta_dict, error_message in thread_pool.imap_unordered(
                 self.data_reader,  # pylint: disable=(unnecessary-lambda)
                 loader,
             ):
@@ -159,16 +156,22 @@ class Worker:
                         )
                         semaphore.release()
                         continue
+                    if vid_stream is not None:
+                        bytes_downloaded += len(vid_stream)
+                    if aud_stream is not None:
+                        bytes_downloaded += len(aud_stream)
 
-                    bytes_downloaded += len(vid_stream)
+                    subsampled_videos = []
+                    metas = [meta]
+                    if vid_stream is not None:
 
-                    if "clips" in self.column_list:  # Clipping
-                        subsampled_videos, metas, error_message = self.clipping_subsampler(vid_stream, meta)
-                    else:
-                        subsampled_videos, metas, error_message = self.noop_subsampler(vid_stream, meta)
+                        if "clips" in self.column_list:  # Clipping
+                            subsampled_videos, metas, error_message = self.clipping_subsampler(vid_stream, meta)
+                        else:
+                            subsampled_videos, metas, error_message = self.noop_subsampler(vid_stream, meta)
 
-                    if self.strict_resize:  # Resolution subsampling
-                        subsampled_videos, error_message = self.resolution_subsampler(subsampled_videos)
+                        if self.strict_resize:  # Resolution subsampling
+                            subsampled_videos, error_message = self.resolution_subsampler(subsampled_videos)
 
                     if error_message is not None:
                         failed_to_subsample += 1
@@ -196,6 +199,15 @@ class Worker:
                             meta["key"],
                             sample_data[caption_indice] if caption_indice is not None else None,
                             meta,
+                            format_type="video",
+                        )
+                    if aud_stream is not None:
+                        sample_writer.write(
+                            aud_stream,
+                            meta["key"],
+                            sample_data[caption_indice] if caption_indice is not None else None,
+                            meta,
+                            format_type="audio",
                         )
                 except Exception as err:  # pylint: disable=broad-except
                     traceback.print_exc()
