@@ -41,6 +41,7 @@ def video2dataset(
     incremental_mode: str = "incremental",
     max_shard_retry: int = 1,
     video_size: int = 360,
+    video_fps: int = -1,
     resize_mode: Optional[List[str]] = None,
     timeout: int = 60,
     tmp_dir: str = "/tmp",
@@ -135,6 +136,7 @@ def video2dataset(
         encode_format="mp4",
         video_size=video_size,
         resize_mode=resize_mode,
+        video_fps=video_fps,
         tmp_dir=tmp_dir,
         yt_metadata_args=yt_metadata_args,
     )
