@@ -51,6 +51,13 @@ def video2dataset(
     create video dataset from video links
     """
 
+    # TODO: find better location for this code
+    if caption_col == "yt_subtitles": # get yt subtitles clip up video according to them
+        assert clip_col is None # no weird double-clipping
+        if yt_metadata_args is None:
+            yt_metadata_args = {}
+        yt_metadata_args["writesubtitles"] = True
+
     config_parameters = dict(locals())
 
     def make_path_absolute(path):
