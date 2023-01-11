@@ -124,12 +124,14 @@ class Worker:
         oom_sample_per_shard = math.ceil(math.log10(self.number_sample_per_shard))
 
         with ThreadPool(self.thread_count) as thread_pool:
-            for key, vid_stream, aud_stream, yt_meta_dict, error_message in thread_pool.imap_unordered(
+            for key, streams, yt_meta_dict, error_message in thread_pool.imap_unordered(
                 self.data_reader,  # pylint: disable=(unnecessary-lambda)
                 loader,
             ):
                 try:
                     _, sample_data = shard_to_dl[key]
+                    aud_stream = streams["audio"]
+                    vid_stream = streams["video"]
                     str_key = compute_key(key, shard_id, oom_sample_per_shard, self.oom_shard_count)
                     meta = {
                         **{self.column_list[i]: sample_data[i] for i in range(len(self.column_list))},
@@ -157,8 +159,6 @@ class Worker:
 
                     if vid_stream is not None:
                         bytes_downloaded += len(vid_stream)
-                    if aud_stream is not None:
-                        bytes_downloaded += len(aud_stream)
 
                     subsampled_videos = []
                     metas = [meta]

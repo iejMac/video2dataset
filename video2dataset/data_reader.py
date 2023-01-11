@@ -5,17 +5,25 @@ import requests
 import yt_dlp
 import io
 import webvtt
-import subprocess
+import ffmpeg
 
 
 def video2audio(video, af, sample_rate, tmp_dir):
-    """extract video from audio"""
+    """extract audio from video"""
     path = f"{tmp_dir}/{str(uuid.uuid4())}.{af}"
-    sr_str = f"-ar {sample_rate}" if sample_rate else ""
-    cmd = f"ffprobe -v error -show_entries format=nb_streams -of default=noprint_wrappers=1:nokey=1 {video}"
-    num_streams = subprocess.check_output(cmd.split())
-    if int(num_streams.decode("utf-8")) == 2:
-        os.system(f"ffmpeg -v error -i {video} -vn -ac 2 {sr_str} -ab 320k -f {af} {path}")
+    sr = str(sample_rate) if sample_rate else None
+    num_streams = len(ffmpeg.probe(video)["streams"])
+
+    if int(num_streams) > 1:  # video has audio stream
+        try:
+            (
+                ffmpeg.input(video)
+                .output(path, format=af, ac=2, ar=sr)
+                .run(capture_stdout=False, quiet=False, capture_stderr=True)
+            )
+        except ffmpeg.Error as e:
+            print("stderr: ", e.stderr)
+            raise e
     else:
         path = None
     return path
@@ -198,4 +206,6 @@ class VideoDataReader:
             vid_bytes = None
         if file_path is not None:  # manually remove tempfile
             os.remove(file_path)
-        return key, vid_bytes, aud_bytes, yt_meta_dict, error_message
+
+        streams = {"video": vid_bytes, "audio": aud_bytes}
+        return key, streams, yt_meta_dict, error_message
