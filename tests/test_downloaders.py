@@ -13,9 +13,11 @@ MP4_URL = "https://ak.picdn.net/shutterstock/videos/1053841541/preview/stock-foo
 
 @pytest.mark.parametrize("video_size", [361, 1080])
 def test_yt_downloader(video_size):
-    ytdlp_downloader = YtDlpDownloader(tmp_dir="/tmp", metadata_args=None, video_size=video_size)
+    ytdlp_downloader = YtDlpDownloader(
+        tmp_dir="/tmp", metadata_args=None, video_size=video_size, encode_formats={"video": "mp4"}
+    )
 
-    path, yt_meta_dict, error_message = ytdlp_downloader(YT_URL)
+    path, aud_path, yt_meta_dict, error_message = ytdlp_downloader(YT_URL)
 
     assert error_message is None
 
@@ -28,9 +30,9 @@ def test_yt_downloader(video_size):
 
 
 def test_mp4_downloader():
-    mp4_downloader = Mp4Downloader(timeout=10, tmp_dir="/tmp")
+    mp4_downloader = Mp4Downloader(timeout=10, tmp_dir="/tmp", encode_formats={"video": "mp4"})
 
-    path, error_message = mp4_downloader(MP4_URL)
+    path, aud_path, error_message = mp4_downloader(MP4_URL)
 
     assert error_message is None
     with open(path, "rb") as f:
