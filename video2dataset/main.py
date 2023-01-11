@@ -46,13 +46,15 @@ def video2dataset(
     timeout: int = 60,
     tmp_dir: str = "/tmp",
     yt_metadata_args: dict = None,
+    captions_are_subtitles: bool = False,
 ):
     """
     create video dataset from video links
     """
 
     # TODO: find better location for this code
-    if caption_col == "yt_subtitles": # get yt subtitles clip up video according to them
+    # TODO: figure out minimum yt_meta_args for subtitles to be added to metadata
+    if captions_are_subtitles:
         assert clip_col is None # no weird double-clipping
         if yt_metadata_args is None:
             yt_metadata_args = {}
@@ -146,6 +148,7 @@ def video2dataset(
         video_fps=video_fps,
         tmp_dir=tmp_dir,
         yt_metadata_args=yt_metadata_args,
+        captions_are_subtitles=captions_are_subtitles,
     )
 
     print("Starting the downloading of this file")

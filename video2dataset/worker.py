@@ -44,6 +44,7 @@ class Worker:
         video_fps,
         tmp_dir,
         yt_metadata_args,
+        captions_are_subtitles,
         oom_clip_count=5,
     ) -> None:
         self.sample_writer_class = sample_writer_class
@@ -54,6 +55,7 @@ class Worker:
         self.oom_shard_count = oom_shard_count
         self.encode_format = encode_format
         self.thread_count = thread_count
+        self.captions_are_subtitles = captions_are_subtitles
 
         self.data_reader = VideoDataReader(video_size, timeout, tmp_dir, yt_metadata_args)
 
@@ -163,7 +165,12 @@ class Worker:
 
                     bytes_downloaded += len(vid_stream)
 
-                    if "clips" in self.column_list:  # Clipping
+                    if self.captions_are_subtitles: # create clips
+                        subtitles = meta["yt_meta_dict"]["subtitles"]
+                        meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
+                        meta["lines"] = [" ".join(line_dict["lines"]) for line_dict in subtitles]
+
+                    if "clips" in self.column_list or self.captions_are_subtitles:  # Clipping
                         subsampled_videos, metas, error_message = self.clipping_subsampler(vid_stream, meta)
                     else:
                         subsampled_videos, metas, error_message = self.noop_subsampler(vid_stream, meta)
