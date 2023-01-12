@@ -10,6 +10,7 @@ import ffmpeg
 
 def video2audio(video, af, sample_rate, tmp_dir):
     """extract audio from video"""
+
     path = f"{tmp_dir}/{str(uuid.uuid4())}.{af}"
     sr = str(sample_rate) if sample_rate else None
     num_streams = len(ffmpeg.probe(video)["streams"])
@@ -19,10 +20,9 @@ def video2audio(video, af, sample_rate, tmp_dir):
             (
                 ffmpeg.input(video)
                 .output(path, format=af, ac=2, ar=sr)
-                .run(capture_stdout=False, quiet=False, capture_stderr=True)
+                .run(capture_stdout=False, quiet=True, capture_stderr=True)
             )
         except ffmpeg.Error as e:
-            print("stderr: ", e.stderr)
             raise e
     else:
         path = None
@@ -33,7 +33,8 @@ def sub_to_dict(sub, dedupe=True, single=False) -> list:
     """Convert WebVTT to JSON, optionally removing duplicate lines"""
 
     captions = webvtt.read_buffer(io.StringIO(sub))
-    dicts = [{"start": c.start, "end": c.end, "lines": c.lines} for c in captions]
+    dicts = [{"start": c.start, "end": c.end, "lines": c.lines}
+             for c in captions]
     if dedupe:
         dicts = []
         prev_line = None
@@ -49,7 +50,8 @@ def sub_to_dict(sub, dedupe=True, single=False) -> list:
                     not_dupe_lines.append(line)
                 prev_line = line
             if not_dupe_lines:
-                dicts.append({"start": c.start, "end": c.end, "lines": not_dupe_lines})
+                dicts.append({"start": c.start, "end": c.end,
+                             "lines": not_dupe_lines})
     if single:
         for d in dicts:
             d["line"] = "\n".join(d.pop("lines"))
@@ -122,7 +124,8 @@ class Mp4Downloader:
         audio_path = None
         if self.encode_formats.get("audio", None):
             af = self.encode_formats["audio"]
-            audio_path = video2audio(video_path, af, self.sample_rate, self.tmp_dir)
+            audio_path = video2audio(
+                video_path, af, self.sample_rate, self.tmp_dir)
 
         if not self.encode_formats.get("video", None):
             os.remove(video_path)
@@ -173,8 +176,10 @@ class VideoDataReader:
     """Video data reader provide data for a video"""
 
     def __init__(self, video_size, dl_timeout, tmp_dir, yt_meta_args, encode_formats) -> None:
-        self.mp4_downloader = Mp4Downloader(dl_timeout, tmp_dir, encode_formats)
-        self.yt_downloader = YtDlpDownloader(tmp_dir, yt_meta_args, video_size, encode_formats)
+        self.mp4_downloader = Mp4Downloader(
+            dl_timeout, tmp_dir, encode_formats)
+        self.yt_downloader = YtDlpDownloader(
+            tmp_dir, yt_meta_args, video_size, encode_formats)
 
     def __call__(self, row):
         key, url = row
@@ -186,9 +191,11 @@ class VideoDataReader:
         # TODO: make nice function to detect what type of link we're dealing with
         if "youtube" in url:  # youtube link
             try:
-                file_path, a_file_path, yt_meta_dict, error_message = self.yt_downloader(url)
+                file_path, a_file_path, yt_meta_dict, error_message = self.yt_downloader(
+                    url)
             except Exception as e:  # pylint: disable=(broad-except)
-                file_path, a_file_path, yt_meta_dict, error_message = None, None, None, str(e)
+                file_path, a_file_path, yt_meta_dict, error_message = None, None, None, str(
+                    e)
         # TODO: add .avi, .webm, should also work
         elif url.endswith(".mp4"):  # mp4 link
             file_path, a_file_path, error_message = self.mp4_downloader(url)
