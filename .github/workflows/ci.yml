@@ -19,6 +19,7 @@ jobs:
           python-version: 3.8
       - name: Install
         run: |
+          sudo apt-get update
           python3 -m venv .env
           source .env/bin/activate
           python -m pip install -U pip
