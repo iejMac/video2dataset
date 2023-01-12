@@ -13,7 +13,7 @@ from threading import Semaphore
 from video2dataset.data_reader import VideoDataReader
 from .logger import CappedCounter
 from .logger import write_stats
-from .subsamplers import ClippingSubsampler, NoOpSubsampler, ResolutionSubsampler
+from .subsamplers import ClippingSubsampler, FrameSubsampler, NoOpSubsampler, ResolutionSubsampler
 
 
 def compute_key(key, shard_id, oom_sample_per_shard, oom_shard_count):
@@ -40,6 +40,7 @@ class Worker:
         oom_shard_count,
         video_size,
         resize_mode,
+        video_fps,
         tmp_dir,
         yt_metadata_args,
         encode_formats,
@@ -60,6 +61,7 @@ class Worker:
         self.clipping_subsampler = ClippingSubsampler(oom_clip_count)
         self.noop_subsampler = NoOpSubsampler()
         self.resolution_subsampler = ResolutionSubsampler(video_size, resize_mode) if resize_mode is not None else None
+        self.frame_subsampler = FrameSubsampler(video_fps) if video_fps > 0 else None
 
     def __call__(
         self,
@@ -169,6 +171,8 @@ class Worker:
                         else:
                             subsampled_videos, metas, error_message = self.noop_subsampler(vid_stream, meta)
 
+                    if self.frame_subsampler is not None:
+                        subsampled_videos, error_message = self.frame_subsampler(subsampled_videos)
                     if self.resolution_subsampler is not None:  # Resolution subsampling
                         subsampled_videos, error_message = self.resolution_subsampler(subsampled_videos)
 
