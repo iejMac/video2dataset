@@ -206,7 +206,7 @@ class Worker:
                     for subsampled_streams, meta in zip(subsampled_streams_list, metas):
                         meta["status"] = status
                         sample_writer.write(
-                            subsampled_sstreams,
+                            subsampled_streams,
                             meta["key"],
                             sample_data[caption_indice] if caption_indice is not None else None,
                             meta,
