@@ -80,12 +80,9 @@ class ClippingSubsampler:
             video_clips = glob.glob(f"{tmpdir}/clip*")
             video_clips.sort()
             correct_clips = []
-            correct_lines = []
             for clip_id, (clip, ind) in enumerate(zip(clips, take_inds)):
                 if ind < len(video_clips):
                     correct_clips.append((clip_id, clip, video_clips[ind]))
-                    if lines is not None:
-                        correct_lines.append(lines[ind])
 
             # clips_lost = len(take_inds) - len(correct_clips) # TODO report this somehow
 
@@ -103,6 +100,7 @@ class ClippingSubsampler:
                 meta_clip["key"] = f"{meta_clip['key']}_{clip_key}"
                 if lines is not None:
                     meta_clip["yt_meta_dict"]["subtitles"] = lines[i]
+                print(meta_clip)
                 metadata_clips.append(meta_clip)
 
         # TODO: subtitle chopping

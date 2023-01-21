@@ -88,7 +88,7 @@ def video2dataset(
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    save_caption = caption_col is not None
+    save_caption = caption_col is not None or captions_are_subtitles
 
     fs, output_path = fsspec.core.url_to_fs(output_folder)
 

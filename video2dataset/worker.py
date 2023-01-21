@@ -175,10 +175,12 @@ class Worker:
                     else:
                         subsampled_videos, metas, error_message = self.noop_subsampler(vid_stream, meta)
 
+                    '''
                     if self.frame_subsampler is not None:
                         subsampled_videos, error_message = self.frame_subsampler(subsampled_videos)
                     if self.resolution_subsampler is not None:  # Resolution subsampling
                         subsampled_videos, error_message = self.resolution_subsampler(subsampled_videos)
+                    '''
 
                     if error_message is not None:
                         failed_to_subsample += 1
@@ -201,10 +203,17 @@ class Worker:
                     status_dict.increment(status)
                     for subsampled_video, meta in zip(subsampled_videos, metas):
                         meta["status"] = status
+
+                        text_caption = sample_data[caption_indice] if caption_indice is not None else None,
+                        if self.captions_are_subtitles:
+                            if "subtitles" not in meta["yt_meta_dict"]:
+                                print(meta)
+                            text_caption = meta["yt_meta_dict"].pop("subtitles")
+
                         sample_writer.write(
                             subsampled_video,
                             meta["key"],
-                            sample_data[caption_indice] if caption_indice is not None else None,
+                            text_caption,
                             meta,
                         )
                 except Exception as err:  # pylint: disable=broad-except
