@@ -132,8 +132,6 @@ class Worker:
             ):
                 try:
                     _, sample_data = shard_to_dl[key]
-                    aud_stream = streams["audio"]
-                    vid_stream = streams["video"]
                     str_key = compute_key(key, shard_id, oom_sample_per_shard, self.oom_shard_count)
                     meta = {
                         **{self.column_list[i]: sample_data[i] for i in range(len(self.column_list))},
@@ -159,22 +157,28 @@ class Worker:
                         semaphore.release()
                         continue
 
-                    if vid_stream is not None:
-                        bytes_downloaded += len(vid_stream)
+                    if self.encode_formats.get("video", None):
+                        bytes_downloaded += len(streams["video"])
+                    else:
+                        bytes_downloaded += len(streams["audio"])
 
-                    subsampled_videos = []
                     metas = [meta]
-                    if vid_stream is not None:
 
-                        if "clips" in self.column_list:  # Clipping
-                            subsampled_videos, metas, error_message = self.clipping_subsampler(vid_stream, meta)
-                        else:
-                            subsampled_videos, metas, error_message = self.noop_subsampler(vid_stream, meta)
+                    if "clips" in self.column_list:  # Clipping
+                        subsampled_streams, metas, error_message = self.clipping_subsampler(
+                            streams, meta, self.encode_formats
+                        )
+                    else:
+                        subsampled_streams, metas, error_message = self.noop_subsampler(streams, meta)
 
-                    if self.frame_subsampler is not None:
-                        subsampled_videos, error_message = self.frame_subsampler(subsampled_videos)
-                    if self.resolution_subsampler is not None:  # Resolution subsampling
-                        subsampled_videos, error_message = self.resolution_subsampler(subsampled_videos)
+                    if streams.get("video", None):
+
+                        if self.frame_subsampler is not None:
+                            subsampled_videos, error_message = self.frame_subsampler(subsampled_streams["video"])
+                            subsampled_streams["video"] = subsampled_videos
+                        if self.resolution_subsampler is not None:  # Resolution subsampling
+                            subsampled_videos, error_message = self.resolution_subsampler(subsampled_streams["video"])
+                            subsampled_streams["video"] = subsampled_videos
 
                     if error_message is not None:
                         failed_to_subsample += 1
@@ -196,22 +200,16 @@ class Worker:
                     successes += 1
                     status = "success"
                     status_dict.increment(status)
-                    for subsampled_video, meta in zip(subsampled_videos, metas):
+                    subsampled_streams_list = [
+                        dict(zip(subsampled_streams, s)) for s in zip(*subsampled_streams.values())
+                    ]
+                    for subsampled_streams, meta in zip(subsampled_streams_list, metas):
                         meta["status"] = status
                         sample_writer.write(
-                            subsampled_video,
+                            subsampled_sstreams,
                             meta["key"],
                             sample_data[caption_indice] if caption_indice is not None else None,
                             meta,
-                            format_type="video",
-                        )
-                    if aud_stream is not None:
-                        sample_writer.write(
-                            aud_stream,
-                            meta["key"],
-                            sample_data[caption_indice] if caption_indice is not None else None,
-                            meta,
-                            format_type="audio",
                         )
                 except Exception as err:  # pylint: disable=broad-except
                     traceback.print_exc()
