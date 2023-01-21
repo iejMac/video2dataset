@@ -33,6 +33,7 @@ class ClippingSubsampler:
 
     def __call__(self, video_bytes, metadata):
         clips = metadata.pop("clips")
+        lines = metadata.pop("lines") if "lines" in metadata else None
 
         ind = 2
         s_p, e_p = clips[0]  # we assume there's always one clip which we want to take
@@ -79,13 +80,17 @@ class ClippingSubsampler:
             video_clips = glob.glob(f"{tmpdir}/clip*")
             video_clips.sort()
             correct_clips = []
+            correct_lines = []
             for clip_id, (clip, ind) in enumerate(zip(clips, take_inds)):
                 if ind < len(video_clips):
                     correct_clips.append((clip_id, clip, video_clips[ind]))
+                    if lines is not None:
+                        correct_lines.append(lines[ind])
+
             # clips_lost = len(take_inds) - len(correct_clips) # TODO report this somehow
 
             video_clips, metadata_clips = [], []
-            for clip_id, clip_span, clip_pth in correct_clips:
+            for i, (clip_id, clip_span, clip_pth) in enumerate(correct_clips):
                 with open(clip_pth, "rb") as vid_f:
                     clip_bytes = vid_f.read()
                 video_clips.append(clip_bytes)
@@ -96,6 +101,8 @@ class ClippingSubsampler:
                 meta_clip = metadata.copy()
                 meta_clip["clips"] = [clip_span]  # set the timeframe of this clip
                 meta_clip["key"] = f"{meta_clip['key']}_{clip_key}"
+                if lines is not None:
+                    meta_clip["yt_meta_dict"]["subtitles"] = lines[i]
                 metadata_clips.append(meta_clip)
 
         # TODO: subtitle chopping
