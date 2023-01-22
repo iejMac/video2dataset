@@ -113,7 +113,7 @@ class Mp4Downloader:
 
     def __call__(self, url):
         resp = requests.get(url, stream=True, timeout=self.timeout)
-        vf = self.encode_formats["video"]
+        vf = self.encode_formats.get("video", "mp4")
         video_path = f"{self.tmp_dir}/{str(uuid.uuid4())}.{vf}"
         with open(video_path, "wb") as f:
             f.write(resp.content)
