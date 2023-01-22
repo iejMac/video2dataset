@@ -12,17 +12,15 @@ def video2audio(video, af, sample_rate, tmp_dir):
     """extract audio from video"""
 
     path = f"{tmp_dir}/{str(uuid.uuid4())}.{af}"
-    sr = str(sample_rate) if sample_rate else None
     num_streams = len(ffmpeg.probe(video)["streams"])
+    ffmpeg_args = {"ar": str(sample_rate), "f": af} if sample_rate else {"f": af}
 
     if int(num_streams) > 1:  # video has audio stream
         try:
-            (
-                ffmpeg.input(video)
-                .output(path, format=af, ac=2, ar=sr)
-                .run(capture_stdout=False, quiet=True, capture_stderr=True)
-            )
+            video = ffmpeg.input(video)
+            (ffmpeg.output(video.audio, path, **ffmpeg_args).run(capture_stderr=True))
         except ffmpeg.Error as e:
+            print(e.stderr)
             raise e
     else:
         path = None
