@@ -141,29 +141,50 @@ class YtDlpDownloader:
         self.sample_rate = encode_formats.get("sample_rate", None)
 
     def __call__(self, url):
-        path = f"{self.tmp_dir}/{str(uuid.uuid4())}.mp4"
+        audio_path = None
+        path = None
 
         # format_string = f"bv*[height<={self.video_size}][ext=mp4]/b[height<={self.video_size}][ext=mp4] / wv/w[ext=mp4]"
         format_string = f"wv*[height>={self.video_size}][ext=mp4]/w[height>={self.video_size}][ext=mp4] / bv/b[ext=mp4]"
-        ydl_opts = {
-            "outtmpl": path,
-            "format": format_string,
-            "quiet": True,
-        }
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download(url)
+        audio_fmt_string = "ba[ext=m4a]"
+        if self.encode_formats.get("audio", None):
+            audio_path_m4a = f"{self.tmp_dir}/{str(uuid.uuid4())}.m4a"
+            ydl_opts = {
+                "outtmpl": audio_path_m4a,
+                "format": audio_fmt_string,
+                "quiet": True,
+            }
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download(url)
+            af = self.encode_formats["audio"]
+            ffmpeg_args = {"ar": str(self.sample_rate), "f": af} if self.sample_rate else {"f": af}
+            try:
+                audio = ffmpeg.input(audio_path_m4a)
+                (
+                    ffmpeg.output(
+                        audio, audio_path_m4a.replace(".m4a", f".{self.encode_formats['audio']}"), **ffmpeg_args
+                    ).run(capture_stderr=True)
+                )
+                audio_path = audio_path_m4a.replace(".m4a", f".{self.encode_formats['audio']}")
+            except ffmpeg.Error as e:
+                print(e.stderr)
+                raise e
+
+        if self.encode_formats.get("video", None):
+            path = f"{self.tmp_dir}/{str(uuid.uuid4())}.mp4"
+            ydl_opts = {
+                "outtmpl": path,
+                "format": format_string,
+                "quiet": True,
+            }
+
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download(url)
+
         if self.metadata_args:
             yt_meta_dict = get_yt_meta(url, self.metadata_args)
         else:
             yt_meta_dict = None, None
-
-        audio_path = None
-        if self.encode_formats.get("audio", None):
-            af = self.encode_formats["audio"]
-            audio_path = video2audio(path, af, self.sample_rate, self.tmp_dir)
-        if not self.encode_formats.get("video", None):
-            os.remove(path)
-            path = None
         return path, audio_path, yt_meta_dict, None
 
 

@@ -10,7 +10,7 @@ import ffmpeg
 
 @pytest.mark.parametrize(
     "input_file, sample_rate",
-    [("test_webvid.csv", 16000), ("test_yt.csv", 25000), ("test_yt.csv", 44100), ("test_webvid.csv", 24000)],
+    [("test_webvid.csv", 16000), ("test_yt.csv", 24000), ("test_yt.csv", 44100), ("test_webvid.csv", 24000)],
 )
 def test_audio(input_file, sample_rate):
     encode_formats = {"video": "mp4", "audio": "mp3", "sample_rate": sample_rate}
