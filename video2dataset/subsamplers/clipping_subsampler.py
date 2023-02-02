@@ -61,6 +61,8 @@ class ClippingSubsampler:
 
         for k in streams.keys():
             stream_bytes = streams[k]
+            if stream_bytes is None:
+                continue
             encode_format = encode_formats[k]
 
             with tempfile.TemporaryDirectory() as tmpdir:

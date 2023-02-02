@@ -204,6 +204,34 @@ And subtitles:
 ]
 ```
 
+## Select formats for video/audio
+
+You can select formats for bothvideo and audio by passing dict with keys `audio` and `video` and formats as values (default: `{"video":"mp4"}`).
+For audio you can specify `mp3`, `flac`, `wav` etc. Example:
+```py
+video2dataset(
+        url_list="test.parquet",
+        input_format="parquet",
+        output_format="files",
+        url_col="contentUrl",
+        caption_col="name",
+        output_folder="test",
+        encode_formats={"video":"mp4", "audio": "mp3"},
+    )
+```
+
+If you want on;y audio or only video you just omit a key (`audio` or `video`) of format you don't want. Example (downloading audio in `wav` format):
+```py
+video2dataset(
+        url_list="test.parquet",
+        input_format="parquet",
+        output_format="files",
+        url_col="contentUrl",
+        caption_col="name",
+        output_folder="test",
+        encode_formats={"audio": "wav"},
+    )
+```
 
 ## Incremental mode
 
