@@ -31,14 +31,16 @@ class ClippingSubsampler:
     def __init__(self, oom_clip_count):
         self.oom_clip_count = oom_clip_count
 
-    def __call__(self, video_bytes, metadata):
+    def __call__(self, streams, metadata, encode_formats):
         clips = metadata.pop("clips")
 
         ind = 2
-        s_p, e_p = clips[0]  # we assume there's always one clip which we want to take
+        # we assume there's always one clip which we want to take
+        s_p, e_p = clips[0]
         s_p, e_p = get_seconds(s_p), get_seconds(e_p)
         splits = [s_p, e_p]
-        take_inds = [1]  # list of indicies of clips to take, used to discard non-contiguous sections
+        # list of indicies of clips to take, used to discard non-contiguous sections
+        take_inds = [1]
 
         # TODO: make nicer
         for s, e in clips[1:]:
@@ -55,48 +57,59 @@ class ClippingSubsampler:
             e_p = e
         segment_times = ",".join([str(spl) for spl in splits])
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # TODO: we need to put the extension into the metadata
-            # TODO: This can be done better using pipes I just don't feel like sinking too much time into this rn
-            with open(os.path.join(tmpdir, "input.mp4"), "wb") as f:
-                f.write(video_bytes)
-            try:
-                _ = (
-                    ffmpeg.input(f"{tmpdir}/input.mp4")
-                    .output(
-                        f"{tmpdir}/clip_%d.mp4",
-                        c="copy",
-                        map=0,
-                        f="segment",
-                        segment_times=segment_times,
-                        reset_timestamps=1,
+        streams_clips = {}
+
+        for k in streams.keys():
+            stream_bytes = streams[k]
+            if stream_bytes is None:
+                continue
+            encode_format = encode_formats[k]
+
+            with tempfile.TemporaryDirectory() as tmpdir:
+                # TODO: we need to put the extension into the metadata
+                # TODO: This can be done better using pipes I just don't feel like sinking too much time into this rn
+                with open(os.path.join(tmpdir, f"input.{encode_format}"), "wb") as f:
+                    f.write(stream_bytes)
+                try:
+                    _ = (
+                        ffmpeg.input(f"{tmpdir}/input.{encode_format}")
+                        .output(
+                            f"{tmpdir}/clip_%d.{encode_format}",
+                            c="copy",
+                            map=0,
+                            f="segment",
+                            segment_times=segment_times,
+                            reset_timestamps=1,
+                        )
+                        .run(capture_stdout=True, quiet=True)
                     )
-                    .run(capture_stdout=True, quiet=True)
-                )
-            except Exception as err:  # pylint: disable=broad-except
-                return [], [], str(err)
+                except Exception as err:  # pylint: disable=broad-except
+                    return [], [], str(err)
 
-            video_clips = glob.glob(f"{tmpdir}/clip*")
-            video_clips.sort()
-            correct_clips = []
-            for clip_id, (clip, ind) in enumerate(zip(clips, take_inds)):
-                if ind < len(video_clips):
-                    correct_clips.append((clip_id, clip, video_clips[ind]))
-            # clips_lost = len(take_inds) - len(correct_clips) # TODO report this somehow
+                stream_clips = glob.glob(f"{tmpdir}/clip*.{encode_format}")
+                stream_clips.sort()
+                correct_clips = []
+                for clip_id, (clip, ind) in enumerate(zip(clips, take_inds)):
+                    if ind < len(stream_clips):
+                        correct_clips.append((clip_id, clip, stream_clips[ind]))
+                # clips_lost = len(take_inds) - len(correct_clips) # TODO report this somehow
 
-            video_clips, metadata_clips = [], []
-            for clip_id, clip_span, clip_pth in correct_clips:
-                with open(clip_pth, "rb") as vid_f:
-                    clip_bytes = vid_f.read()
-                video_clips.append(clip_bytes)
+                stream_clips, metadata_clips = [], []
+                for clip_id, clip_span, clip_pth in correct_clips:
+                    with open(clip_pth, "rb") as vid_f:
+                        clip_bytes = vid_f.read()
+                    stream_clips.append(clip_bytes)
 
-                clip_key = "{clip_id:0{oom_clip_count}d}".format(  # pylint: disable=consider-using-f-string
-                    clip_id=clip_id, oom_clip_count=self.oom_clip_count
-                )
-                meta_clip = metadata.copy()
-                meta_clip["clips"] = [clip_span]  # set the timeframe of this clip
-                meta_clip["key"] = f"{meta_clip['key']}_{clip_key}"
-                metadata_clips.append(meta_clip)
+                    clip_key = "{clip_id:0{oom_clip_count}d}".format(  # pylint: disable=consider-using-f-string
+                        clip_id=clip_id, oom_clip_count=self.oom_clip_count
+                    )
+                    meta_clip = metadata.copy()
+                    # set the timeframe of this clip
+                    meta_clip["clips"] = [clip_span]
+                    meta_clip["key"] = f"{meta_clip['key']}_{clip_key}"
+                    metadata_clips.append(meta_clip)
+
+                streams_clips[k] = stream_clips
 
         # TODO: subtitle chopping
-        return video_clips, metadata_clips, None
+        return streams_clips, metadata_clips, None
