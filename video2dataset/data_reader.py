@@ -8,6 +8,10 @@ import webvtt
 import ffmpeg
 
 
+class DownloadError(BaseException):
+    pass
+
+
 def video2audio(video, af, sample_rate, tmp_dir):
     """extract audio from video"""
 
@@ -126,7 +130,7 @@ class Mp4Downloader:
             os.remove(video_path)
             video_path = None
 
-        return video_path, audio_path, None
+        return video_path, audio_path
 
 
 class YtDlpDownloader:
@@ -185,7 +189,7 @@ class YtDlpDownloader:
             yt_meta_dict = get_yt_meta(url, self.metadata_args)
         else:
             yt_meta_dict = None, None
-        return path, audio_path, yt_meta_dict, None
+        return path, audio_path, yt_meta_dict
 
 
 class VideoDataReader:
@@ -204,27 +208,21 @@ class VideoDataReader:
         vid_bytes = None
         # TODO: make nice function to detect what type of link we're dealing with
         if "youtube" in url:  # youtube link
-            try:
-                file_path, a_file_path, yt_meta_dict, error_message = self.yt_downloader(url)
-            except Exception as e:  # pylint: disable=(broad-except)
-                file_path, a_file_path, yt_meta_dict, error_message = None, None, None, str(e)
+            file_path, a_file_path, yt_meta_dict = self.yt_downloader(url)
         # TODO: add .avi, .webm, should also work
         elif url.endswith(".mp4"):  # mp4 link
-            file_path, a_file_path, error_message = self.mp4_downloader(url)
+            file_path, a_file_path = self.mp4_downloader(url)
         else:
-            file_path, a_file_path, error_message = None, None, "Warning: Unsupported URL type"
+            raise DownloadError("Warning: Unsupported URL type")
 
-        if error_message is None:
-            if file_path is not None:
-                with open(file_path, "rb") as vid_file:
-                    vid_bytes = vid_file.read()
-            if a_file_path is not None:
-                with open(a_file_path, "rb") as aud_file:
-                    aud_bytes = aud_file.read()
-        else:
-            vid_bytes = None
+        if file_path is not None:
+            with open(file_path, "rb") as vid_file:
+                vid_bytes = vid_file.read()
+        if a_file_path is not None:
+            with open(a_file_path, "rb") as aud_file:
+                aud_bytes = aud_file.read()
         if file_path is not None:  # manually remove tempfile
             os.remove(file_path)
 
         streams = {"video": vid_bytes, "audio": aud_bytes}
-        return key, streams, yt_meta_dict, error_message
+        return key, streams, yt_meta_dict

@@ -17,9 +17,7 @@ def test_yt_downloader(video_size):
         tmp_dir="/tmp", metadata_args=None, video_size=video_size, encode_formats={"video": "mp4"}
     )
 
-    path, aud_path, yt_meta_dict, error_message = ytdlp_downloader(YT_URL)
-
-    assert error_message is None
+    path, aud_path, yt_meta_dict = ytdlp_downloader(YT_URL)
 
     probe = ffmpeg.probe(path)
     video_stream = [stream for stream in probe["streams"] if stream["codec_type"] == "video"][0]
@@ -32,9 +30,8 @@ def test_yt_downloader(video_size):
 def test_mp4_downloader():
     mp4_downloader = Mp4Downloader(timeout=10, tmp_dir="/tmp", encode_formats={"video": "mp4"})
 
-    path, aud_path, error_message = mp4_downloader(MP4_URL)
+    path, aud_path = mp4_downloader(MP4_URL)
 
-    assert error_message is None
     with open(path, "rb") as f:
         assert len(f.read()) > 0
     os.remove(path)

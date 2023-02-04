@@ -125,9 +125,16 @@ class Worker:
         )
         oom_sample_per_shard = math.ceil(math.log10(self.number_sample_per_shard))
 
+        # for exception handling
+        def read_data(data):
+            try:
+                return self.data_reader(data) + (None,)
+            except Exception as e:
+                return data[0], None, None, str(e)
+
         with ThreadPool(self.thread_count) as thread_pool:
             for key, streams, yt_meta_dict, error_message in thread_pool.imap_unordered(
-                self.data_reader,  # pylint: disable=(unnecessary-lambda)
+                read_data,
                 loader,
             ):
                 try:
