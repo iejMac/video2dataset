@@ -18,7 +18,7 @@ def video2audio(video, audio_format, tmp_dir):
         try:
             video = ffmpeg.input(video)
             (ffmpeg.output(video.audio, path, **ffmpeg_args).run(capture_stderr=True))
-        except ffmpeg.Error as e:
+        except ffmpeg.Error as _:
             path = None
     else:
         path = None
@@ -170,7 +170,6 @@ class YtDlpDownloader:
             }
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download(url)
-            audio_format = self.encode_formats["audio"]
 
             # TODO: look into this, don't think we can just do this
             # TODO: just figure out a way to download the preferred extension using yt-dlp
