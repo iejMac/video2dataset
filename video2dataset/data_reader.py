@@ -214,14 +214,11 @@ class VideoDataReader:
 
         streams = {}
         if error_message is None:
-            if video_path is not None:
-                with open(video_path, "rb") as vid_file:
-                    streams["video"] = vid_file.read()
-            if audio_path is not None:
-                with open(audio_path, "rb") as aud_file:
-                    streams["audio"] = aud_file.read()
-        else:
-            video_bytes = None
+            for modality in ["video", "audio"]:
+                modality_path = eval(f"{modality}_path")
+                if modality_path is not None:
+                    with open(modality_path, "rb") as modality_file:
+                        streams[modality] = modality_file.read()
 
         for modality in ["video", "audio"]:  # manually remove tempfile
             if eval(f"{modality}_path") is not None:
