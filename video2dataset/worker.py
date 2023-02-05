@@ -64,10 +64,10 @@ class Worker:
         video_subsamplers = []
         if resize_mode is not None:
             video_subsamplers.append(ResolutionSubsampler(video_size, resize_mode))
-        if video_fps > 0
+        if video_fps > 0:
             video_subsamplers.append(FrameSubsampler(video_fps))
 
-        audio_subsampers = [] # TODO: add audio subsampler
+        audio_subsamplers = [] # TODO: add audio subsampler
 
         self.subsamplers = {"video": video_subsamplers, "audio": audio_subsamplers}
 
