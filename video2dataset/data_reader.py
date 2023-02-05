@@ -219,9 +219,11 @@ class VideoDataReader:
             if video_path is not None:
                 with open(video_path, "rb") as vid_file:
                     vid_bytes = vid_file.read()
+                streams["video"] = vid_bytes
             if audio_path is not None:
                 with open(audio_path, "rb") as aud_file:
                     aud_bytes = aud_file.read()
+                streams["audio"] = aud_bytes
         else:
             vid_bytes = None
 

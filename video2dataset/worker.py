@@ -157,10 +157,8 @@ class Worker:
                         semaphore.release()
                         continue
 
-                    if self.encode_formats.get("video", None):
-                        bytes_downloaded += len(streams["video"])
-                    else:
-                        bytes_downloaded += len(streams["audio"])
+                    for stream in streams.values():
+                        bytes_downloaded += len(stream)
 
                     metas = [meta]
 
