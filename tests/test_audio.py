@@ -22,8 +22,8 @@ def test_audio(input_file, sample_rate):
         )
         for i, url in enumerate(url_list):
             key, streams, yt_meta_dict, error_message = video_data_reader((i, url))
-            aud_bytes = streams["audio"]
-            vid_bytes = streams["video"]
+            aud_bytes = streams.get("audio", None)
+            vid_bytes = streams.get("video", None)
             if aud_bytes is not None:
                 with tempfile.NamedTemporaryFile(suffix=".mp3") as f:
                     f.write(aud_bytes)
