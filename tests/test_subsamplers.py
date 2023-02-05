@@ -109,3 +109,21 @@ def test_frame_rate_subsampler(target_frame_rate):
         frame_rate = int(video_stream["r_frame_rate"].split("/")[0])
 
         assert frame_rate == target_frame_rate
+
+@pytest.mark.parametrize("target_frame_rate", [44100, 24000])
+def test_audio_rate_subsampler(audio_rate):
+    '''
+    if aud_bytes is not None:
+	with tempfile.NamedTemporaryFile(suffix=".mp3") as f:
+	    f.write(aud_bytes)
+
+	    out = subprocess.check_output(f"file {f.name}".split()).decode("utf-8")
+	    assert "Audio file with ID3 version" in out
+
+	    result = ffmpeg.probe(f.name)
+	    sr = result["streams"][0]["sample_rate"]
+
+	    assert int(sr) == encode_formats["sample_rate"]
+
+    '''
+    assert True

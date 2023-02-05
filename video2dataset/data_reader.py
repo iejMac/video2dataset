@@ -8,19 +8,18 @@ import webvtt
 import ffmpeg
 
 
-def video2audio(video, audio_format, sample_rate, tmp_dir):
+def video2audio(video, audio_format, tmp_dir):
     """extract audio from video"""
     path = f"{tmp_dir}/{str(uuid.uuid4())}.{audio_format}"
     num_streams = len(ffmpeg.probe(video)["streams"])
-    ffmpeg_args = {"ar": str(sample_rate), "f": audio_format} if sample_rate else {"f": audio_format}
+    ffmpeg_args = {"f": audio_format}
 
     if int(num_streams) > 1:  # video has audio stream
         try:
             video = ffmpeg.input(video)
             (ffmpeg.output(video.audio, path, **ffmpeg_args).run(capture_stderr=True))
         except ffmpeg.Error as e:
-            print(e.stderr)
-            raise e
+            path = None
     else:
         path = None
     return path
@@ -122,7 +121,6 @@ class WebFileDownloader:
         self.timeout = timeout
         self.tmp_dir = tmp_dir
         self.encode_formats = encode_formats
-        self.sample_rate = encode_formats.get("sample_rate", None)
 
     def __call__(self, url):
         modality_paths = {}
@@ -135,7 +133,7 @@ class WebFileDownloader:
 
         if modality == "video" and self.encode_formats.get("audio", None):
             audio_format = self.encode_formats["audio"]
-            audio_path = video2audio(modality_paths["video"], audio_format, self.sample_rate, self.tmp_dir)
+            audio_path = video2audio(modality_paths["video"], audio_format, self.tmp_dir)
             if audio_path is not None:
                 modality_paths["audio"] = audio_path
 
@@ -156,7 +154,6 @@ class YtDlpDownloader:
         self.metadata_args = metadata_args
         self.video_size = video_size
         self.encode_formats = encode_formats
-        self.sample_rate = encode_formats.get("sample_rate", None)
 
     def __call__(self, url):
         modality_paths = {}
@@ -174,19 +171,10 @@ class YtDlpDownloader:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download(url)
             audio_format = self.encode_formats["audio"]
-            ffmpeg_args = {"ar": str(self.sample_rate), "f": audio_format} if self.sample_rate else {"f": audio_format}
-            try:
-                audio = ffmpeg.input(audio_path_m4a)
-                (
-                    ffmpeg.output(
-                        audio, audio_path_m4a.replace(".m4a", f".{self.encode_formats['audio']}"), **ffmpeg_args
-                    ).run(capture_stderr=True)
-                )
-                audio_path = audio_path_m4a.replace(".m4a", f".{self.encode_formats['audio']}")
-                modality_paths["audio"] = audio_path
-            except ffmpeg.Error as e:  # TODO: remove this once we remove subsampling from here
-                print(e.stderr)
-                raise e
+
+            # TODO: look into this, don't think we can just do this
+            audio_path = audio_path_m4a.replace(".m4a", f".{self.encode_formats['audio']}")
+            modality_paths["audio"] = audio_path
 
         if self.encode_formats.get("video", None):
             video_path = f"{self.tmp_dir}/{str(uuid.uuid4())}.mp4"

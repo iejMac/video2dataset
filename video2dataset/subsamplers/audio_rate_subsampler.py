@@ -23,6 +23,7 @@ class AudioRateSubsampler:
             with tempfile.TemporaryDirectory() as tmpdir:
                 try:
                     # some ffmpeg func
+                    pass
                 except Exception as err:  # pylint: disable=broad-except
                     return [], str(err)
 
