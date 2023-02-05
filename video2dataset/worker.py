@@ -14,7 +14,7 @@ from typing import List, Any
 from video2dataset.data_reader import VideoDataReader
 from .logger import CappedCounter
 from .logger import write_stats
-from .subsamplers import ClippingSubsampler, FrameSubsampler, NoOpSubsampler, ResolutionSubsampler
+from .subsamplers import ClippingSubsampler, FrameSubsampler, NoOpSubsampler, ResolutionSubsampler, AudioRateSubsampler
 
 
 def compute_key(key, shard_id, oom_sample_per_shard, oom_shard_count):
@@ -42,6 +42,7 @@ class Worker:
         video_size,
         resize_mode,
         video_fps,
+        audio_sampling_rate,
         tmp_dir,
         yt_metadata_args,
         encode_formats,
@@ -68,7 +69,9 @@ class Worker:
         if video_fps > 0:
             video_subsamplers.append(FrameSubsampler(video_fps))
 
-        audio_subsamplers: List[Any] = []  # TODO: add audio subsampler
+        audio_subsamplers: List[Any] = []
+        if audio_sampling_rate > 0:
+            audio_subsamplers.append(AudioRateSubsampler(audio_sampling_rate, encode_formats))
 
         self.subsamplers = {"video": video_subsamplers, "audio": audio_subsamplers}
 
