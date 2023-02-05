@@ -211,7 +211,7 @@ class VideoDataReader:
     """Video data reader provide data for a video"""
 
     def __init__(self, video_size, dl_timeout, tmp_dir, yt_meta_args, encode_formats) -> None:
-        self.mp4_downloader = WebFileDownloader(dl_timeout, tmp_dir, encode_formats)
+        self.webfile_downloader = WebFileDownloader(dl_timeout, tmp_dir, encode_formats)
         self.yt_downloader = YtDlpDownloader(tmp_dir, yt_meta_args, video_size, encode_formats)
 
     def __call__(self, row):
@@ -220,7 +220,7 @@ class VideoDataReader:
         meta_dict = None
         # TODO: make nice function to detect what type of link we're dealing with
         if get_web_file_info(url):  # web file that can be directly downloaded
-            modality_paths, error_message = self.mp4_downloader(url)
+            modality_paths, error_message = self.webfile_downloader(url)
         elif "youtube" in url:  # youtube link
             try:
                 modality_paths, meta_dict, error_message = self.yt_downloader(url)
