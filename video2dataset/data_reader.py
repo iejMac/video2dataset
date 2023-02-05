@@ -198,33 +198,29 @@ class VideoDataReader:
     def __call__(self, row):
         key, url = row
 
-        yt_meta_dict = None
-        a_file_path = None
-        aud_bytes = None
-        vid_bytes = None
+        meta_dict = None
         # TODO: make nice function to detect what type of link we're dealing with
         if "youtube" in url:  # youtube link
             try:
-                file_path, a_file_path, yt_meta_dict, error_message = self.yt_downloader(url)
+                video_path, audio_path, meta_dict, error_message = self.yt_downloader(url)
             except Exception as e:  # pylint: disable=(broad-except)
-                file_path, a_file_path, yt_meta_dict, error_message = None, None, None, str(e)
+                video_path, audio_path, meta_dict, error_message = None, None, None, str(e)
         # TODO: add .avi, .webm, should also work
+        # TODO: when we make the function that does this condition
+        # swap the order with youtube (we know if has extension it wont be youtube
+        # but we don't know the other way around)
         elif url.endswith(".mp4"):  # mp4 link
-            file_path, a_file_path, error_message = self.mp4_downloader(url)
+            video_path, audio_path, error_message = self.mp4_downloader(url)
         else:
-            file_path, a_file_path, error_message = None, None, "Warning: Unsupported URL type"
+            video_path, audio_path, error_message = None, None, "Warning: Unsupported URL type"
+        video_path, audio_path  # pylint: disable=(pointless-statement)
 
-        if error_message is None:
-            if file_path is not None:
-                with open(file_path, "rb") as vid_file:
-                    vid_bytes = vid_file.read()
-            if a_file_path is not None:
-                with open(a_file_path, "rb") as aud_file:
-                    aud_bytes = aud_file.read()
-        else:
-            vid_bytes = None
-        if file_path is not None:  # manually remove tempfile
-            os.remove(file_path)
+        streams = {}
+        for modality in ["video", "audio"]:
+            modality_path = eval(f"{modality}_path")  # pylint: disable=(eval-used)
+            if modality_path is not None:
+                with open(modality_path, "rb") as modality_file:
+                    streams[modality] = modality_file.read()
+                os.remove(modality_path)
 
-        streams = {"video": vid_bytes, "audio": aud_bytes}
-        return key, streams, yt_meta_dict, error_message
+        return key, streams, meta_dict, error_message
