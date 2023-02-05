@@ -112,21 +112,26 @@ class Mp4Downloader:
         self.sample_rate = encode_formats.get("sample_rate", None)
 
     def __call__(self, url):
+        modality_paths = {}
         resp = requests.get(url, stream=True, timeout=self.timeout)
         vf = self.encode_formats.get("video", "mp4")
         video_path = f"{self.tmp_dir}/{str(uuid.uuid4())}.{vf}"
         with open(video_path, "wb") as f:
             f.write(resp.content)
+        modality_paths["video"] = video_path
+
         audio_path = None
         if self.encode_formats.get("audio", None):
             af = self.encode_formats["audio"]
             audio_path = video2audio(video_path, af, self.sample_rate, self.tmp_dir)
+            if audio_path is not None:
+                modality_paths["audio"] = audio_path
 
         if not self.encode_formats.get("video", None):
             os.remove(video_path)
-            video_path = None
+            modality_paths.pop("video")
 
-        return video_path, audio_path, None
+        return modality_paths, None
 
 
 class YtDlpDownloader:
@@ -141,8 +146,7 @@ class YtDlpDownloader:
         self.sample_rate = encode_formats.get("sample_rate", None)
 
     def __call__(self, url):
-        audio_path = None
-        path = None
+        modality_paths = {}
 
         # format_string = f"bv*[height<={self.video_size}][ext=mp4]/b[height<={self.video_size}][ext=mp4] / wv/w[ext=mp4]"
         format_string = f"wv*[height>={self.video_size}][ext=mp4]/w[height>={self.video_size}][ext=mp4] / bv/b[ext=mp4]"
@@ -166,14 +170,16 @@ class YtDlpDownloader:
                     ).run(capture_stderr=True)
                 )
                 audio_path = audio_path_m4a.replace(".m4a", f".{self.encode_formats['audio']}")
-            except ffmpeg.Error as e:
+                modality_paths["audio"] = audio_path
+            except ffmpeg.Error as e:  # TODO: remove this once we remove subsampling from here
                 print(e.stderr)
                 raise e
 
         if self.encode_formats.get("video", None):
-            path = f"{self.tmp_dir}/{str(uuid.uuid4())}.mp4"
+            video_path = f"{self.tmp_dir}/{str(uuid.uuid4())}.mp4"
+            modality_paths["video"] = video_path
             ydl_opts = {
-                "outtmpl": path,
+                "outtmpl": video_path,
                 "format": format_string,
                 "quiet": True,
             }
@@ -185,7 +191,7 @@ class YtDlpDownloader:
             yt_meta_dict = get_yt_meta(url, self.metadata_args)
         else:
             yt_meta_dict = None, None
-        return path, audio_path, yt_meta_dict, None
+        return modality_paths, yt_meta_dict, None
 
 
 class VideoDataReader:
@@ -202,25 +208,22 @@ class VideoDataReader:
         # TODO: make nice function to detect what type of link we're dealing with
         if "youtube" in url:  # youtube link
             try:
-                video_path, audio_path, meta_dict, error_message = self.yt_downloader(url)
+                modality_paths, meta_dict, error_message = self.yt_downloader(url)
             except Exception as e:  # pylint: disable=(broad-except)
-                video_path, audio_path, meta_dict, error_message = None, None, None, str(e)
+                modality_paths, meta_dict, error_message = {}, None, str(e)
         # TODO: add .avi, .webm, should also work
         # TODO: when we make the function that does this condition
         # swap the order with youtube (we know if has extension it wont be youtube
         # but we don't know the other way around)
         elif url.endswith(".mp4"):  # mp4 link
-            video_path, audio_path, error_message = self.mp4_downloader(url)
+            modality_paths, error_message = self.mp4_downloader(url)
         else:
-            video_path, audio_path, error_message = None, None, "Warning: Unsupported URL type"
-        video_path, audio_path  # pylint: disable=(pointless-statement)
+            modality_paths, error_message = {}, "Warning: Unsupported URL type"
 
         streams = {}
-        for modality in ["video", "audio"]:
-            modality_path = eval(f"{modality}_path")  # pylint: disable=(eval-used)
-            if modality_path is not None:
-                with open(modality_path, "rb") as modality_file:
-                    streams[modality] = modality_file.read()
-                os.remove(modality_path)
+        for modality, modality_path in modality_paths.items():
+            with open(modality_path, "rb") as modality_file:
+                streams[modality] = modality_file.read()
+            os.remove(modality_path)
 
         return key, streams, meta_dict, error_message
