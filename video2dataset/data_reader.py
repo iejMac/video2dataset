@@ -124,7 +124,8 @@ class Mp4Downloader:
         if self.encode_formats.get("audio", None):
             af = self.encode_formats["audio"]
             audio_path = video2audio(video_path, af, self.sample_rate, self.tmp_dir)
-            modality_paths["audio"] = audio_path
+            if audio_path is not None:
+                modality_paths["audio"] = audio_path
 
         if not self.encode_formats.get("video", None):
             os.remove(video_path)
@@ -220,10 +221,9 @@ class VideoDataReader:
             modality_paths, error_message = {}, "Warning: Unsupported URL type"
 
         streams = {}
-        for modality, modality_path in modality_paths.items()
-            if modality_path is not None:
-                with open(modality_path, "rb") as modality_file:
-                    streams[modality] = modality_file.read()
-                os.remove(modality_path)
+        for modality, modality_path in modality_paths.items():
+            with open(modality_path, "rb") as modality_file:
+                streams[modality] = modality_file.read()
+            os.remove(modality_path)
 
         return key, streams, meta_dict, error_message
