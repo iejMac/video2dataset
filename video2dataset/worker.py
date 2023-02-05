@@ -58,7 +58,7 @@ class Worker:
 
         self.data_reader = VideoDataReader(video_size, timeout, tmp_dir, yt_metadata_args, encode_formats)
 
-        self.clipping_subsampler = ClippingSubsampler(oom_clip_count)
+        self.clipping_subsampler = ClippingSubsampler(oom_clip_count, encode_formats)
         self.noop_subsampler = NoOpSubsampler()
         self.resolution_subsampler = ResolutionSubsampler(video_size, resize_mode) if resize_mode is not None else None
         self.frame_subsampler = FrameSubsampler(video_fps) if video_fps > 0 else None
@@ -149,7 +149,7 @@ class Worker:
                         status_dict.increment(error_message)
                         meta["status"] = status
                         sample_writer.write(
-                            None,
+                            {},
                             str_key,
                             sample_data[caption_indice] if caption_indice is not None else None,
                             meta,
@@ -157,22 +157,18 @@ class Worker:
                         semaphore.release()
                         continue
 
-                    if self.encode_formats.get("video", None):
-                        bytes_downloaded += len(streams["video"])
-                    else:
-                        bytes_downloaded += len(streams["audio"])
+                    for stream in streams.values():
+                        bytes_downloaded += len(stream)
 
                     metas = [meta]
 
-                    if "clips" in self.column_list:  # Clipping
-                        subsampled_streams, metas, error_message = self.clipping_subsampler(
-                            streams, meta, self.encode_formats
-                        )
-                    else:
-                        subsampled_streams, metas, error_message = self.noop_subsampler(streams, meta)
+                    # 1 video -> many videos (either clipping or noop which does identity broadcasting)
+                    broadcast_subsampler = (
+                        self.clipping_subsampler if "clips" in self.column_list else self.noop_subsampler
+                    )
+                    subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
 
                     if streams.get("video", None):
-
                         if self.frame_subsampler is not None:
                             subsampled_videos, error_message = self.frame_subsampler(subsampled_streams["video"])
                             subsampled_streams["video"] = subsampled_videos
@@ -188,11 +184,10 @@ class Worker:
                         meta["clips"] = []
                         meta["error_message"] = error_message
                         sample_writer.write(
-                            None,
+                            {},
                             str_key,
                             sample_data[caption_indice] if caption_indice is not None else None,
                             meta,
-                            format_type="video" if self.encode_formats.get("video", None) else "audio",
                         )
                         semaphore.release()
                         continue

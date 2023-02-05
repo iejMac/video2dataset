@@ -29,7 +29,7 @@ def test_clipping_subsampler(clips):
     with open(audio, "rb") as aud_f:
         audio_bytes = aud_f.read()
 
-    subsampler = ClippingSubsampler(3)
+    subsampler = ClippingSubsampler(3, {"video": "mp4", "audio": "mp3"})
 
     metadata = {
         "key": "000",
@@ -37,7 +37,7 @@ def test_clipping_subsampler(clips):
     }
 
     streams = {"video": video_bytes, "audio": audio_bytes}
-    stream_fragments, meta_fragments, error_message = subsampler(streams, metadata, {"video": "mp4", "audio": "mp3"})
+    stream_fragments, meta_fragments, error_message = subsampler(streams, metadata)
     video_fragments = stream_fragments["video"]
     audio_fragments = stream_fragments["audio"]
     assert error_message is None
