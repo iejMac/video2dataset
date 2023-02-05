@@ -9,6 +9,7 @@ import fsspec
 
 from multiprocessing.pool import ThreadPool
 from threading import Semaphore
+from typing import List, Any
 
 from video2dataset.data_reader import VideoDataReader
 from .logger import CappedCounter
@@ -61,13 +62,13 @@ class Worker:
         self.clipping_subsampler = ClippingSubsampler(oom_clip_count, encode_formats)
         self.noop_subsampler = NoOpSubsampler()
 
-        video_subsamplers = []
+        video_subsamplers: List[Any] = []
         if resize_mode is not None:
             video_subsamplers.append(ResolutionSubsampler(video_size, resize_mode))
         if video_fps > 0:
             video_subsamplers.append(FrameSubsampler(video_fps))
 
-        audio_subsamplers = []  # TODO: add audio subsampler
+        audio_subsamplers: List[Any] = []  # TODO: add audio subsampler
 
         self.subsamplers = {"video": video_subsamplers, "audio": audio_subsamplers}
 
