@@ -20,5 +20,5 @@ def test_data_reader(input_file):
         for i, url in enumerate(url_list):
             key, streams, yt_meta_dict, error_message = video_data_reader((i, url))
 
-            assert streams.get("audio", None) is not None
-            assert streams.get("video", None) is not None
+            assert len(streams.get("audio", 0)) > 0
+            assert len(streams.get("video", 0)) > 0
