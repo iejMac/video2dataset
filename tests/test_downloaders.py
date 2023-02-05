@@ -30,9 +30,9 @@ def test_yt_downloader(video_size):
 
 
 def test_webfile_downloader():
-    mp4_downloader = WebFileDownloader(timeout=10, tmp_dir="/tmp", encode_formats={"video": "mp4"})
+    webfile_downloader = WebFileDownloader(timeout=10, tmp_dir="/tmp", encode_formats={"video": "mp4"})
 
-    modality_paths, error_message = mp4_downloader(MP4_URL)
+    modality_paths, error_message = webfile_downloader(MP4_URL)
 
     assert error_message is None
     with open(modality_paths["video"], "rb") as f:
