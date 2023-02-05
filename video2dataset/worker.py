@@ -163,7 +163,9 @@ class Worker:
                     metas = [meta]
 
                     # 1 video -> many videos (either clipping or noop which does identity broadcasting)
-                    broadcast_subsampler = self.clipping_subsampler if "clips" in self.column_list else self.noop_subsampler
+                    broadcast_subsampler = (
+                        self.clipping_subsampler if "clips" in self.column_list else self.noop_subsampler
+                    )
                     subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
 
                     if streams.get("video", None):
