@@ -104,7 +104,7 @@ def get_web_file_info(url):
     """returns info about the url (currently extension and modality)"""
     # TODO: make this nicer
     video_extensions = ["mp4", "webm", "mov", "avi", "mkv"]
-    audio_extensions = ["mp3", "wav"]
+    audio_extensions = ["mp3", "wav", "m4a"]
     for ext in video_extensions:
         if url.endswith(f".{ext}"):
             return ext, "video"
