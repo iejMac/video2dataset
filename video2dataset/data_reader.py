@@ -102,6 +102,7 @@ def get_yt_meta(url, yt_metadata_args: dict) -> dict:
 
 
 def get_web_file_info(url):
+    """returns info about the url (currently extension and modality)"""
     # TODO: make this nicer
     video_extensions = ["mp4", "webm", "mov", "avi", "mkv"]
     audio_extensions = ["mp3", "wav"]
@@ -138,9 +139,9 @@ class WebFileDownloader:
             if audio_path is not None:
                 modality_paths["audio"] = audio_path
 
-        for modality in modality_paths:
+        for modality, modality_path in modality_paths.items():
             if modality not in self.encode_formats:
-                os.remove(modality_paths[modality])
+                os.remove(modality_path)
                 modality_path.pop(modality)
 
         return modality_paths, None
