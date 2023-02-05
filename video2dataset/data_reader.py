@@ -8,12 +8,11 @@ import webvtt
 import ffmpeg
 
 
-def video2audio(video, af, sample_rate, tmp_dir):
+def video2audio(video, audio_format, sample_rate, tmp_dir):
     """extract audio from video"""
-
-    path = f"{tmp_dir}/{str(uuid.uuid4())}.{af}"
+    path = f"{tmp_dir}/{str(uuid.uuid4())}.{audio_format}"
     num_streams = len(ffmpeg.probe(video)["streams"])
-    ffmpeg_args = {"ar": str(sample_rate), "f": af} if sample_rate else {"f": af}
+    ffmpeg_args = {"ar": str(sample_rate), "f": audio_format} if sample_rate else {"f": audio_format}
 
     if int(num_streams) > 1:  # video has audio stream
         try:
@@ -102,7 +101,20 @@ def get_yt_meta(url, yt_metadata_args: dict) -> dict:
         return yt_meta_dict
 
 
-class Mp4Downloader:
+def get_web_file_info(url):
+    # TODO: make this nicer
+    video_extensions = ["mp4", "webm", "mov", "avi", "mkv"]
+    audio_extensions = ["mp3", "wav"]
+    for ext in video_extensions:
+        if url.endswith(f".{ext}"):
+            return ext, "video"
+    for ext in audio_extensions:
+        if url.endswith(f".{ext}"):
+            return ext, "audio"
+    return None
+
+
+class WebFileDownloader:
     """Downloader class for mp4 links"""
 
     def __init__(self, timeout, tmp_dir, encode_formats):
@@ -114,22 +126,22 @@ class Mp4Downloader:
     def __call__(self, url):
         modality_paths = {}
         resp = requests.get(url, stream=True, timeout=self.timeout)
-        vf = self.encode_formats.get("video", "mp4")
-        video_path = f"{self.tmp_dir}/{str(uuid.uuid4())}.{vf}"
-        with open(video_path, "wb") as f:
+        ext, modality = get_web_file_info(url)
+        modality_path = f"{self.tmp_dir}/{str(uuid.uuid4())}.{ext}"
+        with open(modality_path, "wb") as f:
             f.write(resp.content)
-        modality_paths["video"] = video_path
+        modality_paths[modality] = modality_path
 
-        audio_path = None
-        if self.encode_formats.get("audio", None):
-            af = self.encode_formats["audio"]
-            audio_path = video2audio(video_path, af, self.sample_rate, self.tmp_dir)
+        if modality == "video" and self.encode_formats.get("audio", None):
+            audio_format = self.encode_formats["audio"]
+            audio_path = video2audio(modality_paths["video"], audio_format, self.sample_rate, self.tmp_dir)
             if audio_path is not None:
                 modality_paths["audio"] = audio_path
 
-        if not self.encode_formats.get("video", None):
-            os.remove(video_path)
-            modality_paths.pop("video")
+        for modality in modality_paths:
+            if modality not in self.encode_formats:
+                os.remove(modality_paths[modality])
+                modality_path.pop(modality)
 
         return modality_paths, None
 
@@ -160,8 +172,8 @@ class YtDlpDownloader:
             }
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download(url)
-            af = self.encode_formats["audio"]
-            ffmpeg_args = {"ar": str(self.sample_rate), "f": af} if self.sample_rate else {"f": af}
+            audio_format = self.encode_formats["audio"]
+            ffmpeg_args = {"ar": str(self.sample_rate), "f": audio_format} if self.sample_rate else {"f": audio_format}
             try:
                 audio = ffmpeg.input(audio_path_m4a)
                 (
@@ -198,7 +210,7 @@ class VideoDataReader:
     """Video data reader provide data for a video"""
 
     def __init__(self, video_size, dl_timeout, tmp_dir, yt_meta_args, encode_formats) -> None:
-        self.mp4_downloader = Mp4Downloader(dl_timeout, tmp_dir, encode_formats)
+        self.mp4_downloader = WebFileDownloader(dl_timeout, tmp_dir, encode_formats)
         self.yt_downloader = YtDlpDownloader(tmp_dir, yt_meta_args, video_size, encode_formats)
 
     def __call__(self, row):
@@ -206,17 +218,13 @@ class VideoDataReader:
 
         meta_dict = None
         # TODO: make nice function to detect what type of link we're dealing with
-        if "youtube" in url:  # youtube link
+        if get_web_file_info(url):  # web file that can be directly downloaded
+            modality_paths, error_message = self.mp4_downloader(url)
+        elif "youtube" in url:  # youtube link
             try:
                 modality_paths, meta_dict, error_message = self.yt_downloader(url)
             except Exception as e:  # pylint: disable=(broad-except)
                 modality_paths, meta_dict, error_message = {}, None, str(e)
-        # TODO: add .avi, .webm, should also work
-        # TODO: when we make the function that does this condition
-        # swap the order with youtube (we know if has extension it wont be youtube
-        # but we don't know the other way around)
-        elif url.endswith(".mp4"):  # mp4 link
-            modality_paths, error_message = self.mp4_downloader(url)
         else:
             modality_paths, error_message = {}, "Warning: Unsupported URL type"
 

@@ -4,7 +4,7 @@ import pytest
 import ffmpeg
 
 
-from video2dataset.data_reader import YtDlpDownloader, Mp4Downloader
+from video2dataset.data_reader import YtDlpDownloader, WebFileDownloader
 
 
 YT_URL = "https://www.youtube.com/watch?v=jLX0D8qQUBM"
@@ -29,8 +29,8 @@ def test_yt_downloader(video_size):
     os.remove(modality_paths["video"])
 
 
-def test_mp4_downloader():
-    mp4_downloader = Mp4Downloader(timeout=10, tmp_dir="/tmp", encode_formats={"video": "mp4"})
+def test_webfile_downloader():
+    mp4_downloader = WebFileDownloader(timeout=10, tmp_dir="/tmp", encode_formats={"video": "mp4"})
 
     modality_paths, error_message = mp4_downloader(MP4_URL)
 
