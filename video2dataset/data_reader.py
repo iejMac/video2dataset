@@ -173,7 +173,9 @@ class YtDlpDownloader:
             audio_format = self.encode_formats["audio"]
 
             # TODO: look into this, don't think we can just do this
-            audio_path = audio_path_m4a.replace(".m4a", f".{self.encode_formats['audio']}")
+            # TODO: just figure out a way to download the preferred extension using yt-dlp
+            # audio_path = audio_path_m4a.replace(".m4a", f".{self.encode_formats['audio']}")
+            audio_path = audio_path_m4a
             modality_paths["audio"] = audio_path
 
         if self.encode_formats.get("video", None):
