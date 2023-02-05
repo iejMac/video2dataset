@@ -199,32 +199,34 @@ class VideoDataReader:
         key, url = row
 
         yt_meta_dict = None
-        a_file_path = None
         aud_bytes = None
         vid_bytes = None
+
         # TODO: make nice function to detect what type of link we're dealing with
         if "youtube" in url:  # youtube link
             try:
-                file_path, a_file_path, yt_meta_dict, error_message = self.yt_downloader(url)
+                video_path, audio_path, yt_meta_dict, error_message = self.yt_downloader(url)
             except Exception as e:  # pylint: disable=(broad-except)
-                file_path, a_file_path, yt_meta_dict, error_message = None, None, None, str(e)
+                video_path, audio_path, yt_meta_dict, error_message = None, None, None, str(e)
         # TODO: add .avi, .webm, should also work
         elif url.endswith(".mp4"):  # mp4 link
-            file_path, a_file_path, error_message = self.mp4_downloader(url)
+            video_path, audio_path, error_message = self.mp4_downloader(url)
         else:
-            file_path, a_file_path, error_message = None, None, "Warning: Unsupported URL type"
+            video_path, audio_path, error_message = None, None, "Warning: Unsupported URL type"
 
+        streams = {}
         if error_message is None:
-            if file_path is not None:
-                with open(file_path, "rb") as vid_file:
+            if video_path is not None:
+                with open(video_path, "rb") as vid_file:
                     vid_bytes = vid_file.read()
-            if a_file_path is not None:
-                with open(a_file_path, "rb") as aud_file:
+            if audio_path is not None:
+                with open(audio_path, "rb") as aud_file:
                     aud_bytes = aud_file.read()
         else:
             vid_bytes = None
-        if file_path is not None:  # manually remove tempfile
-            os.remove(file_path)
 
-        streams = {"video": vid_bytes, "audio": aud_bytes}
+        for modality in ["video", "audio"]:  # manually remove tempfile
+            if eval(f"{modality}_path") is not None:
+                os.remove(eval(f"{modality}_path"))
+
         return key, streams, yt_meta_dict, error_message
