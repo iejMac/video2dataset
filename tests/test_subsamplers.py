@@ -1,11 +1,18 @@
 """test video2dataset subsamplers"""
 import os
+import subprocess
 import pytest
 import ffmpeg
 import tempfile
 
 
-from video2dataset.subsamplers import ClippingSubsampler, get_seconds, ResolutionSubsampler, FrameSubsampler
+from video2dataset.subsamplers import (
+    ClippingSubsampler,
+    get_seconds,
+    ResolutionSubsampler,
+    FrameSubsampler,
+    AudioRateSubsampler,
+)
 
 
 SINGLE = [[50.0, 60.0]]
@@ -109,3 +116,26 @@ def test_frame_rate_subsampler(target_frame_rate):
         frame_rate = int(video_stream["r_frame_rate"].split("/")[0])
 
         assert frame_rate == target_frame_rate
+
+
+@pytest.mark.parametrize("sample_rate", [44100, 24000])
+def test_audio_rate_subsampler(sample_rate):
+    current_folder = os.path.dirname(__file__)
+    audio = os.path.join(current_folder, "test_files/test_audio.mp3")
+    with open(audio, "rb") as aud_f:
+        audio_bytes = aud_f.read()
+
+    subsampler = AudioRateSubsampler(sample_rate, {"audio": "mp3"})
+
+    subsampled_audios, error_message = subsampler([audio_bytes])
+
+    with tempfile.NamedTemporaryFile(suffix=".mp3") as tmp:
+        tmp.write(subsampled_audios[0])
+
+        out = subprocess.check_output(f"file {tmp.name}".split()).decode("utf-8")
+        assert "Audio file with ID3 version" in out
+
+        result = ffmpeg.probe(tmp.name)
+        read_sample_rate = result["streams"][0]["sample_rate"]
+
+        assert int(read_sample_rate) == sample_rate
