@@ -176,7 +176,7 @@ class Worker:
                     )
                     subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
 
-                    for modality, subsampled_stream in subsampled_streams.items():
+                    for modality in subsampled_streams:
                         for modality_subsampler in self.subsamplers[modality]:
                             subsampled_modality, error_message = modality_subsampler(subsampled_streams[modality])
                             subsampled_streams[modality] = subsampled_modality
