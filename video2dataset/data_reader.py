@@ -199,8 +199,6 @@ class VideoDataReader:
         key, url = row
 
         yt_meta_dict = None
-        aud_bytes = None
-        vid_bytes = None
 
         # TODO: make nice function to detect what type of link we're dealing with
         if "youtube" in url:  # youtube link
@@ -218,14 +216,12 @@ class VideoDataReader:
         if error_message is None:
             if video_path is not None:
                 with open(video_path, "rb") as vid_file:
-                    vid_bytes = vid_file.read()
-                streams["video"] = vid_bytes
+                    streams["video"] = vid_file.read()
             if audio_path is not None:
                 with open(audio_path, "rb") as aud_file:
-                    aud_bytes = aud_file.read()
-                streams["audio"] = aud_bytes
+                    streams["audio"] = aud_file.read()
         else:
-            vid_bytes = None
+            video_bytes = None
 
         for modality in ["video", "audio"]:  # manually remove tempfile
             if eval(f"{modality}_path") is not None:
