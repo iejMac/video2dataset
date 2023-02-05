@@ -203,9 +203,9 @@ class VideoDataReader:
         # TODO: make nice function to detect what type of link we're dealing with
         if "youtube" in url:  # youtube link
             try:
-                video_path, audio_path, yt_meta_dict, error_message = self.yt_downloader(url)
+                video_path, audio_path, yt_meta_dict, error_message = self.yt_downloader(url)  # pylint: disable=(unused-variable)
             except Exception as e:  # pylint: disable=(broad-except)
-                video_path, audio_path, yt_meta_dict, error_message = None, None, None, str(e)
+                video_path, audio_path, yt_meta_dict, error_message = None, None, None, str(e)  # pylint: disable=(unused-variable)
         # TODO: add .avi, .webm, should also work
         elif url.endswith(".mp4"):  # mp4 link
             video_path, audio_path, error_message = self.mp4_downloader(url)
@@ -215,13 +215,14 @@ class VideoDataReader:
         streams = {}
         if error_message is None:
             for modality in ["video", "audio"]:
-                modality_path = eval(f"{modality}_path")
+                modality_path = eval(f"{modality}_path")  # pylint: disable=(eval-used)
                 if modality_path is not None:
                     with open(modality_path, "rb") as modality_file:
                         streams[modality] = modality_file.read()
 
         for modality in ["video", "audio"]:  # manually remove tempfile
-            if eval(f"{modality}_path") is not None:
-                os.remove(eval(f"{modality}_path"))
+            modality_path = eval(f"{modality}_path")  # pylint: disable=(eval-used)
+            if modality_path is not None:
+                os.remove(modality_path)
 
         return key, streams, yt_meta_dict, error_message
