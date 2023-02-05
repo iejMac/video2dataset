@@ -198,18 +198,13 @@ class VideoDataReader:
     def __call__(self, row):
         key, url = row
 
-        yt_meta_dict = None
+        meta_dict = None
         # TODO: make nice function to detect what type of link we're dealing with
         if "youtube" in url:  # youtube link
             try:
-                (
-                    video_path,
-                    audio_path,
-                    yt_meta_dict,
-                    error_message,
-                ) = self.yt_downloader(url)  # pylint: disable(unused-variable)
+                video_path, audio_path, meta_dict, error_message = self.yt_downloader(url)
             except Exception as e:  # pylint: disable=(broad-except)
-                video_path, audio_path, yt_meta_dict, error_message = None, None, None, str(e)
+                video_path, audio_path, meta_dict, error_message = None, None, None, str(e)
         # TODO: add .avi, .webm, should also work
         # TODO: when we make the function that does this condition
         # swap the order with youtube (we know if has extension it wont be youtube
@@ -218,6 +213,7 @@ class VideoDataReader:
             video_path, audio_path, error_message = self.mp4_downloader(url)
         else:
             video_path, audio_path, error_message = None, None, "Warning: Unsupported URL type"
+        video_path, audio_path  # pylint: disable=(pointless-statement)
 
         streams = {}
         for modality in ["video", "audio"]:
@@ -227,4 +223,4 @@ class VideoDataReader:
                     streams[modality] = modality_file.read()
                 os.remove(modality_path)
 
-        return key, streams, yt_meta_dict, error_message
+        return key, streams, meta_dict, error_message
