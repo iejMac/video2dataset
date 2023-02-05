@@ -167,7 +167,6 @@ class Worker:
                     subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
 
                     if streams.get("video", None):
-
                         if self.frame_subsampler is not None:
                             subsampled_videos, error_message = self.frame_subsampler(subsampled_streams["video"])
                             subsampled_streams["video"] = subsampled_videos
