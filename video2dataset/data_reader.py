@@ -171,7 +171,7 @@ class YtDlpDownloader:
                 )
                 audio_path = audio_path_m4a.replace(".m4a", f".{self.encode_formats['audio']}")
                 modality_paths["audio"] = audio_path
-            except ffmpeg.Error as e: # TODO: remove this once we remove subsampling from here
+            except ffmpeg.Error as e:  # TODO: remove this once we remove subsampling from here
                 print(e.stderr)
                 raise e
 
