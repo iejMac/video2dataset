@@ -67,7 +67,7 @@ class Worker:
         if video_fps > 0:
             video_subsamplers.append(FrameSubsampler(video_fps))
 
-        audio_subsamplers = [] # TODO: add audio subsampler
+        audio_subsamplers = []  # TODO: add audio subsampler
 
         self.subsamplers = {"video": video_subsamplers, "audio": audio_subsamplers}
 
@@ -178,19 +178,8 @@ class Worker:
 
                     for modality, subsampled_stream in subsampled_streams.items():
                         for modality_subsampler in self.subsamplers[modality]:
-                            subsampled_videos, error_message = modality_subsampler(subsampled_streams[modality])
-                            subsampled_streams[modality] = subsampled_videos
-
-
-                    '''
-                    if streams.get("video", None):
-                        if self.frame_subsampler is not None:
-                            subsampled_videos, error_message = self.frame_subsampler(subsampled_streams["video"])
-                            subsampled_streams["video"] = subsampled_videos
-                        if self.resolution_subsampler is not None:  # Resolution subsampling
-                            subsampled_videos, error_message = self.resolution_subsampler(subsampled_streams["video"])
-                            subsampled_streams["video"] = subsampled_videos
-                    '''
+                            subsampled_modality, error_message = modality_subsampler(subsampled_streams[modality])
+                            subsampled_streams[modality] = subsampled_modality
 
                     if error_message is not None:
                         failed_to_subsample += 1
