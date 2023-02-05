@@ -58,7 +58,7 @@ class Worker:
 
         self.data_reader = VideoDataReader(video_size, timeout, tmp_dir, yt_metadata_args, encode_formats)
 
-        self.clipping_subsampler = ClippingSubsampler(oom_clip_count)
+        self.clipping_subsampler = ClippingSubsampler(oom_clip_count, encode_formats)
         self.noop_subsampler = NoOpSubsampler()
         self.resolution_subsampler = ResolutionSubsampler(video_size, resize_mode) if resize_mode is not None else None
         self.frame_subsampler = FrameSubsampler(video_fps) if video_fps > 0 else None
@@ -162,12 +162,9 @@ class Worker:
 
                     metas = [meta]
 
-                    if "clips" in self.column_list:  # Clipping
-                        subsampled_streams, metas, error_message = self.clipping_subsampler(
-                            streams, meta, self.encode_formats
-                        )
-                    else:
-                        subsampled_streams, metas, error_message = self.noop_subsampler(streams, meta)
+                    # 1 video -> many videos (either clipping or noop which does identity broadcasting)
+                    broadcast_subsampler = self.clipping_subsampler if "clips" in self.column_list else self.noop_subsampler
+                    subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
 
                     if streams.get("video", None):
 
