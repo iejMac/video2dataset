@@ -9,6 +9,7 @@ import fsspec
 
 from multiprocessing.pool import ThreadPool
 from threading import Semaphore
+from typing import List, Any
 
 from video2dataset.data_reader import VideoDataReader
 from .logger import CappedCounter
@@ -60,8 +61,16 @@ class Worker:
 
         self.clipping_subsampler = ClippingSubsampler(oom_clip_count, encode_formats)
         self.noop_subsampler = NoOpSubsampler()
-        self.resolution_subsampler = ResolutionSubsampler(video_size, resize_mode) if resize_mode is not None else None
-        self.frame_subsampler = FrameSubsampler(video_fps) if video_fps > 0 else None
+
+        video_subsamplers: List[Any] = []
+        if resize_mode is not None:
+            video_subsamplers.append(ResolutionSubsampler(video_size, resize_mode))
+        if video_fps > 0:
+            video_subsamplers.append(FrameSubsampler(video_fps))
+
+        audio_subsamplers: List[Any] = []  # TODO: add audio subsampler
+
+        self.subsamplers = {"video": video_subsamplers, "audio": audio_subsamplers}
 
     def __call__(
         self,
@@ -168,13 +177,10 @@ class Worker:
                     )
                     subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
 
-                    if streams.get("video", None):
-                        if self.frame_subsampler is not None:
-                            subsampled_videos, error_message = self.frame_subsampler(subsampled_streams["video"])
-                            subsampled_streams["video"] = subsampled_videos
-                        if self.resolution_subsampler is not None:  # Resolution subsampling
-                            subsampled_videos, error_message = self.resolution_subsampler(subsampled_streams["video"])
-                            subsampled_streams["video"] = subsampled_videos
+                    for modality in subsampled_streams:
+                        for modality_subsampler in self.subsamplers[modality]:
+                            subsampled_modality, error_message = modality_subsampler(subsampled_streams[modality])
+                            subsampled_streams[modality] = subsampled_modality
 
                     if error_message is not None:
                         failed_to_subsample += 1
