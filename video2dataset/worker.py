@@ -149,7 +149,7 @@ class Worker:
                         status_dict.increment(error_message)
                         meta["status"] = status
                         sample_writer.write(
-                            None,
+                            {},
                             str_key,
                             sample_data[caption_indice] if caption_indice is not None else None,
                             meta,
@@ -188,11 +188,10 @@ class Worker:
                         meta["clips"] = []
                         meta["error_message"] = error_message
                         sample_writer.write(
-                            None,
+                            {},
                             str_key,
                             sample_data[caption_indice] if caption_indice is not None else None,
                             meta,
-                            format_type="video" if self.encode_formats.get("video", None) else "audio",
                         )
                         semaphore.release()
                         continue
