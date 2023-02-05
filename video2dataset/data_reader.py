@@ -203,9 +203,16 @@ class VideoDataReader:
         # TODO: make nice function to detect what type of link we're dealing with
         if "youtube" in url:  # youtube link
             try:
-                video_path, audio_path, yt_meta_dict, error_message = self.yt_downloader(url)  # pylint: disable=(unused-variable)
+                video_path, audio_path, yt_meta_dict, error_message = self.yt_downloader(
+                    url
+                )  # pylint: disable=(unused-variable)
             except Exception as e:  # pylint: disable=(broad-except)
-                video_path, audio_path, yt_meta_dict, error_message = None, None, None, str(e)  # pylint: disable=(unused-variable)
+                video_path, audio_path, yt_meta_dict, error_message = (
+                    None,
+                    None,
+                    None,
+                    str(e),
+                )  # pylint: disable=(unused-variable)
         # TODO: add .avi, .webm, should also work
         elif url.endswith(".mp4"):  # mp4 link
             video_path, audio_path, error_message = self.mp4_downloader(url)
