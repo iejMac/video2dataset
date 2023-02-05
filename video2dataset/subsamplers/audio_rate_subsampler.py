@@ -14,6 +14,7 @@ class AudioRateSubsampler:
     Args:
         frame_rate (int): Target frame rate of the videos.
     """
+
     def __init__(self, sample_rate, encode_formats):
         self.sample_rate = sample_rate
         self.encode_formats = encode_formats

@@ -6,7 +6,13 @@ import ffmpeg
 import tempfile
 
 
-from video2dataset.subsamplers import ClippingSubsampler, get_seconds, ResolutionSubsampler, FrameSubsampler, AudioRateSubsampler
+from video2dataset.subsamplers import (
+    ClippingSubsampler,
+    get_seconds,
+    ResolutionSubsampler,
+    FrameSubsampler,
+    AudioRateSubsampler,
+)
 
 
 SINGLE = [[50.0, 60.0]]
@@ -122,7 +128,7 @@ def test_audio_rate_subsampler(sample_rate):
     subsampler = AudioRateSubsampler(sample_rate, {"audio": "mp3"})
 
     subsampled_audios, error_message = subsampler([audio_bytes])
-    
+
     with tempfile.NamedTemporaryFile(suffix=".mp3") as tmp:
         tmp.write(subsampled_audios[0])
 
