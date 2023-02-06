@@ -32,7 +32,7 @@ class ClippingSubsampler:
         self.oom_clip_count = oom_clip_count
         self.encode_formats = encode_formats
 
-    def __call__(self, streams, metadata, encode_formats):
+    def __call__(self, streams, metadata):
         if metadata.get("clips", None):
             clips = metadata.pop("clips")
 
@@ -74,7 +74,7 @@ class ClippingSubsampler:
             stream_bytes = streams[k]
             if stream_bytes is None:
                 continue
-            encode_format = encode_formats[k]
+            encode_format = self.encode_formats[k]
 
             with tempfile.TemporaryDirectory() as tmpdir:
                 # TODO: we need to put the extension into the metadata
@@ -98,15 +98,13 @@ class ClippingSubsampler:
                     return [], [], str(err)
 
                 stream_clips = glob.glob(f"{tmpdir}/clip*.{encode_format}")
-                stream_clips = [
-                    f"{tmpdir}/clip_{i}.{encode_format}" for i in range(len(stream_clips))]
+                stream_clips = [f"{tmpdir}/clip_{i}.{encode_format}" for i in range(len(stream_clips))]
 
                 # stream_clips.sort()
                 correct_clips = []
                 for clip_id, (clip, ind) in enumerate(zip(clips, take_inds)):
                     if ind < len(stream_clips):
-                        correct_clips.append(
-                            (clip_id, clip, stream_clips[ind]))
+                        correct_clips.append((clip_id, clip, stream_clips[ind]))
                 # clips_lost = len(take_inds) - len(correct_clips) # TODO report this somehow
 
                 stream_clips, metadata_clips = [], []

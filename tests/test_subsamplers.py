@@ -44,13 +44,11 @@ def test_clipping_subsampler(clips):
     }
 
     streams = {"video": video_bytes, "audio": audio_bytes}
-    stream_fragments, meta_fragments, error_message = subsampler(
-        streams, metadata)
+    stream_fragments, meta_fragments, error_message = subsampler(streams, metadata)
     video_fragments = stream_fragments["video"]
     audio_fragments = stream_fragments["audio"]
     assert error_message is None
-    assert len(audio_fragments) == len(
-        video_fragments) == len(meta_fragments) == len(clips)
+    assert len(audio_fragments) == len(video_fragments) == len(meta_fragments) == len(clips)
 
     for vid_frag, meta_frag in zip(video_fragments, meta_fragments):
         with tempfile.NamedTemporaryFile() as tmp:
@@ -63,8 +61,7 @@ def test_clipping_subsampler(clips):
 
             s_s, e_s = get_seconds(s), get_seconds(e)
             probe = ffmpeg.probe(tmp.name)
-            video_stream = [stream for stream in probe["streams"]
-                            if stream["codec_type"] == "video"][0]
+            video_stream = [stream for stream in probe["streams"] if stream["codec_type"] == "video"][0]
             frag_len = float(video_stream["duration"])
 
             # currently some segments can be pretty innacurate
@@ -88,8 +85,7 @@ def test_resolution_subsampler(size, resize_mode):
         tmp.write(subsampled_videos[0])
 
         probe = ffmpeg.probe(tmp.name)
-        video_stream = [stream for stream in probe["streams"]
-                        if stream["codec_type"] == "video"][0]
+        video_stream = [stream for stream in probe["streams"] if stream["codec_type"] == "video"][0]
         h_vid, w_vid = video_stream["height"], video_stream["width"]
 
         assert h_vid == size
@@ -116,8 +112,7 @@ def test_frame_rate_subsampler(target_frame_rate):
         tmp.write(subsampled_videos[0])
 
         probe = ffmpeg.probe(tmp.name)
-        video_stream = [stream for stream in probe["streams"]
-                        if stream["codec_type"] == "video"][0]
+        video_stream = [stream for stream in probe["streams"] if stream["codec_type"] == "video"][0]
         frame_rate = int(video_stream["r_frame_rate"].split("/")[0])
 
         assert frame_rate == target_frame_rate
@@ -137,8 +132,7 @@ def test_audio_rate_subsampler(sample_rate):
     with tempfile.NamedTemporaryFile(suffix=".mp3") as tmp:
         tmp.write(subsampled_audios[0])
 
-        out = subprocess.check_output(
-            f"file {tmp.name}".split()).decode("utf-8")
+        out = subprocess.check_output(f"file {tmp.name}".split()).decode("utf-8")
         assert "Audio file with ID3 version" in out
 
         result = ffmpeg.probe(tmp.name)

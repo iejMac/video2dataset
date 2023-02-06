@@ -22,8 +22,7 @@ def test_yt_downloader(video_size):
     assert error_message is None
 
     probe = ffmpeg.probe(modality_paths["video"])
-    video_stream = [stream for stream in probe["streams"]
-                    if stream["codec_type"] == "video"][0]
+    video_stream = [stream for stream in probe["streams"] if stream["codec_type"] == "video"][0]
     height = int(video_stream["height"])
 
     assert height == 480
@@ -31,8 +30,7 @@ def test_yt_downloader(video_size):
 
 
 def test_webfile_downloader():
-    webfile_downloader = WebFileDownloader(
-        timeout=10, tmp_dir="/tmp", encode_formats={"video": "mp4"})
+    webfile_downloader = WebFileDownloader(timeout=10, tmp_dir="/tmp", encode_formats={"video": "mp4"})
 
     modality_paths, error_message = webfile_downloader(MP4_URL)
 

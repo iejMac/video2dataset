@@ -58,27 +58,22 @@ class Worker:
 
         self.encode_formats = encode_formats
 
-        self.data_reader = VideoDataReader(
-            video_size, timeout, tmp_dir, yt_metadata_args, encode_formats)
+        self.data_reader = VideoDataReader(video_size, timeout, tmp_dir, yt_metadata_args, encode_formats)
 
-        self.clipping_subsampler = ClippingSubsampler(
-            oom_clip_count, encode_formats)
+        self.clipping_subsampler = ClippingSubsampler(oom_clip_count, encode_formats)
         self.noop_subsampler = NoOpSubsampler()
 
         video_subsamplers: List[Any] = []
         if resize_mode is not None:
-            video_subsamplers.append(
-                ResolutionSubsampler(video_size, resize_mode))
+            video_subsamplers.append(ResolutionSubsampler(video_size, resize_mode))
         if video_fps > 0:
             video_subsamplers.append(FrameSubsampler(video_fps))
 
         audio_subsamplers: List[Any] = []
         if audio_sampling_rate > 0:
-            audio_subsamplers.append(AudioRateSubsampler(
-                audio_sampling_rate, encode_formats))
+            audio_subsamplers.append(AudioRateSubsampler(audio_sampling_rate, encode_formats))
 
-        self.subsamplers = {"video": video_subsamplers,
-                            "audio": audio_subsamplers}
+        self.subsamplers = {"video": video_subsamplers, "audio": audio_subsamplers}
 
     def __call__(
         self,
@@ -112,8 +107,7 @@ class Worker:
         )
 
         pydict = df.select(self.column_list).to_pydict()
-        shard_to_dl = list(
-            enumerate(zip(*(pydict[col] for col in self.column_list))))
+        shard_to_dl = list(enumerate(zip(*(pydict[col] for col in self.column_list))))
         del pydict
         del df
 
@@ -125,8 +119,7 @@ class Worker:
         failed_to_subsample = 0
         bytes_downloaded = 0
         url_indice = self.column_list.index("url")
-        caption_indice = self.column_list.index(
-            "caption") if "caption" in self.column_list else None
+        caption_indice = self.column_list.index("caption") if "caption" in self.column_list else None
         key_url_list = [(key, x[url_indice]) for key, x in shard_to_dl]
 
         semaphore = Semaphore(self.thread_count)
@@ -142,8 +135,7 @@ class Worker:
         sample_writer = self.sample_writer_class(
             shard_id, self.output_folder, self.save_caption, self.oom_shard_count, schema, self.encode_formats
         )
-        oom_sample_per_shard = math.ceil(
-            math.log10(self.number_sample_per_shard))
+        oom_sample_per_shard = math.ceil(math.log10(self.number_sample_per_shard))
 
         with ThreadPool(self.thread_count) as thread_pool:
             for key, streams, yt_meta_dict, error_message in thread_pool.imap_unordered(
@@ -152,10 +144,8 @@ class Worker:
             ):
                 try:
                     _, sample_data = shard_to_dl[key]
-                    yt_subs = yt_meta_dict is not None and yt_meta_dict.get(
-                        "split_subs", None)
-                    str_key = compute_key(
-                        key, shard_id, oom_sample_per_shard, self.oom_shard_count)
+                    yt_subs = yt_meta_dict is not None and yt_meta_dict.get("split_subs", None)
+                    str_key = compute_key(key, shard_id, oom_sample_per_shard, self.oom_shard_count)
                     meta = {
                         **{self.column_list[i]: sample_data[i] for i in range(len(self.column_list))},
                         "key": str_key,
@@ -166,8 +156,7 @@ class Worker:
 
                     if error_message is not None:
                         if "[youtube]" in error_message:  # video-specific error, remove videoID
-                            error_message = "ERROR: [youtube]:" + \
-                                error_message.split(":")[-1]
+                            error_message = "ERROR: [youtube]:" + error_message.split(":")[-1]
                         failed_to_download += 1
                         status = "failed_to_download"
                         status_dict.increment(error_message)
@@ -187,26 +176,18 @@ class Worker:
                         bytes_downloaded += len(streams["audio"])
 
                     metas = [meta]
+                    broadcast_subsampler = (
+                        self.clipping_subsampler if "clips" in self.column_list or yt_subs else self.noop_subsampler
+                    )
+                    subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
 
-                    # Clipping
-                    if "clips" in self.column_list or yt_subs:
-                        subsampled_streams, metas, error_message = self.clipping_subsampler(
-                            streams, meta, self.encode_formats
-                        )
-                    else:
-                        subsampled_streams, metas, error_message = self.noop_subsampler(
-                            streams, meta)
+                    for modality in subsampled_streams:
+                        for modality_subsampler in self.subsamplers[modality]:
+                            subsampled_modality, error_message = modality_subsampler(subsampled_streams[modality])
+                            subsampled_streams[modality] = subsampled_modality
 
-                    if streams.get("video", None):
-
-                        if self.frame_subsampler is not None:
-                            subsampled_videos, error_message = self.frame_subsampler(
-                                subsampled_streams["video"])
-                            subsampled_streams["video"] = subsampled_videos
-                        if self.resolution_subsampler is not None:  # Resolution subsampling
-                            subsampled_videos, error_message = self.resolution_subsampler(
-                                subsampled_streams["video"])
-                            subsampled_streams["video"] = subsampled_videos
+                    if len(subsampled_streams.keys()) == 0 and not self.encode_formats:
+                        subsampled_streams["video"] = [None] * len(metas)
 
                     if error_message is not None:
                         failed_to_subsample += 1
@@ -220,8 +201,7 @@ class Worker:
                             str_key,
                             sample_data[caption_indice] if caption_indice is not None else None,
                             meta,
-                            format_type="video" if self.encode_formats.get(
-                                "video", None) else "audio",
+                            format_type="video" if self.encode_formats.get("video", None) else "audio",
                         )
                         semaphore.release()
                         continue
