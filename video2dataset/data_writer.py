@@ -66,14 +66,16 @@ class ParquetSampleWriter:
             shard_id=shard_id, oom_shard_count=oom_shard_count
         )
         output_file = f"{output_folder}/{shard_name}.parquet"
-        self.buffered_parquet_writer = BufferedParquetWriter(output_file, schema, 100)
+        self.buffered_parquet_writer = BufferedParquetWriter(
+            output_file, schema, 100)
         self.save_caption = save_caption
         self.encode_formats = encode_formats
 
     def write(self, streams, key, caption, meta):
         """Keep sample in memory then write to disk when close() is called"""
 
-        yt_subs = meta["yt_meta_dict"] and meta["yt_meta_dict"].get("subtitles", None)
+        yt_subs = meta["yt_meta_dict"] and meta["yt_meta_dict"].get(
+            "subtitles", None)
         for format_type in streams.keys():
             stream = streams.get(format_type, None)
             sample = {"key": key}
@@ -111,7 +113,8 @@ class WebDatasetSampleWriter:
         self.tar_fd = fs.open(f"{output_path}/{shard_name}.tar", "wb")
         self.tarwriter = wds.TarWriter(self.tar_fd)
         self.save_caption = save_caption
-        self.buffered_parquet_writer = BufferedParquetWriter(output_folder + "/" + shard_name + ".parquet", schema, 100)
+        self.buffered_parquet_writer = BufferedParquetWriter(
+            output_folder + "/" + shard_name + ".parquet", schema, 100)
         self.encode_formats = encode_formats
 
     def write(self, streams, key, caption, meta):
@@ -140,6 +143,8 @@ class WebDatasetSampleWriter:
 
 class TFRecordSampleWriter:
     """TFRecordSampleWriter is a video+caption writer to TFRecord"""
+
+    def __init__(self, shard_id, output_folder, save_caption, oom_shard_count, schema, encode_formats):
 
     def __init__(self, shard_id, output_folder, save_caption, oom_shard_count, schema, encode_formats):
         try:
@@ -172,9 +177,11 @@ class TFRecordSampleWriter:
             shard_id=shard_id, oom_shard_count=oom_shard_count
         )
         self.shard_id = shard_id
-        self.tf_writer = TFRecordWriter(f"{output_folder}/{shard_name}.tfrecord")
+        self.tf_writer = TFRecordWriter(
+            f"{output_folder}/{shard_name}.tfrecord")
         self.save_caption = save_caption
-        self.buffered_parquet_writer = BufferedParquetWriter(output_folder + "/" + shard_name + ".parquet", schema, 100)
+        self.buffered_parquet_writer = BufferedParquetWriter(
+            output_folder + "/" + shard_name + ".parquet", schema, 100)
         self.encode_formats = encode_formats
 
     def write(self, streams, key, caption, meta):
@@ -188,10 +195,29 @@ class TFRecordSampleWriter:
                     self.encode_formats[format_type]: self._bytes_feature(stream),
                 }
                 if self.save_caption:
-                    sample["txt"] = self._bytes_feature(str(caption) if caption is not None else "")
+                    sample["txt"] = self._bytes_feature(
+                        str(caption) if caption is not None else "")
                 for k, v in meta.items():
                     sample[k] = self._feature(v)
-                tf_example = self._Example(features=self._Features(feature=sample))
+                tf_example = self._Example(
+                    features=self._Features(feature=sample))
+                self.tf_writer.write(tf_example.SerializeToString())
+            self.buffered_parquet_writer.write(meta)
+
+        for format_type in self.encode_formats.keys():
+            stream = streams.get(format_type, None)
+            if stream is not None:
+                sample = {
+                    "key": self._bytes_feature(key.encode()),
+                    self.encode_formats[format_type]: self._bytes_feature(stream),
+                }
+                if self.save_caption:
+                    sample["txt"] = self._bytes_feature(
+                        str(caption) if caption is not None else "")
+                for k, v in meta.items():
+                    sample[k] = self._feature(v)
+                tf_example = self._Example(
+                    features=self._Features(feature=sample))
                 self.tf_writer.write(tf_example.SerializeToString())
             self.buffered_parquet_writer.write(meta)
 
@@ -250,11 +276,13 @@ class FilesSampleWriter:
             shard_id=shard_id, oom_shard_count=oom_shard_count
         )
         self.shard_id = shard_id
-        self.fs, self.subfolder = fsspec.core.url_to_fs(f"{output_folder}/{shard_name}")
+        self.fs, self.subfolder = fsspec.core.url_to_fs(
+            f"{output_folder}/{shard_name}")
         if not self.fs.exists(self.subfolder):
             self.fs.mkdir(self.subfolder)
         self.save_caption = save_caption
-        self.buffered_parquet_writer = BufferedParquetWriter(output_folder + "/" + shard_name + ".parquet", schema, 100)
+        self.buffered_parquet_writer = BufferedParquetWriter(
+            output_folder + "/" + shard_name + ".parquet", schema, 100)
         self.encode_formats = encode_formats
 
     def write(self, streams, key, caption, meta):

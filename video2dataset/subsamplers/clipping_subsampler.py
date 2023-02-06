@@ -28,8 +28,9 @@ class ClippingSubsampler:
     - time to be in the format "%H:%M:%S.%f", or a number representing the second of the timestamp
     """
 
-    def __init__(self, oom_clip_count):
+    def __init__(self, oom_clip_count, encode_formats):
         self.oom_clip_count = oom_clip_count
+        self.encode_formats = encode_formats
 
     def __call__(self, streams, metadata, encode_formats):
         if metadata.get("clips", None):
@@ -97,13 +98,15 @@ class ClippingSubsampler:
                     return [], [], str(err)
 
                 stream_clips = glob.glob(f"{tmpdir}/clip*.{encode_format}")
-                stream_clips = [f"{tmpdir}/clip_{i}.{encode_format}" for i in range(len(stream_clips))]
+                stream_clips = [
+                    f"{tmpdir}/clip_{i}.{encode_format}" for i in range(len(stream_clips))]
 
                 # stream_clips.sort()
                 correct_clips = []
                 for clip_id, (clip, ind) in enumerate(zip(clips, take_inds)):
                     if ind < len(stream_clips):
-                        correct_clips.append((clip_id, clip, stream_clips[ind]))
+                        correct_clips.append(
+                            (clip_id, clip, stream_clips[ind]))
                 # clips_lost = len(take_inds) - len(correct_clips) # TODO report this somehow
 
                 stream_clips, metadata_clips = [], []

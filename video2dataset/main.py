@@ -43,6 +43,7 @@ def video2dataset(
     video_size: int = 360,
     video_fps: int = -1,
     resize_mode: Optional[List[str]] = None,
+    audio_sampling_rate: int = -1,
     timeout: int = 60,
     tmp_dir: str = "/tmp",
     yt_metadata_args: dict = None,
@@ -66,7 +67,8 @@ def video2dataset(
     output_folder = make_path_absolute(output_folder)
     url_list = make_path_absolute(url_list)
 
-    logger_process = LoggerProcess(output_folder, enable_wandb, wandb_project, config_parameters)
+    logger_process = LoggerProcess(
+        output_folder, enable_wandb, wandb_project, config_parameters)
 
     tmp_path = output_folder + "/_tmp"
     fs, tmp_dir = fsspec.core.url_to_fs(tmp_path)
@@ -92,7 +94,8 @@ def video2dataset(
         done_shards = set()
     else:
         if incremental_mode == "incremental":
-            done_shards = set(int(x.split("/")[-1].split("_")[0]) for x in fs.glob(output_path + "/*.json"))
+            done_shards = set(int(x.split("/")[-1].split("_")[0])
+                              for x in fs.glob(output_path + "/*.json"))
         elif incremental_mode == "overwrite":
             fs.rm(output_path, recursive=True)
             fs.mkdir(output_path)
@@ -140,6 +143,7 @@ def video2dataset(
         video_size=video_size,
         resize_mode=resize_mode,
         video_fps=video_fps,
+        audio_sampling_rate=audio_sampling_rate,
         tmp_dir=tmp_dir,
         yt_metadata_args=yt_metadata_args,
         encode_formats=encode_formats,

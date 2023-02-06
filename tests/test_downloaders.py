@@ -4,7 +4,7 @@ import pytest
 import ffmpeg
 
 
-from video2dataset.data_reader import YtDlpDownloader, Mp4Downloader
+from video2dataset.data_reader import YtDlpDownloader, WebFileDownloader
 
 
 YT_URL = "https://www.youtube.com/watch?v=jLX0D8qQUBM"
@@ -17,24 +17,26 @@ def test_yt_downloader(video_size):
         tmp_dir="/tmp", metadata_args=None, video_size=video_size, encode_formats={"video": "mp4"}
     )
 
-    path, aud_path, yt_meta_dict, error_message = ytdlp_downloader(YT_URL)
+    modality_paths, yt_meta_dict, error_message = ytdlp_downloader(YT_URL)
 
     assert error_message is None
 
-    probe = ffmpeg.probe(path)
-    video_stream = [stream for stream in probe["streams"] if stream["codec_type"] == "video"][0]
+    probe = ffmpeg.probe(modality_paths["video"])
+    video_stream = [stream for stream in probe["streams"]
+                    if stream["codec_type"] == "video"][0]
     height = int(video_stream["height"])
 
     assert height == 480
-    os.remove(path)
+    os.remove(modality_paths["video"])
 
 
-def test_mp4_downloader():
-    mp4_downloader = Mp4Downloader(timeout=10, tmp_dir="/tmp", encode_formats={"video": "mp4"})
+def test_webfile_downloader():
+    webfile_downloader = WebFileDownloader(
+        timeout=10, tmp_dir="/tmp", encode_formats={"video": "mp4"})
 
-    path, aud_path, error_message = mp4_downloader(MP4_URL)
+    modality_paths, error_message = webfile_downloader(MP4_URL)
 
     assert error_message is None
-    with open(path, "rb") as f:
+    with open(modality_paths["video"], "rb") as f:
         assert len(f.read()) > 0
-    os.remove(path)
+    os.remove(modality_paths["video"])
