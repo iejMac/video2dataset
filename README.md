@@ -112,7 +112,7 @@ This module exposes a single function `download` which takes the same arguments 
 ### Download YouTube metadata & subtitles:
 #### Usage
 
-**Note.** Requires webvtt installed for subtitles formatting: `pip install webvtt-py`.
+**Note.** Requires xmltodict installed for subtitles formatting: `pip install xmltodict`.
 
 ```py
 if __name__ == '__main__':
@@ -129,7 +129,8 @@ if __name__ == '__main__':
         input_format='parquet',
         output_format='files',
         output_folder='audio',
-        yt_metadata_args=yt_metadata_args
+        yt_metadata_args=yt_metadata_args,
+        encode_formats={'video':'mp4'}
     )
 ```
 
@@ -203,6 +204,50 @@ And subtitles:
             ...
 ]
 ```
+
+You can only download subtitles if you don't provide a value for `encode_formats` parameter (of if it's `None`). Example:
+
+```py
+if __name__ == '__main__':
+
+    yt_metadata_args = {
+        'writesubtitles': True, # whether to write subtitles to a file
+        'subtitleslangs': ['en'], # languages of subtitles (right now support only one language)
+        'writeautomaticsub': True, # whether to write automatic subtitles
+        'get_info': True # whether to save a video meta data into the output JSON file
+    }
+
+    video2dataset(
+        url_list='test.parquet',
+        input_format='parquet',
+        output_format='parquet',
+        output_folder='audio',
+        yt_metadata_args=yt_metadata_args,
+    )
+```
+
+You can split audio/video according to YT subtitles. To do that, just pass `"split_subs": True` to `yt_metadata_args`. Example:
+
+```py
+if __name__ == '__main__':
+
+    yt_metadata_args = {
+        'writesubtitles': True,
+        'subtitleslangs': ['en'], 
+        'writeautomaticsub': True, 
+        "split_subs": True
+    }
+
+    video2dataset(
+        url_list='test.parquet',
+        input_format='parquet',
+        output_format='parquet',
+        output_folder='audio',
+        encode_formats={'video':'mp4', 'audio':'mp3'}
+        yt_metadata_args=yt_metadata_args,
+    )
+```
+
 
 ## Select formats for video/audio
 

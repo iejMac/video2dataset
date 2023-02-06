@@ -36,8 +36,7 @@ def test_e2e(input_file):
         for shard in ["00000", "00001"] if sample_count / samples_per_shard > 1.0 else ["00000"]:
             for ext in ["mp4", "json", "txt"]:
                 assert (
-                    len([x for x in tarfile.open(
-                        tmpdir + f"/{shard}.tar").getnames() if x.endswith(f".{ext}")])
+                    len([x for x in tarfile.open(tmpdir + f"/{shard}.tar").getnames() if x.endswith(f".{ext}")])
                     == samples_per_shard
                 )
 
@@ -75,7 +74,6 @@ def test_only_subs(input_file):
         for shard in ["00000", "00001"] if sample_count / samples_per_shard > 1.0 else ["00000"]:
             for ext in ["json", "txt"]:
                 assert (
-                    len([x for x in tarfile.open(
-                        tmpdir + f"/{shard}.tar").getnames() if x.endswith(f".{ext}")])
+                    len([x for x in tarfile.open(tmpdir + f"/{shard}.tar").getnames() if x.endswith(f".{ext}")])
                     == samples_per_shard
                 )
