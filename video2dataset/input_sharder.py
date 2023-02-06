@@ -52,8 +52,7 @@ class InputSharder:
         if fs.isdir(url_path):
             self.input_files = sorted(fs.glob(url_path + "/*." + input_format))
             if len(self.input_files) == 0:
-                raise Exception(
-                    f"No file found at path {url_path} with extension {input_format}")
+                raise Exception(f"No file found at path {url_path} with extension {input_format}")
         else:
             self.input_files = [url_path]
 
@@ -62,9 +61,7 @@ class InputSharder:
         elif self.input_format in ["json", "csv", "tsv", "tsv.gz", "parquet"]:
             self.column_list = self.save_additional_columns if self.save_additional_columns is not None else []
             self.column_list = (
-                self.column_list +
-                ["clips"] * bool(self.clip_col) + ["caption"] *
-                bool(self.caption_col) + ["url"]
+                self.column_list + ["clips"] * bool(self.clip_col) + ["caption"] * bool(self.caption_col) + ["url"]
             )
         else:
             raise ValueError(f"Invalid input format {self.input_format}")
@@ -74,22 +71,18 @@ class InputSharder:
         if self.input_format in ["txt", "json", "csv", "tsv"]:
             with self.fs.open(input_file, mode="rb") as file:
                 if self.input_format == "txt":
-                    df = csv_pq.read_csv(
-                        file, read_options=csv_pq.ReadOptions(column_names=["url"]))
+                    df = csv_pq.read_csv(file, read_options=csv_pq.ReadOptions(column_names=["url"]))
                 elif self.input_format == "json":
                     df = pa.Table.from_pandas(pd.read_json(file))
                 elif self.input_format == "csv":
                     df = csv_pq.read_csv(file)
                 elif self.input_format == "tsv":
-                    df = csv_pq.read_csv(
-                        file, parse_options=csv_pq.ParseOptions(delimiter="\t"))
+                    df = csv_pq.read_csv(file, parse_options=csv_pq.ParseOptions(delimiter="\t"))
                 else:
-                    raise ValueError(
-                        f"Unknown input format {self.input_format}")
+                    raise ValueError(f"Unknown input format {self.input_format}")
         elif self.input_format == "tsv.gz":
             with self.fs.open(input_file, encoding="utf-8", mode="rb", compression="gzip") as file:
-                df = csv_pq.read_csv(
-                    file, parse_options=csv_pq.ParseOptions(delimiter="\t"))
+                df = csv_pq.read_csv(file, parse_options=csv_pq.ParseOptions(delimiter="\t"))
         elif self.input_format == "parquet":
             with self.fs.open(input_file, mode="rb") as file:
                 columns_to_read = [self.url_col]
@@ -105,13 +98,10 @@ class InputSharder:
 
         column_names = df.column_names
         if self.caption_col is not None:
-            column_names = [
-                c if c != self.caption_col else "caption" for c in column_names]
+            column_names = [c if c != self.caption_col else "caption" for c in column_names]
         if self.clip_col is not None:
-            column_names = [
-                c if c != self.clip_col else "clips" for c in column_names]
-        column_names = [
-            c if c != self.url_col else "url" for c in column_names]
+            column_names = [c if c != self.clip_col else "clips" for c in column_names]
+        column_names = [c if c != self.url_col else "url" for c in column_names]
 
         df = df.rename_columns(column_names)
 
@@ -129,10 +119,8 @@ class InputSharder:
         def write_shard(t):
             full_shard_id, shard_id = t
             begin_shard = shard_id * self.number_sample_per_shard
-            end_shard = min(number_samples, (1 + shard_id)
-                            * self.number_sample_per_shard)
-            df_shard = df.slice(begin_shard, end_shard -
-                                begin_shard).select(self.column_list)
+            end_shard = min(number_samples, (1 + shard_id) * self.number_sample_per_shard)
+            df_shard = df.slice(begin_shard, end_shard - begin_shard).select(self.column_list)
             tmp_file = self.tmp_path + f"/{full_shard_id}.feather"
             for i in range(10):
                 try:
@@ -180,11 +168,9 @@ class InputSharder:
         """
         start_shard_id = 0
         for i, input_file in enumerate(self.input_files):
-            print("Sharding file number " + str(i + 1) + " of " +
-                  str(len(self.input_files)) + " called " + input_file)
+            print("Sharding file number " + str(i + 1) + " of " + str(len(self.input_files)) + " called " + input_file)
 
-            shards, number_shards = self._save_to_arrow(
-                input_file, start_shard_id)
+            shards, number_shards = self._save_to_arrow(input_file, start_shard_id)
             print("File sharded in " + str(len(shards)) + " shards")
             print(
                 "Downloading starting now, check your bandwidth speed (with bwm-ng)"

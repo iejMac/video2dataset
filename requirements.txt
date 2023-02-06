@@ -6,7 +6,7 @@ yt_dlp
 pyarrow
 fsspec
 webdataset
-webvtt-py
+xmltodict
 wandb
 pandas
 tqdm

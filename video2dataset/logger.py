@@ -23,8 +23,7 @@ class CappedCounter:
         self.counter[key] += 1
 
     def _keep_most_frequent(self):
-        self.counter = Counter(
-            dict(self.counter.most_common(int(self.max_size / 2))))
+        self.counter = Counter(dict(self.counter.most_common(int(self.max_size / 2))))
 
     def most_common(self, k):
         return self.counter.most_common(k)
@@ -166,8 +165,7 @@ class StatusTableLogger(Logger):
         if self.enable_wandb:
             status_table = wandb.Table(
                 columns=["status", "frequency", "count"],
-                data=[[k, 1.0 * v / count, v]
-                      for k, v in status_dict.most_common(self.max_status)],
+                data=[[k, 1.0 * v / count, v] for k, v in status_dict.most_common(self.max_status)],
             )
             wandb.run.log({"status": status_table})
 
@@ -226,18 +224,14 @@ class LoggerProcess(multiprocessing.context.SpawnProcess):
     def run(self):
         """Run logger process"""
 
-        fs, output_path = fsspec.core.url_to_fs(
-            self.output_folder, use_listings_cache=False)
+        fs, output_path = fsspec.core.url_to_fs(self.output_folder, use_listings_cache=False)
 
         if self.enable_wandb:
-            self.current_run = wandb.init(
-                project=self.wandb_project, config=self.config_parameters, anonymous="allow")
+            self.current_run = wandb.init(project=self.wandb_project, config=self.config_parameters, anonymous="allow")
         else:
             self.current_run = None
-        self.total_speed_logger = SpeedLogger(
-            "total", enable_wandb=self.enable_wandb)
-        self.status_table_logger = StatusTableLogger(
-            enable_wandb=self.enable_wandb)
+        self.total_speed_logger = SpeedLogger("total", enable_wandb=self.enable_wandb)
+        self.status_table_logger = StatusTableLogger(enable_wandb=self.enable_wandb)
         last_check = 0
         total_status_dict = CappedCounter()
         while True:
@@ -255,8 +249,7 @@ class LoggerProcess(multiprocessing.context.SpawnProcess):
                 stats_files = fs.glob(output_path + "/*.json")
 
                 # filter out files that have an id smaller that are already done
-                stats_files = [f for f in stats_files if int(
-                    f.split("/")[-1].split("_")[0]) not in self.done_shards]
+                stats_files = [f for f in stats_files if int(f.split("/")[-1].split("_")[0]) not in self.done_shards]
 
                 # get new stats files
                 new_stats_files = set(stats_files) - self.stats_files
@@ -288,14 +281,11 @@ class LoggerProcess(multiprocessing.context.SpawnProcess):
                                 start_time=stats["start_time"],
                                 end_time=stats["end_time"],
                             )
-                            status_dict = CappedCounter.load(
-                                stats["status_dict"])
+                            status_dict = CappedCounter.load(stats["status_dict"])
                             total_status_dict.update(status_dict)
-                            self.status_table_logger(
-                                total_status_dict, self.total_speed_logger.count)
+                            self.status_table_logger(total_status_dict, self.total_speed_logger.count)
                         except Exception as err:  # pylint: disable=broad-except
-                            print(
-                                f"failed to parse stats file {stats_file}", err)
+                            print(f"failed to parse stats file {stats_file}", err)
 
                     self.stats_files.add(stats_file)
                 last_check = time.perf_counter()

@@ -58,28 +58,39 @@ class ParquetSampleWriter:
 
     def __init__(self, shard_id, output_folder, save_caption, oom_shard_count, schema, encode_formats):
         self.oom_shard_count = oom_shard_count
-        schema = schema.append(pa.field(encode_formats, pa.binary()))
+        if encode_formats:
+            schema = schema.append(pa.field(encode_formats, pa.binary()))
+        else:
+            schema = schema.append(pa.field("subs", pa.string()))
         shard_name = "{shard_id:0{oom_shard_count}d}".format(  # pylint: disable=consider-using-f-string
             shard_id=shard_id, oom_shard_count=oom_shard_count
         )
         output_file = f"{output_folder}/{shard_name}.parquet"
-        self.buffered_parquet_writer = BufferedParquetWriter(
-            output_file, schema, 100)
+        self.buffered_parquet_writer = BufferedParquetWriter(output_file, schema, 100)
         self.save_caption = save_caption
         self.encode_formats = encode_formats
 
     def write(self, streams, key, caption, meta):
         """Keep sample in memory then write to disk when close() is called"""
-        for format_type in self.encode_formats.keys():
+
+        yt_subs = meta["yt_meta_dict"] and meta["yt_meta_dict"].get("subtitles", None)
+        for format_type in streams.keys():
             stream = streams.get(format_type, None)
+            sample = {"key": key}
             if stream is not None:
-                sample = {"key": key, self.encode_formats[format_type]: stream}
+                sample[self.encode_formats[format_type]] = stream
                 if self.save_caption:
                     sample["txt"] = str(caption) if caption is not None else ""
             else:
-                sample = {"key": key, self.encode_formats[format_type]: None}
+                if self.encode_formats:
+                    sample[self.encode_formats[format_type]] = None
                 if self.save_caption:
                     sample["txt"] = None
+                if yt_subs:
+                    subs = meta["yt_meta_dict"]["subtitles"]
+                    subs = [s["line"] for s in subs]
+                    sample["subs"] = "\n".join(subs)
+
             sample.update(meta)
             self.buffered_parquet_writer.write(sample)
 
@@ -100,25 +111,25 @@ class WebDatasetSampleWriter:
         self.tar_fd = fs.open(f"{output_path}/{shard_name}.tar", "wb")
         self.tarwriter = wds.TarWriter(self.tar_fd)
         self.save_caption = save_caption
-        self.buffered_parquet_writer = BufferedParquetWriter(
-            output_folder + "/" + shard_name + ".parquet", schema, 100)
+        self.buffered_parquet_writer = BufferedParquetWriter(output_folder + "/" + shard_name + ".parquet", schema, 100)
         self.encode_formats = encode_formats
 
     def write(self, streams, key, caption, meta):
         """write sample to tars"""
-        for format_type in self.encode_formats.keys():
+
+        sample = {"__key__": key}
+        for format_type in streams.keys():
             stream = streams.get(format_type, None)
             if stream is not None:
-                sample = {"__key__": key,
-                          self.encode_formats[format_type]: stream}
-                if self.save_caption:
-                    sample["txt"] = str(caption) if caption is not None else ""
-                # some meta data may not be JSON serializable
-                for k, v in meta.items():
-                    if isinstance(v, np.ndarray):
-                        meta[k] = v.tolist()
-                sample["json"] = json.dumps(meta, indent=4)
-                self.tarwriter.write(sample)
+                sample[self.encode_formats[format_type]] = stream
+        if self.save_caption or not self.encode_formats:
+            sample["txt"] = str(caption) if caption is not None else ""
+            # some meta data may not be JSON serializable
+            for k, v in meta.items():
+                if isinstance(v, np.ndarray):
+                    meta[k] = v.tolist()
+            sample["json"] = json.dumps(meta, indent=4)
+            self.tarwriter.write(sample)
             self.buffered_parquet_writer.write(meta)
 
     def close(self):
@@ -161,11 +172,9 @@ class TFRecordSampleWriter:
             shard_id=shard_id, oom_shard_count=oom_shard_count
         )
         self.shard_id = shard_id
-        self.tf_writer = TFRecordWriter(
-            f"{output_folder}/{shard_name}.tfrecord")
+        self.tf_writer = TFRecordWriter(f"{output_folder}/{shard_name}.tfrecord")
         self.save_caption = save_caption
-        self.buffered_parquet_writer = BufferedParquetWriter(
-            output_folder + "/" + shard_name + ".parquet", schema, 100)
+        self.buffered_parquet_writer = BufferedParquetWriter(output_folder + "/" + shard_name + ".parquet", schema, 100)
         self.encode_formats = encode_formats
 
     def write(self, streams, key, caption, meta):
@@ -179,12 +188,10 @@ class TFRecordSampleWriter:
                     self.encode_formats[format_type]: self._bytes_feature(stream),
                 }
                 if self.save_caption:
-                    sample["txt"] = self._bytes_feature(
-                        str(caption) if caption is not None else "")
+                    sample["txt"] = self._bytes_feature(str(caption) if caption is not None else "")
                 for k, v in meta.items():
                     sample[k] = self._feature(v)
-                tf_example = self._Example(
-                    features=self._Features(feature=sample))
+                tf_example = self._Example(features=self._Features(feature=sample))
                 self.tf_writer.write(tf_example.SerializeToString())
             self.buffered_parquet_writer.write(meta)
 
@@ -243,37 +250,36 @@ class FilesSampleWriter:
             shard_id=shard_id, oom_shard_count=oom_shard_count
         )
         self.shard_id = shard_id
-        self.fs, self.subfolder = fsspec.core.url_to_fs(
-            f"{output_folder}/{shard_name}")
+        self.fs, self.subfolder = fsspec.core.url_to_fs(f"{output_folder}/{shard_name}")
         if not self.fs.exists(self.subfolder):
             self.fs.mkdir(self.subfolder)
         self.save_caption = save_caption
-        self.buffered_parquet_writer = BufferedParquetWriter(
-            output_folder + "/" + shard_name + ".parquet", schema, 100)
+        self.buffered_parquet_writer = BufferedParquetWriter(output_folder + "/" + shard_name + ".parquet", schema, 100)
         self.encode_formats = encode_formats
 
     def write(self, streams, key, caption, meta):
         """Write sample to disk"""
-        for format_type in self.encode_formats.keys():
+        for format_type in streams.keys():
             stream = streams.get(format_type, None)
+
             if stream is not None:
                 filename = f"{self.subfolder}/{key}.{self.encode_formats[format_type]}"
                 with self.fs.open(filename, "wb") as f:
                     f.write(stream)
-                if self.save_caption:
-                    caption = str(caption) if caption is not None else ""
-                    caption_filename = f"{self.subfolder}/{key}.txt"
-                    with self.fs.open(caption_filename, "w") as f:
-                        f.write(str(caption))
+        if self.save_caption or not self.encode_formats:
+            caption = str(caption) if caption is not None else ""
+            caption_filename = f"{self.subfolder}/{key}.txt"
+            with self.fs.open(caption_filename, "w") as f:
+                f.write(str(caption))
 
-                # some meta data may not be JSON serializable
-                for k, v in meta.items():
-                    if isinstance(v, np.ndarray):
-                        meta[k] = v.tolist()
-                j = json.dumps(meta, indent=4)
-                meta_filename = f"{self.subfolder}/{key}.json"
-                with self.fs.open(meta_filename, "w") as f:
-                    f.write(j)
+            # some meta data may not be JSON serializable
+            for k, v in meta.items():
+                if isinstance(v, np.ndarray):
+                    meta[k] = v.tolist()
+            j = json.dumps(meta, indent=4)
+            meta_filename = f"{self.subfolder}/{key}.json"
+            with self.fs.open(meta_filename, "w") as f:
+                f.write(j)
             self.buffered_parquet_writer.write(meta)
 
     def close(self):

@@ -32,7 +32,17 @@ class ClippingSubsampler:
         self.oom_clip_count = oom_clip_count
 
     def __call__(self, streams, metadata, encode_formats):
-        clips = metadata.pop("clips")
+        if metadata.get("clips", None):
+            clips = metadata.pop("clips")
+
+        yt_meta_dict = metadata.get("yt_meta_dict", None)
+
+        yt_subs = yt_meta_dict.pop("split_subs") if yt_meta_dict else None
+
+        if yt_subs:
+            clips = metadata["yt_meta_dict"]["subtitles"]
+            lines = [c["line"] for c in clips]
+            clips = [[c["start"], c["end"]] for c in clips]
 
         ind = 2
         # we assume there's always one clip which we want to take
@@ -87,7 +97,9 @@ class ClippingSubsampler:
                     return [], [], str(err)
 
                 stream_clips = glob.glob(f"{tmpdir}/clip*.{encode_format}")
-                stream_clips.sort()
+                stream_clips = [f"{tmpdir}/clip_{i}.{encode_format}" for i in range(len(stream_clips))]
+
+                # stream_clips.sort()
                 correct_clips = []
                 for clip_id, (clip, ind) in enumerate(zip(clips, take_inds)):
                     if ind < len(stream_clips):
@@ -107,6 +119,9 @@ class ClippingSubsampler:
                     # set the timeframe of this clip
                     meta_clip["clips"] = [clip_span]
                     meta_clip["key"] = f"{meta_clip['key']}_{clip_key}"
+                    if yt_subs:
+                        meta_clip["caption"] = lines[clip_id]
+
                     metadata_clips.append(meta_clip)
 
                 streams_clips[k] = stream_clips
