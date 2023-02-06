@@ -19,10 +19,12 @@ jobs:
           python-version: 3.8
       - name: Install
         run: |
+          sudo apt-get update
           python3 -m venv .env
           source .env/bin/activate
           python -m pip install -U pip
           make install-dev
+          sudo apt-get install -y ffmpeg
       - name: Lint
         run: |
           source .env/bin/activate
@@ -41,10 +43,12 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install
       run: |
+        sudo apt-get update
         python3 -m venv .env
         source .env/bin/activate
         make install
         make install-dev
+        sudo apt-get install -y ffmpeg
     - name: Unit tests
       run: |
         source .env/bin/activate

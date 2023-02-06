@@ -23,7 +23,8 @@ class CappedCounter:
         self.counter[key] += 1
 
     def _keep_most_frequent(self):
-        self.counter = Counter(dict(self.counter.most_common(int(self.max_size / 2))))
+        self.counter = Counter(
+            dict(self.counter.most_common(int(self.max_size / 2))))
 
     def most_common(self, k):
         return self.counter.most_common(k)
@@ -92,26 +93,35 @@ class SpeedLogger(Logger):
         self.success = 0
         self.failed_to_download = 0
         self.failed_to_resize = 0
+        self.bytes_downloaded = 0
         self.enable_wandb = enable_wandb
 
     def __call__(
-        self, count, success, failed_to_download, failed_to_resize, start_time, end_time
+        self, count, success, failed_to_download, failed_to_resize, bytes_downloaded, start_time, end_time
     ):  # pylint: disable=arguments-differ
         self.count += count
         self.success += success
         self.failed_to_download += failed_to_download
         self.failed_to_resize += failed_to_resize
+        self.bytes_downloaded += bytes_downloaded
         self.start_time = min(start_time, self.start_time)
         self.end_time = max(end_time, self.end_time)
         super().__call__(
-            self.count, self.success, self.failed_to_download, self.failed_to_resize, self.start_time, self.end_time
+            self.count,
+            self.success,
+            self.failed_to_download,
+            self.failed_to_resize,
+            self.bytes_downloaded,
+            self.start_time,
+            self.end_time,
         )
 
     def do_log(
-        self, count, success, failed_to_download, failed_to_resize, start_time, end_time
+        self, count, success, failed_to_download, failed_to_resize, bytes_downloaded, start_time, end_time
     ):  # pylint: disable=arguments-differ
         duration = end_time - start_time
         vid_per_sec = count / duration
+        bytes_per_sec = 1.0 * bytes_downloaded / duration
         success_ratio = 1.0 * success / count
         failed_to_download_ratio = 1.0 * failed_to_download / count
         failed_to_resize_ratio = 1.0 * failed_to_resize / count
@@ -124,6 +134,7 @@ class SpeedLogger(Logger):
                     f"failed to download: {failed_to_download_ratio:.3f}",
                     f"failed to resize: {failed_to_resize_ratio:.3f}",
                     f"videos per sec: {vid_per_sec:.0f}",
+                    f"bytes per sec: {bytes_per_sec:.0f}",
                     f"count: {count}",
                 ]
             )
@@ -133,6 +144,7 @@ class SpeedLogger(Logger):
             wandb.log(
                 {
                     f"{self.prefix}/vid_per_sec": vid_per_sec,
+                    f"{self.prefix}/bytes_per_sec": bytes_per_sec,
                     f"{self.prefix}/success": success_ratio,
                     f"{self.prefix}/failed_to_download": failed_to_download_ratio,
                     f"{self.prefix}/failed_to_resize": failed_to_resize_ratio,
@@ -154,7 +166,8 @@ class StatusTableLogger(Logger):
         if self.enable_wandb:
             status_table = wandb.Table(
                 columns=["status", "frequency", "count"],
-                data=[[k, 1.0 * v / count, v] for k, v in status_dict.most_common(self.max_status)],
+                data=[[k, 1.0 * v / count, v]
+                      for k, v in status_dict.most_common(self.max_status)],
             )
             wandb.run.log({"status": status_table})
 
@@ -166,6 +179,7 @@ def write_stats(
     successes,
     failed_to_download,
     failed_to_resize,
+    bytes_downloaded,
     start_time,
     end_time,
     status_dict,
@@ -178,6 +192,7 @@ def write_stats(
         "failed_to_download": failed_to_download,
         "failed_to_resize": failed_to_resize,
         "duration": end_time - start_time,
+        "bytes_downloaded": bytes_downloaded,
         "start_time": start_time,
         "end_time": end_time,
         "status_dict": status_dict.dump(),
@@ -211,14 +226,18 @@ class LoggerProcess(multiprocessing.context.SpawnProcess):
     def run(self):
         """Run logger process"""
 
-        fs, output_path = fsspec.core.url_to_fs(self.output_folder, use_listings_cache=False)
+        fs, output_path = fsspec.core.url_to_fs(
+            self.output_folder, use_listings_cache=False)
 
         if self.enable_wandb:
-            self.current_run = wandb.init(project=self.wandb_project, config=self.config_parameters, anonymous="allow")
+            self.current_run = wandb.init(
+                project=self.wandb_project, config=self.config_parameters, anonymous="allow")
         else:
             self.current_run = None
-        self.total_speed_logger = SpeedLogger("total", enable_wandb=self.enable_wandb)
-        self.status_table_logger = StatusTableLogger(enable_wandb=self.enable_wandb)
+        self.total_speed_logger = SpeedLogger(
+            "total", enable_wandb=self.enable_wandb)
+        self.status_table_logger = StatusTableLogger(
+            enable_wandb=self.enable_wandb)
         last_check = 0
         total_status_dict = CappedCounter()
         while True:
@@ -236,7 +255,8 @@ class LoggerProcess(multiprocessing.context.SpawnProcess):
                 stats_files = fs.glob(output_path + "/*.json")
 
                 # filter out files that have an id smaller that are already done
-                stats_files = [f for f in stats_files if int(f.split("/")[-1].split("_")[0]) not in self.done_shards]
+                stats_files = [f for f in stats_files if int(
+                    f.split("/")[-1].split("_")[0]) not in self.done_shards]
 
                 # get new stats files
                 new_stats_files = set(stats_files) - self.stats_files
@@ -255,6 +275,7 @@ class LoggerProcess(multiprocessing.context.SpawnProcess):
                                 success=stats["successes"],
                                 failed_to_download=stats["failed_to_download"],
                                 failed_to_resize=stats["failed_to_resize"],
+                                bytes_downloaded=stats["bytes_downloaded"],
                                 start_time=stats["start_time"],
                                 end_time=stats["end_time"],
                             )
@@ -263,14 +284,18 @@ class LoggerProcess(multiprocessing.context.SpawnProcess):
                                 success=stats["successes"],
                                 failed_to_download=stats["failed_to_download"],
                                 failed_to_resize=stats["failed_to_resize"],
+                                bytes_downloaded=stats["bytes_downloaded"],
                                 start_time=stats["start_time"],
                                 end_time=stats["end_time"],
                             )
-                            status_dict = CappedCounter.load(stats["status_dict"])
+                            status_dict = CappedCounter.load(
+                                stats["status_dict"])
                             total_status_dict.update(status_dict)
-                            self.status_table_logger(total_status_dict, self.total_speed_logger.count)
+                            self.status_table_logger(
+                                total_status_dict, self.total_speed_logger.count)
                         except Exception as err:  # pylint: disable=broad-except
-                            print(f"failed to parse stats file {stats_file}", err)
+                            print(
+                                f"failed to parse stats file {stats_file}", err)
 
                     self.stats_files.add(stats_file)
                 last_check = time.perf_counter()
