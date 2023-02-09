@@ -51,6 +51,8 @@ def test_writer(modalities, writer_type, tmp_path):
         with open(os.path.join(current_folder, f"test_files/test_{mod}.{encode_formats[mod]}"), "rb") as f:
             streams[mod] = f.read()
 
+    n_samples = 1
+
     writer = writer_class(0, output_folder, True, 5, schema, encode_formats)
     i = 0 # TODO: maybe add more samples
     writer.write(
@@ -97,25 +99,23 @@ def test_writer(modalities, writer_type, tmp_path):
         assert df["height"].iloc[0] == 100
         assert df["audio_rate"].iloc[0] == 12000
 
-    return
+    n_files = (len(encode_formats) + len(["caption", "meta"])) * n_samples
 
     if writer_type == "files":
         saved_files = list(glob.glob(output_folder + "/00000/*"))
-        assert len(saved_files) == 3 * len(image_paths)
+        assert len(saved_files) == n_files
     elif writer_type == "webdataset":
         l = glob.glob(output_folder + "/*.tar")
         assert len(l) == 1
         if l[0] != output_folder + "/00000.tar":
             raise Exception(l[0] + " is not 00000.tar")
-
-        assert len(tarfile.open(output_folder + "/00000.tar").getnames()) == len(image_paths) * 3
+        assert len(tarfile.open(output_folder + "/00000.tar").getnames()) == n_files 
     elif writer_type == "parquet":
         l = glob.glob(output_folder + "/*.parquet")
         assert len(l) == 1
         if l[0] != output_folder + "/00000.parquet":
             raise Exception(l[0] + " is not 00000.parquet")
-
-        assert len(df.index) == len(image_paths)
+        assert len(df.index) == n_samples 
     elif writer_type == "dummy":
         l = glob.glob(output_folder + "/*")
         assert len(l) == 0

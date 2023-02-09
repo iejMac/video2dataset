@@ -104,19 +104,22 @@ class WebDatasetSampleWriter:
 
     def write(self, streams, key, caption, meta):
         """write sample to tars"""
+        sample = {}
+        sample["__key__"] = key
         for format_type in self.encode_formats.keys():
             stream = streams.get(format_type, None)
-            if stream is not None:
-                sample = {"__key__": key, self.encode_formats[format_type]: stream}
-                if self.save_caption:
-                    sample["txt"] = str(caption) if caption is not None else ""
-                # some meta data may not be JSON serializable
-                for k, v in meta.items():
-                    if isinstance(v, np.ndarray):
-                        meta[k] = v.tolist()
-                sample["json"] = json.dumps(meta, indent=4)
-                self.tarwriter.write(sample)
-            self.buffered_parquet_writer.write(meta)
+            sample[self.encode_formats[format_type]] = stream
+
+        if self.save_caption:
+            sample["txt"] = str(caption) if caption is not None else ""
+        # some meta data may not be JSON serializable
+        for k, v in meta.items():
+            if isinstance(v, np.ndarray):
+                meta[k] = v.tolist()
+        sample["json"] = json.dumps(meta, indent=4)
+
+        self.tarwriter.write(sample)
+        self.buffered_parquet_writer.write(meta)
 
     def close(self):
         self.buffered_parquet_writer.close()
