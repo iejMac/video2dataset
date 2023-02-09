@@ -71,9 +71,8 @@ class ParquetSampleWriter:
     def write(self, streams, key, caption, meta):
         """Keep sample in memory then write to disk when close() is called"""
         sample = {"key": key}
-        for format_type in self.encode_formats.keys():
-            stream = streams.get(format_type, None)
-            sample[self.encode_formats[format_type]] = stream
+        for modality, stream in streams.items():
+            sample[self.encode_formats[modality]] = stream
 
         if self.save_caption:
             sample["txt"] = str(caption) if caption is not None else ""
@@ -104,9 +103,8 @@ class WebDatasetSampleWriter:
     def write(self, streams, key, caption, meta):
         """write sample to tars"""
         sample = {"__key__": key}
-        for format_type in self.encode_formats.keys():
-            stream = streams.get(format_type, None)
-            sample[self.encode_formats[format_type]] = stream
+        for modality, stream in streams.items():
+            sample[self.encode_formats[modality]] = stream
 
         if self.save_caption:
             sample["txt"] = str(caption) if caption is not None else ""
@@ -167,9 +165,8 @@ class TFRecordSampleWriter:
     def write(self, streams, key, caption, meta):
         """Write a sample using tfrecord writer"""
         sample = {"key": self._bytes_feature(key.encode())}
-        for format_type in self.encode_formats.keys():
-            stream = streams.get(format_type, None)
-            sample[self.encode_formats[format_type]] = self._bytes_feature(stream)
+        for modality, stream in streams.items():
+            sample[self.encode_formats[modality]] = self._bytes_feature(stream)
 
         if self.save_caption:
             sample["txt"] = self._bytes_feature(str(caption) if caption is not None else "")
@@ -243,12 +240,10 @@ class FilesSampleWriter:
 
     def write(self, streams, key, caption, meta):
         """Write sample to disk"""
-        for format_type in self.encode_formats.keys():
-            stream = streams.get(format_type, None)
-            if stream is not None:
-                filename = f"{self.subfolder}/{key}.{self.encode_formats[format_type]}"
-                with self.fs.open(filename, "wb") as f:
-                    f.write(stream)
+        for modality, stream in streams.items():
+            filename = f"{self.subfolder}/{key}.{self.encode_formats[modality]}"
+            with self.fs.open(filename, "wb") as f:
+                f.write(stream)
 
         if self.save_caption:
             caption = str(caption) if caption is not None else ""
