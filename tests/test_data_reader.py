@@ -18,7 +18,7 @@ def test_data_reader(input_file):
             video_size=360, dl_timeout=60, tmp_dir=tmpdir, encode_formats=encode_formats, yt_meta_args=None
         )
         for i, url in enumerate(url_list):
-            key, streams, yt_meta_dict, error_message = video_data_reader((i, url))
+            key, streams, yt_meta_dict = video_data_reader((i, url))
 
             assert len(streams.get("audio", 0)) > 0
             assert len(streams.get("video", 0)) > 0

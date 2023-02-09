@@ -32,7 +32,6 @@ def test_webfile_downloader():
 
     modality_paths = webfile_downloader(MP4_URL)
 
-    assert error_message is None
     with open(modality_paths["video"], "rb") as f:
         assert len(f.read()) > 0
     os.remove(modality_paths["video"])
