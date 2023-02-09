@@ -54,7 +54,7 @@ def test_writer(modalities, writer_type, tmp_path):
     n_samples = 1
 
     writer = writer_class(0, output_folder, True, 5, schema, encode_formats)
-    i = 0 # TODO: maybe add more samples
+    i = 0  # TODO: maybe add more samples
     writer.write(
         streams=streams,
         key=str(i),
@@ -109,13 +109,13 @@ def test_writer(modalities, writer_type, tmp_path):
         assert len(l) == 1
         if l[0] != output_folder + "/00000.tar":
             raise Exception(l[0] + " is not 00000.tar")
-        assert len(tarfile.open(output_folder + "/00000.tar").getnames()) == n_files 
+        assert len(tarfile.open(output_folder + "/00000.tar").getnames()) == n_files
     elif writer_type == "parquet":
         l = glob.glob(output_folder + "/*.parquet")
         assert len(l) == 1
         if l[0] != output_folder + "/00000.parquet":
             raise Exception(l[0] + " is not 00000.parquet")
-        assert len(df.index) == n_samples 
+        assert len(df.index) == n_samples
     elif writer_type == "dummy":
         l = glob.glob(output_folder + "/*")
         assert len(l) == 0
