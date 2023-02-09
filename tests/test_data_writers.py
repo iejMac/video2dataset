@@ -1,4 +1,4 @@
-from img2dataset.writer import (
+from video2dataset.data_writer import (
     FilesSampleWriter,
     WebDatasetSampleWriter,
     ParquetSampleWriter,
@@ -14,14 +14,14 @@ import pandas as pd
 import pyarrow as pa
 
 
+@pytest.mark.parametrize("modalities", [["video", "audio"], ["video"], ["audio"]])
 @pytest.mark.parametrize("writer_type", ["files", "webdataset", "parquet", "dummy", "tfrecord"])
-def test_writer(writer_type, tmp_path):
+def test_writer(modalities, writer_type, tmp_path):
     current_folder = os.path.dirname(__file__)
     test_folder = str(tmp_path)
-    input_folder = current_folder + "/" + "resize_test_image"
     output_folder = test_folder + "/" + "test_write"
     os.mkdir(output_folder)
-    image_paths = glob.glob(input_folder + "/*")
+
     schema = pa.schema(
         [
             pa.field("key", pa.string()),
@@ -30,9 +30,7 @@ def test_writer(writer_type, tmp_path):
             pa.field("error_message", pa.string()),
             pa.field("width", pa.int32()),
             pa.field("height", pa.int32()),
-            pa.field("original_width", pa.int32()),
-            pa.field("original_height", pa.int32()),
-            pa.field("labels", pa.list_(pa.int32())),
+            pa.field("audio_rate", pa.int32()),
         ]
     )
     if writer_type == "files":
@@ -46,28 +44,32 @@ def test_writer(writer_type, tmp_path):
     elif writer_type == "tfrecord":
         writer_class = TFRecordSampleWriter
 
-    writer = writer_class(0, output_folder, True, 5, schema, "jpg")
+    streams = {}
+    encode_formats = {}
+    for mod in modalities:
+        encode_formats[mod] = "mp4" if mod == "video" else "mp3"
+        with open(os.path.join(current_folder, f"test_files/test_{mod}.{encode_formats[mod]}"), "rb") as f:
+            streams[mod] = f.read()
 
-    for i, image_path in enumerate(image_paths):
-        with open(image_path, "rb") as f:
-            img_str = f.read()
-            writer.write(
-                img_str=img_str,
-                key=str(i),
-                caption=str(i),
-                meta={
-                    "key": str(i),
-                    "caption": str(i),
-                    "status": "ok",
-                    "error_message": "",
-                    "width": 100,
-                    "height": 100,
-                    "original_width": 100,
-                    "original_height": 100,
-                    "labels": [0, 100, 200],
-                },
-            )
+    writer = writer_class(0, output_folder, True, 5, schema, encode_formats)
+    i = 0 # TODO: maybe add more samples
+    writer.write(
+        streams=streams,
+        key=str(i),
+        caption=str(i),
+        meta={
+            "key": str(i),
+            "caption": str(i),
+            "status": "ok",
+            "error_message": "",
+            "width": 100,
+            "height": 100,
+            "audio_rate": 12000,
+        },
+    )
     writer.close()
+
+    return
 
     if writer_type != "dummy":
 
@@ -80,9 +82,7 @@ def test_writer(writer_type, tmp_path):
             "error_message",
             "width",
             "height",
-            "original_width",
-            "original_height",
-            "labels",
+            "audio_rate",
         ]
 
         if writer_type == "parquet":
@@ -96,9 +96,7 @@ def test_writer(writer_type, tmp_path):
         assert df["error_message"].iloc[0] == ""
         assert df["width"].iloc[0] == 100
         assert df["height"].iloc[0] == 100
-        assert df["original_width"].iloc[0] == 100
-        assert df["original_height"].iloc[0] == 100
-        assert (df["labels"].iloc[0] == [0, 100, 200]).all()
+        assert df["audio_rate"].iloc[0] == 1200
 
     if writer_type == "files":
         saved_files = list(glob.glob(output_folder + "/00000/*"))

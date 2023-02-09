@@ -58,7 +58,8 @@ class ParquetSampleWriter:
 
     def __init__(self, shard_id, output_folder, save_caption, oom_shard_count, schema, encode_formats):
         self.oom_shard_count = oom_shard_count
-        schema = schema.append(pa.field(encode_formats, pa.binary()))
+        for modality, fmt in encode_formats.items():
+            schema = schema.append(pa.field(fmt, pa.binary()))
         shard_name = "{shard_id:0{oom_shard_count}d}".format(  # pylint: disable=consider-using-f-string
             shard_id=shard_id, oom_shard_count=oom_shard_count
         )
@@ -69,18 +70,17 @@ class ParquetSampleWriter:
 
     def write(self, streams, key, caption, meta):
         """Keep sample in memory then write to disk when close() is called"""
+        sample = {}
         for format_type in self.encode_formats.keys():
             stream = streams.get(format_type, None)
-            if stream is not None:
-                sample = {"key": key, self.encode_formats[format_type]: stream}
-                if self.save_caption:
-                    sample["txt"] = str(caption) if caption is not None else ""
-            else:
-                sample = {"key": key, self.encode_formats[format_type]: None}
-                if self.save_caption:
-                    sample["txt"] = None
-            sample.update(meta)
-            self.buffered_parquet_writer.write(sample)
+            sample[self.encode_formats[format_type]] = stream
+
+        sample["key"] = key
+        if self.save_caption:
+            sample["txt"] = str(caption) if caption is not None else ""
+        sample.update(meta)
+
+        self.buffered_parquet_writer.write(sample)
 
     def close(self):
         self.buffered_parquet_writer.close()

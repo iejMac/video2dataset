@@ -6,3 +6,4 @@ pytest-xdist==2.5.0
 pytest==7.0.1
 types-requests
 webvtt-py
+tensorflow_io
