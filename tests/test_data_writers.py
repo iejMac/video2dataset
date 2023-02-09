@@ -69,8 +69,6 @@ def test_writer(modalities, writer_type, tmp_path):
     )
     writer.close()
 
-    return
-
     if writer_type != "dummy":
 
         df = pd.read_parquet(output_folder + "/00000.parquet")
@@ -86,7 +84,8 @@ def test_writer(modalities, writer_type, tmp_path):
         ]
 
         if writer_type == "parquet":
-            expected_columns.append("jpg")
+            for fmt in encode_formats.values():
+                expected_columns.append(fmt)
 
         assert df.columns.tolist() == expected_columns
 
@@ -96,7 +95,9 @@ def test_writer(modalities, writer_type, tmp_path):
         assert df["error_message"].iloc[0] == ""
         assert df["width"].iloc[0] == 100
         assert df["height"].iloc[0] == 100
-        assert df["audio_rate"].iloc[0] == 1200
+        assert df["audio_rate"].iloc[0] == 12000
+
+    return
 
     if writer_type == "files":
         saved_files = list(glob.glob(output_folder + "/00000/*"))
