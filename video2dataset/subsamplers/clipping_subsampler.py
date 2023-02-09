@@ -28,10 +28,11 @@ class ClippingSubsampler:
     - time to be in the format "%H:%M:%S.%f", or a number representing the second of the timestamp
     """
 
-    def __init__(self, oom_clip_count):
+    def __init__(self, oom_clip_count, encode_formats):
         self.oom_clip_count = oom_clip_count
+        self.encode_formats = encode_formats
 
-    def __call__(self, streams, metadata, encode_formats):
+    def __call__(self, streams, metadata):
         clips = metadata.pop("clips")
 
         ind = 2
@@ -63,7 +64,7 @@ class ClippingSubsampler:
             stream_bytes = streams[k]
             if stream_bytes is None:
                 continue
-            encode_format = encode_formats[k]
+            encode_format = self.encode_formats[k]
 
             with tempfile.TemporaryDirectory() as tmpdir:
                 # TODO: we need to put the extension into the metadata

@@ -9,11 +9,12 @@ import fsspec
 
 from multiprocessing.pool import ThreadPool
 from threading import Semaphore
+from typing import List, Any
 
 from video2dataset.data_reader import VideoDataReader
 from .logger import CappedCounter
 from .logger import write_stats
-from .subsamplers import ClippingSubsampler, FrameSubsampler, NoOpSubsampler, ResolutionSubsampler
+from .subsamplers import ClippingSubsampler, FrameSubsampler, NoOpSubsampler, ResolutionSubsampler, AudioRateSubsampler
 
 
 def compute_key(key, shard_id, oom_sample_per_shard, oom_shard_count):
@@ -41,6 +42,7 @@ class Worker:
         video_size,
         resize_mode,
         video_fps,
+        audio_sampling_rate,
         tmp_dir,
         yt_metadata_args,
         encode_formats,
@@ -58,10 +60,20 @@ class Worker:
 
         self.data_reader = VideoDataReader(video_size, timeout, tmp_dir, yt_metadata_args, encode_formats)
 
-        self.clipping_subsampler = ClippingSubsampler(oom_clip_count)
+        self.clipping_subsampler = ClippingSubsampler(oom_clip_count, encode_formats)
         self.noop_subsampler = NoOpSubsampler()
-        self.resolution_subsampler = ResolutionSubsampler(video_size, resize_mode) if resize_mode is not None else None
-        self.frame_subsampler = FrameSubsampler(video_fps) if video_fps > 0 else None
+
+        video_subsamplers: List[Any] = []
+        if resize_mode is not None:
+            video_subsamplers.append(ResolutionSubsampler(video_size, resize_mode))
+        if video_fps > 0:
+            video_subsamplers.append(FrameSubsampler(video_fps))
+
+        audio_subsamplers: List[Any] = []
+        if audio_sampling_rate > 0:
+            audio_subsamplers.append(AudioRateSubsampler(audio_sampling_rate, encode_formats))
+
+        self.subsamplers = {"video": video_subsamplers, "audio": audio_subsamplers}
 
     def __call__(
         self,
@@ -156,7 +168,7 @@ class Worker:
                         status_dict.increment(error_message)
                         meta["status"] = status
                         sample_writer.write(
-                            None,
+                            {},
                             str_key,
                             sample_data[caption_indice] if caption_indice is not None else None,
                             meta,
@@ -164,28 +176,21 @@ class Worker:
                         semaphore.release()
                         continue
 
-                    if self.encode_formats.get("video", None):
-                        bytes_downloaded += len(streams["video"])
-                    else:
-                        bytes_downloaded += len(streams["audio"])
+                    for stream in streams.values():
+                        bytes_downloaded += len(stream)
 
                     metas = [meta]
 
-                    if "clips" in self.column_list:  # Clipping
-                        subsampled_streams, metas, error_message = self.clipping_subsampler(
-                            streams, meta, self.encode_formats
-                        )
-                    else:
-                        subsampled_streams, metas, error_message = self.noop_subsampler(streams, meta)
+                    # 1 video -> many videos (either clipping or noop which does identity broadcasting)
+                    broadcast_subsampler = (
+                        self.clipping_subsampler if "clips" in self.column_list else self.noop_subsampler
+                    )
+                    subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
 
-                    if streams.get("video", None):
-
-                        if self.frame_subsampler is not None:
-                            subsampled_videos, error_message = self.frame_subsampler(subsampled_streams["video"])
-                            subsampled_streams["video"] = subsampled_videos
-                        if self.resolution_subsampler is not None:  # Resolution subsampling
-                            subsampled_videos, error_message = self.resolution_subsampler(subsampled_streams["video"])
-                            subsampled_streams["video"] = subsampled_videos
+                    for modality in subsampled_streams:
+                        for modality_subsampler in self.subsamplers[modality]:
+                            subsampled_modality, error_message = modality_subsampler(subsampled_streams[modality])
+                            subsampled_streams[modality] = subsampled_modality
 
                     if error_message is not None:
                         failed_to_subsample += 1
@@ -195,11 +200,10 @@ class Worker:
                         meta["clips"] = []
                         meta["error_message"] = error_message
                         sample_writer.write(
-                            None,
+                            {},
                             str_key,
                             sample_data[caption_indice] if caption_indice is not None else None,
                             meta,
-                            format_type="video" if self.encode_formats.get("video", None) else "audio",
                         )
                         semaphore.release()
                         continue
