@@ -129,7 +129,7 @@ class Worker:
         def read_data(data):
             try:
                 return self.data_reader(data) + (None,)
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-except
                 return data[0], None, None, str(e)
 
         with ThreadPool(self.thread_count) as thread_pool:
