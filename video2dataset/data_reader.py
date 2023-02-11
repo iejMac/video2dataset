@@ -160,7 +160,7 @@ class YtDlpDownloader:
 
         # format_string = f"bv*[height<={self.video_size}][ext=mp4]/b[height<={self.video_size}][ext=mp4] / wv/w[ext=mp4]"
         format_string = f"wv*[height>={self.video_size}][ext=mp4]/w[height>={self.video_size}][ext=mp4] / bv/b[ext=mp4]"
-        audio_fmt_string = "ba[ext=m4a]"
+        audio_fmt_string = "wa[asr>=12000][ext=m4a] / ba[ext=m4a]"
         if self.encode_formats.get("audio", None):
             audio_path_m4a = f"{self.tmp_dir}/{str(uuid.uuid4())}.m4a"
             ydl_opts = {
