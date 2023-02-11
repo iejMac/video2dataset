@@ -149,18 +149,22 @@ class YtDlpDownloader:
     """Downloader class for yt-dlp links"""
 
     # TODO: maybe we just include height and width in the metadata_args
-    def __init__(self, tmp_dir, metadata_args, video_size, encode_formats):
+    def __init__(self, tmp_dir, metadata_args, video_size, audio_rate, encode_formats):
         self.tmp_dir = tmp_dir
         self.metadata_args = metadata_args
         self.video_size = video_size
+        self.audio_rate = audio_rate
         self.encode_formats = encode_formats
 
     def __call__(self, url):
         modality_paths = {}
 
-        # format_string = f"bv*[height<={self.video_size}][ext=mp4]/b[height<={self.video_size}][ext=mp4] / wv/w[ext=mp4]"
-        format_string = f"wv*[height>={self.video_size}][ext=mp4]/w[height>={self.video_size}][ext=mp4] / bv/b[ext=mp4]"
-        audio_fmt_string = "ba[ext=m4a]"
+        # video_format_string = f"bv*[height<={self.video_size}][ext=mp4]/b[height<={self.video_size}][ext=mp4] / wv/w[ext=mp4]"
+        video_format_string = (
+            f"wv*[height>={self.video_size}][ext=mp4]/w[height>={self.video_size}][ext=mp4] / bv/b[ext=mp4]"
+        )
+        audio_fmt_string = f"wa[asr>={self.audio_rate}][ext=m4a] / ba[ext=m4a]"
+
         if self.encode_formats.get("audio", None):
             audio_path_m4a = f"{self.tmp_dir}/{str(uuid.uuid4())}.m4a"
             ydl_opts = {
@@ -182,7 +186,7 @@ class YtDlpDownloader:
             modality_paths["video"] = video_path
             ydl_opts = {
                 "outtmpl": video_path,
-                "format": format_string,
+                "format": video_format_string,
                 "quiet": True,
             }
 
@@ -199,9 +203,9 @@ class YtDlpDownloader:
 class VideoDataReader:
     """Video data reader provide data for a video"""
 
-    def __init__(self, video_size, dl_timeout, tmp_dir, yt_meta_args, encode_formats) -> None:
+    def __init__(self, video_size, audio_rate, dl_timeout, tmp_dir, yt_meta_args, encode_formats) -> None:
         self.webfile_downloader = WebFileDownloader(dl_timeout, tmp_dir, encode_formats)
-        self.yt_downloader = YtDlpDownloader(tmp_dir, yt_meta_args, video_size, encode_formats)
+        self.yt_downloader = YtDlpDownloader(tmp_dir, yt_meta_args, video_size, audio_rate, encode_formats)
 
     def __call__(self, row):
         key, url = row

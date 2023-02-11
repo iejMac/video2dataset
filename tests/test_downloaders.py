@@ -19,7 +19,7 @@ def test_yt_downloader(modalities, video_size):
     encode_formats = dict([(modality, full_encode_formats[modality]) for modality in modalities])
 
     ytdlp_downloader = YtDlpDownloader(
-        tmp_dir="/tmp", metadata_args=None, video_size=video_size, encode_formats=encode_formats
+        tmp_dir="/tmp", metadata_args=None, video_size=video_size, audio_rate=12000, encode_formats=encode_formats
     )
 
     modality_paths, yt_meta_dict, error_message = ytdlp_downloader(YT_URL)
