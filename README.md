@@ -71,7 +71,7 @@ This module exposes a single function `download` which takes the same arguments 
 * **url_list** A file with the list of url of images to download. It can be a folder of such files. (*required*)
 * **output_folder** The path to the output folder. (default *"images"*)
 * **processes_count** The number of processes used for downloading the pictures. This is important to be high for performance. (default *1*)
-* **encode_formats** Dict of modality, format pairs specifying what each modality should be saved as(default *{"video": "mp4"}*)
+* **encode_formats** Dict of (modality, format) pairs specifying what file format each modality should be saved as. This determines which modalities will be written in the output dataset f.e. if we only specify audio only audio wil be saved (default *{"video": "mp4"}*)
 * **output_format** decides how to save pictures (default *files*)
   * **files** saves as a set of subfolder containing pictures
   * **webdataset** saves as tars containing pictures
@@ -109,129 +109,9 @@ This module exposes a single function `download` which takes the same arguments 
 * **yt_metadata_args** dict of YouTube metadata arguments (default *None*, more info below)
 
 
-### Download YouTube metadata & subtitles:
-#### Usage
+## Downloading YouTube Metadata
 
-**Note.** Requires webvtt installed for subtitles formatting: `pip install webvtt-py`.
-
-```py
-if __name__ == '__main__':
-
-    yt_metadata_args = {
-        'writesubtitles': True, # whether to write subtitles to a file
-        'subtitleslangs': ['en'], # languages of subtitles (right now support only one language)
-        'writeautomaticsub': True, # whether to write automatic subtitles
-        'get_info': True # whether to save a video meta data into the output JSON file
-    }
-
-    video2dataset(
-        url_list='test.parquet',
-        input_format='parquet',
-        output_format='files',
-        output_folder='audio',
-        yt_metadata_args=yt_metadata_args
-    )
-```
-
-#### Output
-For every sample save the info dict into an output file:
-
-```json
-{
-    "url": "https://www.youtube.com/watch?v=q2ZOEFAaaI0",
-    "key": "000000000",
-    "status": "success",
-    "error_message": null,
-    "info": {
-        "id": "q2ZOEFAaaI0",
-        "title": "Q-learning with numpy and OpenAI Taxi-v2 \ud83d\ude95 (tutorial)",
-        "thumbnail": "https://i.ytimg.com/vi_webp/q2ZOEFAaaI0/maxresdefault.webp",
-        "description": "We'll train an Q-learning agent with Numpy that learns to play Taxi-v2. Where he must take a passenger at one location and drop him off at another as fast as possible. \ud83d\ude95\n\nThis video is part of the Deep Reinforcement Learning course with tensorflow \ud83d\udd79\ufe0f a free series of blog posts and videos \ud83c\udd95 about Deep Reinforcement Learning, where we'll learn the main algorithms, and how to implement them with Tensorflow : https://simoninithomas.github.io/Deep_reinforcement_learning_Course/\n\nIf you're new in Reinforcement Learning, please read first my article \"An introduction to Reinforcement Learning\": https://medium.freecodecamp.org/an-introduction-to-reinforcement-learning-4339519de419\n\nThe Q-learning article: https://medium.freecodecamp.org/diving-deeper-into-reinforcement-learning-with-q-learning-c18d0db58efe\n\nThe Q-learning notebook: https://github.com/simoninithomas/Deep_reinforcement_learning_Course/blob/master/Q%20learning/Taxi-v2/Q%20Learning%20with%20OpenAI%20Taxi-v2%20video%20version.ipynb\n\nThis is my first video so if you have some feedbacks and advice please comment below.\n\nMoreover if you have some questions you can ask me in the comments.\n\nDon't forget to subscribe ! And to follow me on social media:\nTwitter: https://twitter.com/ThomasSimonini\nFacebook: https://www.facebook.com/thomas.simonini.3\n\nKeep learning, stay awesome!",
-        "uploader": "Thomas Simonini",
-        "uploader_id": "UC8XuSf1eD9AF8x8J19ha5og",
-        "uploader_url": "http://www.youtube.com/channel/UC8XuSf1eD9AF8x8J19ha5og",
-        "channel_id": "UC8XuSf1eD9AF8x8J19ha5og",
-        "channel_url": "https://www.youtube.com/channel/UC8XuSf1eD9AF8x8J19ha5og",
-        "duration": 776,
-        "view_count": 44988,
-        "average_rating": null,
-        "age_limit": 0,
-        "webpage_url": "https://www.youtube.com/watch?v=q2ZOEFAaaI0",
-        "categories": [
-            "Education"
-        ],
-        "tags": [
-            "AI",
-            "Q-learning",
-            "tutorial",
-            "numpy",
-            "reinforcement-learning",
-            "programming",
-            "openai",
-            "deep-learning",
-            "Machine-learning"
-        ],
-        "playable_in_embed": true,
-        "live_status": null,
-        "release_timestamp": null,
-        "comment_count": 126,
-        "chapters": [
-            ...
-        ],
-       ...
-    }
-}
-```
-
-And subtitles:
-```json
-"subtitles": [
-            {
-                "start": "00:00:02.389",
-                "end": "00:00:02.399",
-                "lines": [
-                    "hello and welcome if you want to study"
-                ]
-            },
-            {
-                "start": "00:00:04.280",
-                "end": "00:00:04.290",
-                "lines": [
-                    "different phasma learning don't go"
-                ]
-            },
-            ...
-]
-```
-
-## Select formats for video/audio
-
-You can select formats for bothvideo and audio by passing dict with keys `audio` and `video` and formats as values (default: `{"video":"mp4"}`).
-For audio you can specify `mp3`, `flac`, `wav` etc. Example:
-```py
-video2dataset(
-        url_list="test.parquet",
-        input_format="parquet",
-        output_format="files",
-        url_col="contentUrl",
-        caption_col="name",
-        output_folder="test",
-        encode_formats={"video":"mp4", "audio": "mp3"},
-    )
-```
-
-If you want on;y audio or only video you just omit a key (`audio` or `video`) of format you don't want. Example (downloading audio in `wav` format):
-```py
-video2dataset(
-        url_list="test.parquet",
-        input_format="parquet",
-        output_format="files",
-        url_col="contentUrl",
-        caption_col="name",
-        output_folder="test",
-        encode_formats={"audio": "wav"},
-    )
-```
+If we want to download a large amount of YouTube videos with video2dataset we can specify some parameters and also extract useful metadata as well. For directions on how to do so please see this [example](https://github.com/iejMac/video2dataset/blob/main/examples/yt_metadata.md).
 
 ## Incremental mode
 
