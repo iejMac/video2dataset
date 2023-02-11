@@ -42,7 +42,7 @@ class Worker:
         video_size,
         resize_mode,
         video_fps,
-        audio_sampling_rate,
+        audio_rate,
         tmp_dir,
         yt_metadata_args,
         encode_formats,
@@ -58,7 +58,7 @@ class Worker:
 
         self.encode_formats = encode_formats
 
-        self.data_reader = VideoDataReader(video_size, timeout, tmp_dir, yt_metadata_args, encode_formats)
+        self.data_reader = VideoDataReader(video_size, audio_rate, timeout, tmp_dir, yt_metadata_args, encode_formats)
 
         self.clipping_subsampler = ClippingSubsampler(oom_clip_count, encode_formats)
         self.noop_subsampler = NoOpSubsampler()
@@ -70,8 +70,8 @@ class Worker:
             video_subsamplers.append(FrameSubsampler(video_fps))
 
         audio_subsamplers: List[Any] = []
-        if audio_sampling_rate > 0:
-            audio_subsamplers.append(AudioRateSubsampler(audio_sampling_rate, encode_formats))
+        if audio_rate > 0:
+            audio_subsamplers.append(AudioRateSubsampler(audio_rate, encode_formats))
 
         self.subsamplers = {"video": video_subsamplers, "audio": audio_subsamplers}
 
