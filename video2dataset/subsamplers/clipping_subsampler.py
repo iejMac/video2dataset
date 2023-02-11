@@ -4,6 +4,7 @@ clipping subsampler turns full videos into clips of videos according to clip_col
 TODO: implement subtitle splitting (can be done just by indexing subtitle dict during clipping
 """
 import os
+import copy
 import glob
 import ffmpeg
 import tempfile
@@ -106,13 +107,12 @@ class ClippingSubsampler:
                     clip_key = "{clip_id:0{oom_clip_count}d}".format(  # pylint: disable=consider-using-f-string
                         clip_id=clip_id, oom_clip_count=self.oom_clip_count
                     )
-                    meta_clip = metadata.copy()
+                    meta_clip = copy.deepcopy(metadata)
                     # set the timeframe of this clip
                     meta_clip["clips"] = [clip_span]
                     meta_clip["key"] = f"{meta_clip['key']}_{clip_key}"
                     if lines is not None:
                       meta_clip["yt_meta_dict"]["subtitles"] = lines[i]
-                    print(meta_clip)
                     metadata_clips.append(meta_clip)
 
                 streams_clips[k] = stream_clips

@@ -214,13 +214,12 @@ class Worker:
                     subsampled_streams_list = [
                         dict(zip(subsampled_streams, s)) for s in zip(*subsampled_streams.values())
                     ]
+
                     for subsampled_streams, meta in zip(subsampled_streams_list, metas):
                         meta["status"] = status
 
                         text_caption = sample_data[caption_indice] if caption_indice is not None else None,
                         if self.captions_are_subtitles:
-                            if "subtitles" not in meta["yt_meta_dict"]:
-                                print(meta)
                             text_caption = meta["yt_meta_dict"].pop("subtitles")
 
                         sample_writer.write(
