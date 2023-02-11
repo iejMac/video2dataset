@@ -71,7 +71,7 @@ This module exposes a single function `download` which takes the same arguments 
 * **url_list** A file with the list of url of images to download. It can be a folder of such files. (*required*)
 * **output_folder** The path to the output folder. (default *"images"*)
 * **processes_count** The number of processes used for downloading the pictures. This is important to be high for performance. (default *1*)
-* **encode_format** encode format (default *mp4*)
+* **encode_formats** Dict of modality, format pairs specifying what each modality should be saved as(default *{"video": "mp4"}*)
 * **output_format** decides how to save pictures (default *files*)
   * **files** saves as a set of subfolder containing pictures
   * **webdataset** saves as tars containing pictures
