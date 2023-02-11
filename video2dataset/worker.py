@@ -9,11 +9,12 @@ import fsspec
 
 from multiprocessing.pool import ThreadPool
 from threading import Semaphore
+from typing import List, Any
 
 from video2dataset.data_reader import VideoDataReader
 from .logger import CappedCounter
 from .logger import write_stats
-from .subsamplers import ClippingSubsampler, FrameSubsampler, NoOpSubsampler, ResolutionSubsampler
+from .subsamplers import ClippingSubsampler, FrameSubsampler, NoOpSubsampler, ResolutionSubsampler, AudioRateSubsampler
 
 
 def compute_key(key, shard_id, oom_sample_per_shard, oom_shard_count):
@@ -38,13 +39,14 @@ class Worker:
         timeout,
         number_sample_per_shard,
         oom_shard_count,
-        encode_format,
         video_size,
         resize_mode,
         video_fps,
+        audio_rate,
         tmp_dir,
         yt_metadata_args,
         captions_are_subtitles,
+        encode_formats,
         oom_clip_count=5,
     ) -> None:
         self.sample_writer_class = sample_writer_class
@@ -53,16 +55,27 @@ class Worker:
         self.column_list = column_list
         self.number_sample_per_shard = number_sample_per_shard
         self.oom_shard_count = oom_shard_count
-        self.encode_format = encode_format
         self.thread_count = thread_count
         self.captions_are_subtitles = captions_are_subtitles
 
-        self.data_reader = VideoDataReader(video_size, timeout, tmp_dir, yt_metadata_args)
+        self.encode_formats = encode_formats
 
-        self.clipping_subsampler = ClippingSubsampler(oom_clip_count)
+        self.data_reader = VideoDataReader(video_size, audio_rate, timeout, tmp_dir, yt_metadata_args, encode_formats)
+
+        self.clipping_subsampler = ClippingSubsampler(oom_clip_count, encode_formats)
         self.noop_subsampler = NoOpSubsampler()
-        self.resolution_subsampler = ResolutionSubsampler(video_size, resize_mode) if resize_mode is not None else None
-        self.frame_subsampler = FrameSubsampler(video_fps) if video_fps > 0 else None
+
+        video_subsamplers: List[Any] = []
+        if resize_mode is not None:
+            video_subsamplers.append(ResolutionSubsampler(video_size, resize_mode))
+        if video_fps > 0:
+            video_subsamplers.append(FrameSubsampler(video_fps))
+
+        audio_subsamplers: List[Any] = []
+        if audio_rate > 0:
+            audio_subsamplers.append(AudioRateSubsampler(audio_rate, encode_formats))
+
+        self.subsamplers = {"video": video_subsamplers, "audio": audio_subsamplers}
 
     def __call__(
         self,
@@ -122,17 +135,12 @@ class Worker:
 
         # give schema to writer
         sample_writer = self.sample_writer_class(
-            shard_id,
-            self.output_folder,
-            self.save_caption,
-            self.oom_shard_count,
-            schema,
-            self.encode_format,
+            shard_id, self.output_folder, self.save_caption, self.oom_shard_count, schema, self.encode_formats
         )
         oom_sample_per_shard = math.ceil(math.log10(self.number_sample_per_shard))
 
         with ThreadPool(self.thread_count) as thread_pool:
-            for key, vid_stream, yt_meta_dict, error_message in thread_pool.imap_unordered(
+            for key, streams, yt_meta_dict, error_message in thread_pool.imap_unordered(
                 self.data_reader,  # pylint: disable=(unnecessary-lambda)
                 loader,
             ):
@@ -155,7 +163,7 @@ class Worker:
                         status_dict.increment(error_message)
                         meta["status"] = status
                         sample_writer.write(
-                            None,
+                            {},
                             str_key,
                             sample_data[caption_indice] if caption_indice is not None else None,
                             meta,
@@ -163,24 +171,26 @@ class Worker:
                         semaphore.release()
                         continue
 
-                    bytes_downloaded += len(vid_stream)
+                    for stream in streams.values():
+                        bytes_downloaded += len(stream)
+
+                    metas = [meta]
 
                     if self.captions_are_subtitles: # create clips
                         subtitles = meta["yt_meta_dict"]["subtitles"]
                         meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
                         meta["lines"] = [" ".join(line_dict["lines"]) for line_dict in subtitles]
 
-                    if "clips" in self.column_list or self.captions_are_subtitles:  # Clipping
-                        subsampled_videos, metas, error_message = self.clipping_subsampler(vid_stream, meta)
-                    else:
-                        subsampled_videos, metas, error_message = self.noop_subsampler(vid_stream, meta)
+                    # 1 video -> many videos (either clipping or noop which does identity broadcasting)
+                    broadcast_subsampler = (
+                        self.clipping_subsampler if ("clips" in self.column_list or self.captions_are_subtitles) else self.noop_subsampler
+                    )
+                    subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
 
-                    '''
-                    if self.frame_subsampler is not None:
-                        subsampled_videos, error_message = self.frame_subsampler(subsampled_videos)
-                    if self.resolution_subsampler is not None:  # Resolution subsampling
-                        subsampled_videos, error_message = self.resolution_subsampler(subsampled_videos)
-                    '''
+                    for modality in subsampled_streams:
+                        for modality_subsampler in self.subsamplers[modality]:
+                            subsampled_modality, error_message = modality_subsampler(subsampled_streams[modality])
+                            subsampled_streams[modality] = subsampled_modality
 
                     if error_message is not None:
                         failed_to_subsample += 1
@@ -190,7 +200,7 @@ class Worker:
                         meta["clips"] = []
                         meta["error_message"] = error_message
                         sample_writer.write(
-                            None,
+                            {},
                             str_key,
                             sample_data[caption_indice] if caption_indice is not None else None,
                             meta,
@@ -201,7 +211,10 @@ class Worker:
                     successes += 1
                     status = "success"
                     status_dict.increment(status)
-                    for subsampled_video, meta in zip(subsampled_videos, metas):
+                    subsampled_streams_list = [
+                        dict(zip(subsampled_streams, s)) for s in zip(*subsampled_streams.values())
+                    ]
+                    for subsampled_streams, meta in zip(subsampled_streams_list, metas):
                         meta["status"] = status
 
                         text_caption = sample_data[caption_indice] if caption_indice is not None else None,
@@ -211,7 +224,7 @@ class Worker:
                             text_caption = meta["yt_meta_dict"].pop("subtitles")
 
                         sample_writer.write(
-                            subsampled_video,
+                            subsampled_streams,
                             meta["key"],
                             text_caption,
                             meta,
