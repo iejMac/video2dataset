@@ -43,7 +43,7 @@ def video2dataset(
     video_size: int = 360,
     video_fps: int = -1,
     resize_mode: Optional[List[str]] = None,
-    audio_rate: int = -1,
+    audio_rate: int = 12000, 
     timeout: int = 60,
     tmp_dir: str = "/tmp",
     yt_metadata_args: dict = None,
