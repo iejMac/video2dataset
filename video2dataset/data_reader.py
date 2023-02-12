@@ -163,7 +163,8 @@ class YtDlpDownloader:
         video_format_string = (
             f"wv*[height>={self.video_size}][ext=mp4]/w[height>={self.video_size}][ext=mp4] / bv/b[ext=mp4]"
         )
-        audio_fmt_string = f"wa[asr>={self.audio_rate}][ext=m4a] / ba[ext=m4a]"
+        # audio_fmt_string = f"wa[asr>={self.audio_rate}][ext=m4a] / ba[ext=m4a]"
+        audio_fmt_string = "ba[ext=m4a]"
 
         if self.encode_formats.get("audio", None):
             audio_path_m4a = f"{self.tmp_dir}/{str(uuid.uuid4())}.m4a"
@@ -196,7 +197,7 @@ class YtDlpDownloader:
         if self.metadata_args:
             yt_meta_dict = get_yt_meta(url, self.metadata_args)
         else:
-            yt_meta_dict = None, None
+            yt_meta_dict = {}
         return modality_paths, yt_meta_dict, None
 
 
