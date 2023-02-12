@@ -97,6 +97,7 @@ This module exposes a single function `download` which takes the same arguments 
   * **crop** center crop to video_size x video_size
   * **pad** center pad to video_size x video_size
 * **video_fps** what FPS to resample the video to. If < 0 then video FPS remains unchanged (default *-1*)
+* **audio_rate** audio sampling rate, by default (-1) it is left unchanged from the downloaded video (default *-1*)
 * **enable_wandb** whether to enable wandb logging (default *False*)
 * **wandb_project** name of W&B project used (default *video2dataset*)
 * **oom_shard_count** the order of magnitude of the number of shards, used only to decide what zero padding to use to name the shard files (default *5*)
