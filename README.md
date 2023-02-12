@@ -154,7 +154,8 @@ video2dataset supports several distributors.
 
 multiprocessing is a good option for downloading on one machine, and as such it is the default.
 Pyspark lets video2dataset use many nodes, which makes it as fast as the number of machines.
-It can be particularly useful if downloading datasets with more than a billion image.
+It can be particularly useful if downloading datasets with more than a billion image. Here's an [example](https://github.com/iejMac/video2dataset/blob/main/examples/distributed_spark.md)
+for how we used pyspark distributed mode to download 40M videos with metadata.
 
 ### pyspark configuration
 
