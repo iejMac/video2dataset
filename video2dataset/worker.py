@@ -72,10 +72,9 @@ class Worker:
             video_subsamplers.append(FrameSubsampler(video_fps))
 
         audio_subsamplers: List[Any] = []
-        if audio_rate > 0:
-            pass
-            # TODO: fix audio subsampler, currently broken
-            # audio_subsamplers.append(AudioRateSubsampler(audio_rate, encode_formats))
+        # TODO: fix audio subsampler, currently broken
+        if audio_rate < 0:
+            audio_subsamplers.append(AudioRateSubsampler(audio_rate, encode_formats))
 
         self.subsamplers = {"video": video_subsamplers, "audio": audio_subsamplers}
 
