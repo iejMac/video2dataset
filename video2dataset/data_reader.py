@@ -196,7 +196,7 @@ class YtDlpDownloader:
         if self.metadata_args:
             yt_meta_dict = get_yt_meta(url, self.metadata_args)
         else:
-            yt_meta_dict = None, None
+            yt_meta_dict = {}
         return modality_paths, yt_meta_dict, None
 
 

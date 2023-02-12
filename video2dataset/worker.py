@@ -45,6 +45,7 @@ class Worker:
         audio_rate,
         tmp_dir,
         yt_metadata_args,
+        captions_are_subtitles,
         encode_formats,
         oom_clip_count=5,
     ) -> None:
@@ -55,6 +56,7 @@ class Worker:
         self.number_sample_per_shard = number_sample_per_shard
         self.oom_shard_count = oom_shard_count
         self.thread_count = thread_count
+        self.captions_are_subtitles = captions_are_subtitles
 
         self.encode_formats = encode_formats
 
@@ -70,7 +72,8 @@ class Worker:
             video_subsamplers.append(FrameSubsampler(video_fps))
 
         audio_subsamplers: List[Any] = []
-        if audio_rate > 0:
+        # TODO: fix audio subsampler, currently broken
+        if audio_rate < 0:
             audio_subsamplers.append(AudioRateSubsampler(audio_rate, encode_formats))
 
         self.subsamplers = {"video": video_subsamplers, "audio": audio_subsamplers}
@@ -174,9 +177,16 @@ class Worker:
 
                     metas = [meta]
 
+                    if self.captions_are_subtitles:  # create clips
+                        subtitles = meta["yt_meta_dict"]["subtitles"]
+                        meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
+                        meta["lines"] = [" ".join(line_dict["lines"]) for line_dict in subtitles]
+
                     # 1 video -> many videos (either clipping or noop which does identity broadcasting)
                     broadcast_subsampler = (
-                        self.clipping_subsampler if "clips" in self.column_list else self.noop_subsampler
+                        self.clipping_subsampler
+                        if ("clips" in self.column_list or self.captions_are_subtitles)
+                        else self.noop_subsampler
                     )
                     subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
 
@@ -207,12 +217,18 @@ class Worker:
                     subsampled_streams_list = [
                         dict(zip(subsampled_streams, s)) for s in zip(*subsampled_streams.values())
                     ]
+
                     for subsampled_streams, meta in zip(subsampled_streams_list, metas):
                         meta["status"] = status
+
+                        text_caption = (sample_data[caption_indice] if caption_indice is not None else None,)
+                        if self.captions_are_subtitles:
+                            text_caption = meta["yt_meta_dict"].pop("subtitles")
+
                         sample_writer.write(
                             subsampled_streams,
                             meta["key"],
-                            sample_data[caption_indice] if caption_indice is not None else None,
+                            text_caption,
                             meta,
                         )
                 except Exception as err:  # pylint: disable=broad-except

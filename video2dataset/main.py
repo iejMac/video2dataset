@@ -47,11 +47,20 @@ def video2dataset(
     timeout: int = 60,
     tmp_dir: str = "/tmp",
     yt_metadata_args: dict = None,
+    captions_are_subtitles: bool = False,
     encode_formats: dict = None,
 ):
     """
     create video dataset from video links
     """
+
+    # TODO: find better location for this code
+    # TODO: figure out minimum yt_meta_args for subtitles to be added to metadata
+    if captions_are_subtitles:
+        assert clip_col is None  # no weird double-clipping
+        if yt_metadata_args is None:
+            yt_metadata_args = {}
+        yt_metadata_args["writesubtitles"] = True
 
     config_parameters = dict(locals())
 
@@ -84,7 +93,7 @@ def video2dataset(
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    save_caption = caption_col is not None
+    save_caption = caption_col is not None or captions_are_subtitles
 
     fs, output_path = fsspec.core.url_to_fs(output_folder)
 
@@ -144,6 +153,7 @@ def video2dataset(
         audio_rate=audio_rate,
         tmp_dir=tmp_dir,
         yt_metadata_args=yt_metadata_args,
+        captions_are_subtitles=captions_are_subtitles,
         encode_formats=encode_formats,
     )
 
