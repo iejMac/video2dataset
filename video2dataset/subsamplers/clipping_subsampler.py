@@ -86,7 +86,7 @@ class ClippingSubsampler:
                         )
                         .run(capture_stdout=True, quiet=True)
                     )
-                    
+
                 except Exception as err:  # pylint: disable=broad-except
                     return [], [], str(err)
 
@@ -112,7 +112,7 @@ class ClippingSubsampler:
                     meta_clip["clips"] = [clip_span]
                     meta_clip["key"] = f"{meta_clip['key']}_{clip_key}"
                     if lines is not None:
-                      meta_clip["yt_meta_dict"]["subtitles"] = lines[i]
+                        meta_clip["yt_meta_dict"]["subtitles"] = lines[i]
                     metadata_clips.append(meta_clip)
 
                 streams_clips[k] = stream_clips

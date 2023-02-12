@@ -57,7 +57,7 @@ def video2dataset(
     # TODO: find better location for this code
     # TODO: figure out minimum yt_meta_args for subtitles to be added to metadata
     if captions_are_subtitles:
-        assert clip_col is None # no weird double-clipping
+        assert clip_col is None  # no weird double-clipping
         if yt_metadata_args is None:
             yt_metadata_args = {}
         yt_metadata_args["writesubtitles"] = True
