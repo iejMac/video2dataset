@@ -20,6 +20,7 @@ if __name__ == '__main__':
         output_folder='audio',
         yt_metadata_args=yt_metadata_args,
 	captions_are_subtitles=True,
+        encode_formats={"video": "mp4", "audio": "mp3"},
     )
 ```
 
