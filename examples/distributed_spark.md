@@ -1,136 +1,280 @@
-# video2dataset distributing with pyspark
+# Distributed video2dataset tutorial
 
-Using PySpark for distributing work in video2dataset is preferred for larger datasets. Here's how we used it on a slurm cluster to download and process 40M youtube videos.
+video2dataset can be used on a single machine to download and resize at around 100 sample/s/core.
+For large node, that has been measure to go up to 4000 samples/s (with 40 cores).
 
-## Setup
+However, what if you have billion of samples and you don't want to wait weeks ?
 
-Download and extract spark via ```wget https://dlcdn.apache.org/spark/spark-3.3.1/spark-3.3.1-bin-hadoop3.tgz && tar xf spark-3.3.1-bin-hadoop3.tgz```.
+To support that use case, video2dataset proposes to use multiple machines by setting up a pyspark cluster.
+This document will help you setup such a cluster and run video2dataset on it.
 
-## Creating the spark server
+## Where to get a cluster, what machines to use?
 
-To create the spark server you need to run the following sbatch script via ```sbatch```
+These providers have been tested to work well with video2dataset:
+* aws c6i.4xlarge nodes ($0.68/h for NEEDS BENCHMARKING sample/s)
 
+Ubuntu 20.04 works well with video2dataset. Centos7 also works.
+Other providers probably work too but haven't been tested.
+
+## Setting up a pyspark cluster
+
+### You already got a cluster
+
+That option is of course the best. If you have an existing on-premise cluster, or you're using a cloud cluster like amazon emr, then you're all set, go directly to the use video2dataset section.
+You may want to put https://github.com/iejMac/video2dataset/releases/latest/download/video2dataset.pex in a place that is available to all your nodes.
+
+### You don't have a cluster, but you have access to N machines over ssh
+
+That's a common case, you have access to N machines, and you have a place to store the data.
+This is actually fairly easy to use this to setup a pyspark cluster. Let's see how to do it.
+
+Tools:
+* spark and pyspark
+* parallel ssh
+* pex
+
+We will be assuming ubuntu 20.04.
+
+
+#### Setup the master node
+
+On the master node:
+
+First download spark:
 ```bash
-#!/bin/bash
-#SBATCH --partition=gpu
-#SBATCH --job-name=spark_on_slurm
-#SBATCH --nodes 2
-#SBATCH --ntasks-per-node 1
-#SBATCH --cpus-per-task=48
-#SBATCH --mem=0 # 0 means use all available memory (in MB)
-#SBATCH --output=%x_%j.out
-#SBATCH --comment laion
-#SBATCH --exclusive
-
-srun --comment laion bash worker_spark_on_slurm.sh
+wget https://archive.apache.org/dist/spark/spark-3.2.0/spark-3.2.0-bin-hadoop3.2.tgz
+tar xf spark-3.2.0-bin-hadoop3.2.tgz
 ```
 
-Which runs this bash script:
-
+Then download video2dataset:
 ```bash
-#!/bin/bash
-#
-# get environment variables
-GLOBAL_RANK=$SLURM_PROCID
-CPUS=`grep -c ^processor /proc/cpuinfo`
-MEM=$((`grep MemTotal /proc/meminfo | awk '{print $2}'`/1000)) # seems to be in MB
-MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
-LOCAL_IP=$(hostname -I | awk '{print $1}')
-
-# setup the master node
-if [ $GLOBAL_RANK == 0 ]
-then
-    # print out some info
-    echo -e "MASTER ADDR: $MASTER_ADDR\tGLOBAL RANK: $GLOBAL_RANK\tCPUS PER TASK: $CPUS\tMEM PER NODE: $MEM"
-
-    # then start the spark master node in the background
-    ./spark-3.3.1-bin-hadoop3/sbin/start-master.sh -p 7077 -h $LOCAL_IP
-   
-fi
-
-sleep 10
-
-# then start the spark worker node in the background
-MEM_IN_GB=$(($MEM / 1000))
-# concat a "G" to the end of the memory string
-MEM_IN_GB="$MEM_IN_GB"G
-echo "MEM IN GB: $MEM_IN_GB"
-
-./spark-3.3.1-bin-hadoop3/sbin/start-worker.sh -c $CPUS -m $MEM_IN_GB "spark://$MASTER_ADDR:7077"
-echo "Hello from worker $GLOBAL_RANK"
-
-sleep 10
-
-if [ $GLOBAL_RANK == 0 ]
-then
-    # then start some script
-    echo "hi"
-fi
-
-sleep 1000000
+wget https://github.com/iejMac/video2dataset/releases/latest/download/video2dataset.pex -O video2dataset.pex
 ```
 
-## Running the video2dataset job
+If the master node cannot open ports that are visible from your local machine, you can do a tunnel between your local machine and the master node to be able to see the spark ui (at http://localhost:8080)
+```bash
+ssh -L 8080:localhost:8080 -L 4040:localhost:4040 master_node
+```
 
-Once you have the slurm cluster running you can ssh into the master node and simply run the following python script adjusted for your particular use case. You might need to adjust num_cores, mem_gb, master_node IP, etc.
 
-```python3
+#### Setup the worker nodes
+
+##### ssh basic setup
+
+Still in the master node, create a ips.txt with the ips of all the nodes
+
+```bash
+ssh-keyscan `cat ips.txt` >> ~/.ssh/known_hosts
+```
+
+You may use a script like this to fill your .ssh/config file
+```
+def generate(ip):
+    print(
+        f"Host {ip}\n"
+        f"        HostName {ip}\n"
+        "        User ubuntu\n"
+        "        IdentityFile ~/yourkey.pem"
+        )
+
+with open("ips.txt") as f:
+    lines = f.readlines()
+    for line in lines:
+        generate(line.strip())
+```
+python3 generate.py >> ~/.ssh/config
+
+Install pssh with `sudo apt install pssh`
+
+Pick the right username (MASTER_USER) for the master node, and (USER) for the worker nodes, then run this to check your parallel ssh setup:
+```bash
+MASTER_USER=iejMac
+USER=iejMac
+```
+
+Optionally, if another node than the current one has access to the worker nodes, you may need to add a ssh key to all the nodes with:
+```
+for IP in `cat ips.txt`
+do
+        ssh-copy-id -i the_new_id_rsa $USER@$IP
+done
+```
+
+Check you can connect to all the nodes with:
+```
+parallel-ssh -l $USER -i -h  ips.txt uname -a
+```
+
+##### Install some packages
+
+```bash
+sudo apt update
+sudo apt install openjdk-11-jre-headless libgl1 htop tmux bwm-ng sshfs -y
+```
+
+```bash
+parallel-ssh -l $USER -i -h  ips.txt "sudo apt update"
+parallel-ssh -l $USER -i -h  ips.txt "sudo apt install openjdk-11-jre-headless libgl1 htop tmux bwm-ng sshfs -y"
+```
+
+
+#### Network setting
+
+on master:
+```bash
+sudo sh -c 'echo `hostname -I` `hostname` >> /etc/hosts'
+```
+
+on workers
+```bash
+parallel-ssh -l $USER -i -h  ips.txt  "sudo sh -c 'echo \`hostname -I\` \`hostname\` >> /etc/hosts'"
+```
+
+
+### Install knot resolver
+
+```bash
+parallel-ssh -l $USER -i -h  ips.txt "sudo apt update && sudo apt install libgl1 htop tmux bwm-ng python3.8-venv awscli -y"
+parallel-ssh -l $USER -i -h  ips.txt "wget https://secure.nic.cz/files/knot-resolver/knot-resolver-release.deb && sudo dpkg -i knot-resolver-release.deb && sudo apt update && sudo apt install -y knot-resolver"
+```
+
+```bash
+parallel-ssh -l $USER -i -h  ips.txt "sudo systemctl stop systemd-resolved"
+parallel-ssh -l $USER -i -h  ips.txt "sudo systemctl start kresd@{1..4}.service"
+parallel-ssh -l $USER -i -h  ips.txt 'sudo sh -c "echo nameserver 127.0.0.1 > /etc/resolv.conf"'
+parallel-ssh -l $USER -i -h  ips.txt 'dig @localhost google.com'
+```
+
+
+##### Download video2dataset on all nodes
+
+Download video2dataset on all node by retrying this N times until parallel ssh says success for all:
+```bash
+parallel-ssh -i -h ips.txt  "wget -c https://github.com/iejMac/video2dataset/releases/latest/download/video2dataset.pex -O video2dataset_new.pex"
+```
+Then:
+```bash
+parallel-ssh -l $USER -i -h  ips.txt  "mv video2dataset_new.pex video2dataset.pex"
+parallel-ssh -l $USER -i -h  ips.txt  "chmod +x video2dataset.pex"
+```
+
+##### Download spark on workers
+
+```bash
+parallel-ssh -l $USER -i -h  ips.txt  "wget https://archive.apache.org/dist/spark/spark-3.2.0/spark-3.2.0-bin-hadoop3.2.tgz"
+parallel-ssh -l $USER -i -h  ips.txt  "tar xf spark-3.2.0-bin-hadoop3.2.tgz"
+```
+
+#### Start the master node
+
+When you're ready, you can start the master node with:
+
+```bash
+./spark-3.2.0-bin-hadoop3.2/sbin/start-master.sh -h master_node -p 7077
+```
+
+Replace master_node by the master node ip.
+
+
+#### Start the worker nodes
+
+When you're ready, you can start the worker nodes with:
+
+```bash
+parallel-ssh -l $USER -i -h  ips.txt  "./spark-3.2.0-bin-hadoop3.2/sbin/start-worker.sh -c 16 -m 16G spark://master_node:7077"
+```
+
+Replace master_node by the master node ip.
+Replace -c 16 -m 16g but the number of cores and ram you want to use on each worker.
+
+
+#### Stop the worker nodes
+
+When you're done, you can stop the worker nodes with:
+
+```bash
+parallel-ssh -l $USER -i -h  ips.txt "rm -rf ~/spark-3.2.0-bin-hadoop3.2/work/*"
+pkill -f "ssh -R"
+parallel-ssh -l $USER -i -h  ips.txt  "pkill java"
+```
+
+
+#### Stop the master node
+
+When you're done, you can stop the master node with:
+
+```bash
+pkill java
+```
+
+
+### Running video2dataset on it
+
+Once your spark cluster is setup, you're ready to start video2dataset in distributed mode.
+Make sure to open your spark UI, at http://master_node:8080
+
+Save this script to download.py.
+
+Then run ./video2dataset.pex download.py
+
+Replace master_node by the master node ip.
+
+```python
 from video2dataset import video2dataset
-import sys
 import shutil
 import os
 from pyspark.sql import SparkSession  # pylint: disable=import-outside-toplevel
 
-output_dir = os.path.abspath("bench")
+from pyspark import SparkConf, SparkContext
 
-def aws_ec2_s3_spark_session(master, num_cores=128, mem_gb=256):
-    os.environ["PYSPARK_PYTHON"] = sys.executable
-    os.environ["PYSPARK_DRIVER_PYTHON"] = sys.executable
-    main_memory = str(int(mem_gb * 0.9)) + "g"
-    memory_overhead = str(mem_gb - int(mem_gb * 0.9)) + "g"
+def create_spark_session():
+    # this must be a path that is available on all worker nodes
+    pex_file = "/home/iejMac/video2dataset.pex"
+    
+    os.environ['PYSPARK_PYTHON'] = pex_file
     spark = (
-        SparkSession.builder.config("spark.submit.deployMode", "client")
-        .config("spark.executor.memory", main_memory)
-        .config("spark.executor.cores", str(num_cores))  # this can be set to the number of cores of the machine
-        .config("spark.task.cpus", "1")
-        .config("spark.executor.memoryOverhead", memory_overhead)
-        .config("spark.task.maxFailures", "2")
-        .master(master)  # this should be set to the spark master url
-        .appName("cc2dataset")
+        SparkSession.builder
+        .config("spark.submit.deployMode", "client") \
+        #.config("spark.files", pex_file) \ # you may choose to uncomment this option if you want spark to automatically download the pex file, but it may be slow
+        .config("spark.executorEnv.PEX_ROOT", "./.pex")
+        #.config("spark.executor.cores", "2") # this can be set to the number of cores of the machine
+        #.config("spark.cores.max", "200") # total number of cores to use over the whole spark cluster
+        .config("spark.driver.port", "5678")
+        .config("spark.driver.blockManager.port", "6678")
+        .config("spark.driver.host", "master_node")
+        .config("spark.driver.bindAddress", "master_node")
+        .config("spark.executor.memory", "16GB") # make sure to increase this if you're using more cores per executor
+        .config("spark.executor.memoryOverhead", "8GB")
+        .config("spark.task.maxFailures", "100")
+        .master("spark://master_node:7077") # this should point to your master node, if using the tunnelling version, keep this to localhost
+        .appName("spark-stats")
         .getOrCreate()
     )
     return spark
 
+output_dir = "/tmp/bench"
 
-if __name__ == "__main__":
-    if os.path.exists(output_dir):
-        shutil.rmtree(output_dir)
 
-    master_node = "IP OF THE MASTER NODE"
-    spark = aws_ec2_s3_spark_session(f"spark://{master_node}:7077", num_cores=48, mem_gb=256)
+spark = create_spark_session()
 
-    video2dataset(
-        url_list="/admin/home-iejmac/datasets/acav100m/ACAV1M_clip_unique.parquet",
-        output_folder="s3://s-laion/acav100m/test_acav100m",
-        output_format="webdataset",
-        input_format="parquet",
-        url_col="videoLoc",
-        caption_col="title",
-        clip_col="clip",
-        save_additional_columns=["description", "videoID", "start", "end"],
-        enable_wandb=True,
-        video_size=360,
-        strict_resize=False,
-        number_sample_per_shard=100,
-        subjob_size=10000,
-        processes_count=96,
-        thread_count=48,
-        distributor="pyspark",
-    )
+url_list = "some_file.parquet"
+
+video2dataset(
+	url_list=url_list,
+	output_folder=output_dir,
+	output_format="webdataset",
+	input_format="parquet",
+	url_col="videoLoc",
+	caption_col="title",
+	clip_col="clip",
+	save_additional_columns=["description", "videoID", "start", "end"],
+	enable_wandb=True,
+	video_size=360,
+	strict_resize=False,
+	number_sample_per_shard=100,
+	subjob_size=10000,
+	processes_count=96,
+	thread_count=48,
+	distributor="pyspark",
+)
 ```
-
-Once you run this the video2dataset job should be distributed among all spark workers.
-
-## Checking on the job
-
-You can check the output of the workers in the spark folder you untarred earier in the work or logs directories. You can also check the spark UI by doing ```ssh -L 4040:localhost:4040 -L 8080:localhost:8080 login_node``` followed by ```ssh -L localhost:4040:master_node:4040 -L localhost:8080:master_node:8080 master_node``` and checking http://localhost:4040 and http://localhost:8080 in your browser.
