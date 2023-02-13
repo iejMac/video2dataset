@@ -1,7 +1,6 @@
 # Distributed video2dataset tutorial
 
-video2dataset can be used on a single machine to download and resize at around 100 sample/s/core.
-For large node, that has been measure to go up to 4000 samples/s (with 40 cores).
+video2dataset can be used on a single machine to download and resize at around NEEDS BENCHMARKING sample/s/core.
 
 However, what if you have billion of samples and you don't want to wait weeks ?
 
