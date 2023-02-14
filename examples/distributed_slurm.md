@@ -190,9 +190,3 @@ Once you run this the video2dataset job should be distributed among all spark wo
 ## Checking on the job
 
 You can check the output of the workers in the spark folder you untarred earier in the work or logs directories. You can also check the spark UI by doing ```ssh -L 4040:localhost:4040 -L 8080:localhost:8080 login_node``` followed by ```ssh -L localhost:4040:master_node:4040 -L localhost:8080:master_node:8080 master_node``` and checking http://localhost:4040 and http://localhost:8080 in your browser.
-
-## Running in the background of GPU jobs
-
-
-
-
