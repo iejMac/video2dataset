@@ -72,7 +72,7 @@ sleep 1000000
 
 If you want to run the spark server in the background of high GPU utilization and low CPU utilization jobs you can do so with the following python script
 
-```
+```python3
 from pssh.clients import ParallelSSHClient
 import subprocess
 import socket
