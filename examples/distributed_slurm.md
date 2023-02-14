@@ -1,4 +1,4 @@
-# video2dataset distributing with pyspark
+# video2dataset distributing with pyspark on a slurm cluster
 
 Using PySpark for distributing work in video2dataset is preferred for larger datasets. Here's how we used it on a slurm cluster to download and process 40M youtube videos.
 
