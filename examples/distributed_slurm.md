@@ -70,6 +70,62 @@ fi
 sleep 1000000
 ```
 
+If you want to run the spark server in the background of high GPU utilization and low CPU utilization jobs you can do so with the following python script
+
+```
+from pssh.clients import ParallelSSHClient
+import subprocess
+import socket
+import fire
+import os
+
+def get_ips_of_slurm_job(job_id):
+    c = "sinfo -N -n `squeue -j "+str(job_id)+" | tail -1 | awk '{print $8}'` | tail -n +2 | awk '{print $1}'"
+    hosts = subprocess.check_output(c, shell=True).decode("utf8")[:-1].split("\n")
+    ips = [socket.gethostbyname(host) for host in hosts]
+    return ips
+
+def run(ips_to_run, command):
+    print(ips_to_run)
+    client = ParallelSSHClient(ips_to_run, timeout=10, pool_size=len(ips_to_run))
+    output = list(client.run_command(command, stop_on_errors=False))
+    print([(o.client.host if o.client is not None else "", ("\n".join(o.stdout) if o.stdout else "")) for o in output])
+
+
+def start_spark_cluster(ips, cpus, mem_in_gb, spark_path, spark_local_dir):
+    master_addr = ips[0]
+    run([master_addr], f'{spark_path}/spark-3.3.1-bin-hadoop3/sbin/start-master.sh -p 7077 -h {master_addr}')
+    c = f'{spark_path}/spark-3.3.1-bin-hadoop3/sbin/start-worker.sh -c {cpus} -m {mem_in_gb}g "spark://{master_addr}:7077"'
+    run(ips, "bash -c 'SPARK_WORKER_DIR="+spark_local_dir+"/work SPARK_LOCAL_DIRS="+spark_local_dir+"/local "+c+"'")
+
+
+def stop_spark_cluster(ips):
+    run(ips, f'bash -c "pkill java"')
+
+
+def main(cpus=48, mem_in_gb=256,spark_path=None,job_id=None,command="start", spark_local_dir="/tmp"):
+    if spark_path is None:
+        spark_path = os.getcwd()
+    
+    ips = get_ips_of_slurm_job(job_id)
+    if command == "stop":
+        stop_spark_cluster(ips)
+    elif command == "start":
+        start_spark_cluster(ips, cpus, mem_in_gb, spark_path, spark_local_dir)
+
+# To start the server:
+# python spark_on_ssh.py --cpus=48 --mem_in_gb=256 --job_id=SLURM_JOB_ID --spark_local_dir="/scratch/spark" --command="start"
+# To stop the server:
+# python spark_on_ssh.py --cpus=48 --mem_in_gb=256 --job_id=SLURM_JOB_ID --spark_local_dir="/scratch/spark" --command="stop"
+
+if __name__ == '__main__':
+  fire.Fire(main)
+```
+
+
+
+
+
 ## Running the video2dataset job
 
 Once you have the slurm cluster running you can ssh into the master node and simply run the following python script adjusted for your particular use case. You might need to adjust num_cores, mem_gb, master_node IP, etc.
@@ -134,3 +190,9 @@ Once you run this the video2dataset job should be distributed among all spark wo
 ## Checking on the job
 
 You can check the output of the workers in the spark folder you untarred earier in the work or logs directories. You can also check the spark UI by doing ```ssh -L 4040:localhost:4040 -L 8080:localhost:8080 login_node``` followed by ```ssh -L localhost:4040:master_node:4040 -L localhost:8080:master_node:8080 master_node``` and checking http://localhost:4040 and http://localhost:8080 in your browser.
+
+## Running in the background of GPU jobs
+
+
+
+
