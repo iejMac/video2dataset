@@ -4,6 +4,7 @@ clipping subsampler turns full videos into clips of videos according to clip_col
 TODO: implement subtitle splitting (can be done just by indexing subtitle dict during clipping
 """
 import os
+import copy
 import glob
 import ffmpeg
 import tempfile
@@ -34,6 +35,7 @@ class ClippingSubsampler:
 
     def __call__(self, streams, metadata):
         clips = metadata.pop("clips")
+        lines = metadata.pop("lines") if "lines" in metadata else None
 
         ind = 2
         # we assume there's always one clip which we want to take
@@ -84,6 +86,7 @@ class ClippingSubsampler:
                         )
                         .run(capture_stdout=True, quiet=True)
                     )
+
                 except Exception as err:  # pylint: disable=broad-except
                     return [], [], str(err)
 
@@ -96,7 +99,7 @@ class ClippingSubsampler:
                 # clips_lost = len(take_inds) - len(correct_clips) # TODO report this somehow
 
                 stream_clips, metadata_clips = [], []
-                for clip_id, clip_span, clip_pth in correct_clips:
+                for i, (clip_id, clip_span, clip_pth) in enumerate(correct_clips):
                     with open(clip_pth, "rb") as vid_f:
                         clip_bytes = vid_f.read()
                     stream_clips.append(clip_bytes)
@@ -104,13 +107,14 @@ class ClippingSubsampler:
                     clip_key = "{clip_id:0{oom_clip_count}d}".format(  # pylint: disable=consider-using-f-string
                         clip_id=clip_id, oom_clip_count=self.oom_clip_count
                     )
-                    meta_clip = metadata.copy()
+                    meta_clip = copy.deepcopy(metadata)
                     # set the timeframe of this clip
                     meta_clip["clips"] = [clip_span]
                     meta_clip["key"] = f"{meta_clip['key']}_{clip_key}"
+                    if lines is not None:
+                        meta_clip["yt_meta_dict"]["subtitles"] = lines[i]
                     metadata_clips.append(meta_clip)
 
                 streams_clips[k] = stream_clips
 
-        # TODO: subtitle chopping
         return streams_clips, metadata_clips, None
