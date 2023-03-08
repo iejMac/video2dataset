@@ -36,9 +36,10 @@ class ClippingSubsampler:
     def __call__(self, streams, metadata):
         clips = metadata.pop("clips")
         lines = metadata.pop("lines") if "lines" in metadata else None
-
+        clips = [clips] # this is jank as fuck, i will fix
         ind = 2
         # we assume there's always one clip which we want to take
+        
         s_p, e_p = clips[0]
         s_p, e_p = get_seconds(s_p), get_seconds(e_p)
         splits = [s_p, e_p]
