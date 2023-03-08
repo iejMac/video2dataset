@@ -4,9 +4,10 @@ from scenedetect import detect, AdaptiveDetector
 
 
 class CutDetectionSubsampler:
-    def __init__(self, oom_clip_count, encode_formats):
+    def __init__(self, oom_clip_count, encode_formats, video_fps):
         self.oom_clip_count = oom_clip_count
         self.encode_formats = encode_formats
+        self.video_fps = video_fps
 
         self.clip_subsampler = ClippingSubsampler(oom_clip_count, encode_formats)
 
@@ -22,6 +23,7 @@ class CutDetectionSubsampler:
         for clip in scene_list:
             scene.append((clip[0].get_frames(), clip[1].get_frames()))
         scene = np.array(scene)
+        scene = scene / self.video_fps
 
         metadata['clips'] = scene
         stream_fragments, meta_fragments, error_message = self.clip_subsampler(streams, metadata)
