@@ -14,7 +14,7 @@ from typing import List, Any
 from video2dataset.data_reader import VideoDataReader
 from .logger import CappedCounter
 from .logger import write_stats
-from .subsamplers import ClippingSubsampler, FrameSubsampler, NoOpSubsampler, ResolutionSubsampler, AudioRateSubsampler
+from .subsamplers import ClippingSubsampler, CutDetectionSubsampler, FrameSubsampler, NoOpSubsampler, ResolutionSubsampler, AudioRateSubsampler
 
 
 def compute_key(key, shard_id, oom_sample_per_shard, oom_shard_count):
@@ -46,6 +46,7 @@ class Worker:
         tmp_dir,
         yt_metadata_args,
         captions_are_subtitles,
+        cut_mode,
         encode_formats,
         oom_clip_count=5,
     ) -> None:
@@ -63,6 +64,9 @@ class Worker:
         self.data_reader = VideoDataReader(video_size, audio_rate, timeout, tmp_dir, yt_metadata_args, encode_formats)
 
         self.clipping_subsampler = ClippingSubsampler(oom_clip_count, encode_formats)
+        self.cut_mode = cut_mode
+        if cut_mode is not None:
+            self.cut_detector = CutDetectionSubsampler(video_fps, cut_mode=cut_mode)
         self.noop_subsampler = NoOpSubsampler()
 
         video_subsamplers: List[Any] = []
@@ -175,11 +179,13 @@ class Worker:
                         bytes_downloaded += len(stream)
 
                     metas = [meta]
-
                     if self.captions_are_subtitles:  # create clips
                         subtitles = meta["yt_meta_dict"]["subtitles"]
                         meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
                         meta["lines"] = [" ".join(line_dict["lines"]) for line_dict in subtitles]
+
+                    elif self.cut_mode is not None:  # apply cut detection to get clips
+                        meta['clips'] = self.cut_detector(streams)
 
                     # 1 video -> many videos (either clipping or noop which does identity broadcasting)
                     broadcast_subsampler = (

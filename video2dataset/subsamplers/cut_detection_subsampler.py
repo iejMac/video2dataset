@@ -4,14 +4,14 @@ from scenedetect import detect, AdaptiveDetector
 
 
 class CutDetectionSubsampler:
-    def __init__(self, oom_clip_count, encode_formats, video_fps):
-        self.oom_clip_count = oom_clip_count
-        self.encode_formats = encode_formats
+    def __init__(self, video_fps, cut_mode="all"):
+        if cut_mode not in ["all", "longest"]:
+            raise NotImplementedError()
+
         self.video_fps = video_fps
+        self.cut_mode = cut_mode
 
-        self.clip_subsampler = ClippingSubsampler(oom_clip_count, encode_formats)
-
-    def __call__(self, streams, metadata):
+    def __call__(self, streams):
         video_bytes = streams['video']
         for vid_bytes in video_bytes:
             with tempfile.TemporaryDirectory() as tmpdir:
@@ -25,7 +25,10 @@ class CutDetectionSubsampler:
         scene = np.array(scene)
         scene = scene / self.video_fps
 
-        metadata['clips'] = scene
-        stream_fragments, meta_fragments, error_message = self.clip_subsampler(streams, metadata)
-
-        return stream_fragments, meta_fragments, error_message
+        if self.cut_mode == "longest":
+            longest_clip = np.argmax(
+                [clip[1] - clip[0] for scene in clip]
+            )
+            return scene[longest_clip]
+        else:
+            return scene
