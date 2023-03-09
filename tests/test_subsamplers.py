@@ -12,6 +12,7 @@ from video2dataset.subsamplers import (
     ResolutionSubsampler,
     FrameSubsampler,
     AudioRateSubsampler,
+    CutDetectionSubsampler
 )
 
 
@@ -139,3 +140,29 @@ def test_audio_rate_subsampler(sample_rate):
         read_sample_rate = result["streams"][0]["sample_rate"]
 
         assert int(read_sample_rate) == sample_rate
+
+@pytest.mark.parametrize("cut_detection_mode,framerates", [("longest", []), ("longest", [15]), ("all", []), ("all", [15])])
+def test_cut_detection_subsampler(cut_detection_mode, framerates):
+    current_folder = os.path.dirname(__file__)
+    video = os.path.join(current_folder, "test_files/test_video.mp4")
+    with open(video, "rb") as vid_f:
+        video_bytes = vid_f.read()
+    streams = {'video': video_bytes}
+    
+    subsampler = CutDetectionSubsampler(cut_detection_mode, framerates)
+
+    cuts = subsampler(streams)
+    
+    if cut_detection_mode == "longest":
+        assert len(cuts["cuts_original_fps"]) == 1
+        assert cuts["cuts_original_fps"] == [[0, 2096]]
+
+        if len(framerates) > 0:
+            assert cuts["cuts_15"] == [[0, 2096]]
+    
+    if cut_detection_mode == "all":
+        assert len(cuts["cuts_original_fps"]) > 1
+        assert cuts["cuts_original_fps"][-1] == [3015, 3677]
+
+        if len(framerates) > 0:
+            assert cuts["cuts_15"][-1] == [3016, 3677]
