@@ -49,6 +49,7 @@ def video2dataset(
     yt_metadata_args: dict = None,
     captions_are_subtitles: bool = False,
     encode_formats: dict = None,
+    stage: str = "download",
 ):
     """
     create video dataset from video links
@@ -113,7 +114,12 @@ def video2dataset(
     logger_process.done_shards = done_shards
     logger_process.start()
 
-    input_sharder = InputSharder(
+    if stage == "download":
+        input_sharder_class = InputSharder
+    elif stage == "dummy":
+        input_sharder_class = None
+
+    input_sharder = input_sharder_class(
         url_list,
         input_format,
         url_col,
