@@ -49,7 +49,7 @@ def video2dataset(
     yt_metadata_args: dict = None,
     captions_are_subtitles: bool = False,
     cut_detection_mode: str = None,
-    cut_framerates: list = [],
+    cut_framerates: list = None,
     cuts_are_clips: bool = False,
     encode_formats: dict = None,
 ):

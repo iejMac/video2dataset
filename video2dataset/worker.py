@@ -15,7 +15,15 @@ import numpy as np
 from video2dataset.data_reader import VideoDataReader
 from .logger import CappedCounter
 from .logger import write_stats
-from .subsamplers import ClippingSubsampler, CutDetectionSubsampler, FrameSubsampler, NoOpSubsampler, ResolutionSubsampler, AudioRateSubsampler
+from .subsamplers import (
+    ClippingSubsampler,
+    CutDetectionSubsampler,
+    FrameSubsampler,
+    NoOpSubsampler,
+    ResolutionSubsampler,
+    AudioRateSubsampler,
+)
+
 
 def compute_key(key, shard_id, oom_sample_per_shard, oom_shard_count):
     true_key = (10**oom_sample_per_shard) * shard_id + key
@@ -49,7 +57,7 @@ class Worker:
         cut_detection_mode,
         cuts_are_clips,
         encode_formats,
-        cut_framerates=[],
+        cut_framerates,
         oom_clip_count=5,
     ) -> None:
         self.sample_writer_class = sample_writer_class
@@ -183,18 +191,19 @@ class Worker:
                         bytes_downloaded += len(stream)
 
                     metas = [meta]
-                    
+
                     if self.captions_are_subtitles:  # create clips
                         subtitles = meta["yt_meta_dict"]["subtitles"]
                         meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
                         meta["lines"] = [" ".join(line_dict["lines"]) for line_dict in subtitles]
-                    
+
                     elif self.cut_detection_mode is not None:  # apply cut detection to get clips
                         meta["cuts"] = self.cut_detector(streams)
-                        
+
                         if self.cuts_are_clips:
-                            meta["clips"] = np.array(meta["cuts"]["cuts_original_fps"]) / meta["cuts"]["original_fps"]
-    
+                            cuts = (np.array(meta["cuts"]["cuts_original_fps"]) / meta["cuts"]["original_fps"]).tolist()
+                            meta["clips"] = cuts
+
                     # 1 video -> many videos (either clipping or noop which does identity broadcasting)
                     broadcast_subsampler = (
                         self.clipping_subsampler
@@ -237,7 +246,7 @@ class Worker:
                         text_caption = (sample_data[caption_indice] if caption_indice is not None else None,)
                         if self.captions_are_subtitles:
                             text_caption = meta["yt_meta_dict"].pop("subtitles")
-                        meta['clips'] = meta['clips'][0] # weird bug
+
                         sample_writer.write(
                             subsampled_streams,
                             meta["key"],

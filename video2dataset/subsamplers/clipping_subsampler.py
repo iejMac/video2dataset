@@ -37,12 +37,12 @@ class ClippingSubsampler:
         clips = metadata.pop("clips")
         lines = metadata.pop("lines") if "lines" in metadata else None
 
-        if isinstance(clips[0], float): # make sure clips looks like [[start, end]] and not [start, end]
-            clips = [clips] 
+        if isinstance(clips[0], float):  # make sure clips looks like [[start, end]] and not [start, end]
+            clips = [clips]
 
         ind = 2
         # we assume there's always one clip which we want to take
-        
+
         s_p, e_p = clips[0]
         s_p, e_p = get_seconds(s_p), get_seconds(e_p)
         splits = [s_p, e_p]
@@ -113,7 +113,7 @@ class ClippingSubsampler:
                     )
                     meta_clip = copy.deepcopy(metadata)
                     # set the timeframe of this clip
-                    meta_clip["clips"] = [clip_span]
+                    meta_clip["clips"] = clip_span
                     meta_clip["key"] = f"{meta_clip['key']}_{clip_key}"
                     if lines is not None:
                         meta_clip["yt_meta_dict"]["subtitles"] = lines[i]
