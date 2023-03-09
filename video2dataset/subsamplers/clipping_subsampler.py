@@ -36,7 +36,10 @@ class ClippingSubsampler:
     def __call__(self, streams, metadata):
         clips = metadata.pop("clips")
         lines = metadata.pop("lines") if "lines" in metadata else None
-        clips = [clips] # this is jank as fuck, i will fix
+
+        if isinstance(clips[0], float): # make sure clips looks like [[start, end]] and not [start, end]
+            clips = [clips] 
+
         ind = 2
         # we assume there's always one clip which we want to take
         

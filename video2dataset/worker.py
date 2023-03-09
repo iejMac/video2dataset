@@ -10,6 +10,7 @@ import fsspec
 from multiprocessing.pool import ThreadPool
 from threading import Semaphore
 from typing import List, Any
+import numpy as np
 
 from video2dataset.data_reader import VideoDataReader
 from .logger import CappedCounter
@@ -46,7 +47,9 @@ class Worker:
         yt_metadata_args,
         captions_are_subtitles,
         cut_detection_mode,
+        cuts_are_clips,
         encode_formats,
+        cut_framerates=[],
         oom_clip_count=5,
     ) -> None:
         self.sample_writer_class = sample_writer_class
@@ -64,8 +67,10 @@ class Worker:
 
         self.clipping_subsampler = ClippingSubsampler(oom_clip_count, encode_formats)
         self.cut_detection_mode = cut_detection_mode
+        self.cut_framerates = cut_framerates
         if cut_detection_mode is not None:
-            self.cut_detector = CutDetectionSubsampler(cut_detection_mode=cut_detection_mode)
+            self.cut_detector = CutDetectionSubsampler(cut_detection_mode=cut_detection_mode, framerates=cut_framerates)
+        self.cuts_are_clips = cuts_are_clips
         self.noop_subsampler = NoOpSubsampler()
 
         video_subsamplers: List[Any] = []
@@ -178,19 +183,18 @@ class Worker:
                         bytes_downloaded += len(stream)
 
                     metas = [meta]
-                    print(self.cut_detection_mode)
+                    
                     if self.captions_are_subtitles:  # create clips
                         subtitles = meta["yt_meta_dict"]["subtitles"]
                         meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
                         meta["lines"] = [" ".join(line_dict["lines"]) for line_dict in subtitles]
                     
                     elif self.cut_detection_mode is not None:  # apply cut detection to get clips
-                        meta['clips'] = self.cut_detector(streams)
-                    
-                    #print('\n\n\n\n')
-                    #print(meta['clips'])
-                    #print(self.cut_detection_mode)
-                    #print('\n\n\n\n')
+                        meta["cuts"] = self.cut_detector(streams)
+                        
+                        if self.cuts_are_clips:
+                            meta["clips"] = np.array(meta["cuts"]["cuts_original_fps"]) / meta["cuts"]["original_fps"]
+    
                     # 1 video -> many videos (either clipping or noop which does identity broadcasting)
                     broadcast_subsampler = (
                         self.clipping_subsampler
