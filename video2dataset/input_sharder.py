@@ -24,7 +24,6 @@ class InputSharder:
     - number_sample_per_shard: the number of samples per shard
     - done_shards: a set of already done shards
     """
-
     def __init__(
         self,
         url_list,

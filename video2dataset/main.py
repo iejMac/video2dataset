@@ -115,21 +115,21 @@ def video2dataset(
     logger_process.start()
 
     if stage == "download":
-        input_sharder_class = InputSharder
-    elif stage == "dummy":
-        input_sharder_class = None
+        shard_iterator = InputSharder(
+            url_list,
+            input_format,
+            url_col,
+            caption_col,
+            clip_col,
+            save_additional_columns,
+            number_sample_per_shard,
+            done_shards,
+            tmp_path,
+        )
+    else: # video dataset already exists and we use dataloader to iterate
+        # shard_iterator = DataLoader()
+        shard_iterator = None
 
-    input_sharder = input_sharder_class(
-        url_list,
-        input_format,
-        url_col,
-        caption_col,
-        clip_col,
-        save_additional_columns,
-        number_sample_per_shard,
-        done_shards,
-        tmp_path,
-    )
 
     if output_format == "webdataset":
         sample_writer_class = WebDatasetSampleWriter
@@ -148,7 +148,7 @@ def video2dataset(
         sample_writer_class=sample_writer_class,
         save_caption=save_caption,
         output_folder=output_folder,
-        column_list=input_sharder.column_list,
+        column_list=shard_iterator.column_list,
         thread_count=thread_count,
         timeout=timeout,
         number_sample_per_shard=number_sample_per_shard,
@@ -174,7 +174,7 @@ def video2dataset(
     distributor_fn(
         processes_count,
         worker,
-        input_sharder,
+        shard_iterator,
         subjob_size,
         max_shard_retry,
     )
