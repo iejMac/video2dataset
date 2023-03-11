@@ -56,7 +56,7 @@ def test_clipping_subsampler(clips):
             tmp.write(vid_frag)
 
             key_ind = int(meta_frag["key"].split("_")[-1])
-            s, e = meta_frag["clips"]
+            s, e = meta_frag["clips"][0]
 
             assert clips[key_ind] == [s, e]  # correct order
 
