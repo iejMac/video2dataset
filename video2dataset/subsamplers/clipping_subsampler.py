@@ -113,7 +113,7 @@ class ClippingSubsampler:
                     )
                     meta_clip = copy.deepcopy(metadata)
                     # set the timeframe of this clip
-                    meta_clip["clips"] = clip_span
+                    meta_clip["clips"] = [clip_span]
                     meta_clip["key"] = f"{meta_clip['key']}_{clip_key}"
                     if lines is not None:
                         meta_clip["yt_meta_dict"]["subtitles"] = lines[i]
