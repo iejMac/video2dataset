@@ -18,7 +18,7 @@ from webdataset.tariterators import base_plus_ext, url_opener, tar_file_expander
 
 class SharedEpoch:
     def __init__(self, epoch: int = 0):
-        self.shared_epoch = Value('i', epoch)
+        self.shared_epoch = Value("i", epoch)
 
     def set_value(self, epoch):
         self.shared_epoch.value = epoch
@@ -41,8 +41,8 @@ class DataInfo:
 
 
 def filter_no_caption_or_no_video(sample):
-    has_caption = ('txt' in sample)
-    has_video = ('mp4' in sample)
+    has_caption = "txt" in sample
+    has_video = "mp4" in sample
     return has_caption and has_video
 
 
@@ -72,10 +72,12 @@ def group_by_keys_nothrow(data, keys=base_plus_ext, lcase=True, suffixes=None, h
     if valid_sample(current_sample):
         yield current_sample
 
+
 def log_and_continue(exn):
     """Call in an exception handler to ignore any exception, issue a warning, and continue."""
-    logging.warning(f'Handling webdataset error ({repr(exn)}). Ignoring.')
+    logging.warning(f"Handling webdataset error ({repr(exn)}). Ignoring.")
     return True
+
 
 def tarfile_to_samples_nothrow(src, handler=log_and_continue):
     # NOTE this is a re-impl of the webdataset impl with group_by_keys that doesn't throw
@@ -87,11 +89,11 @@ def tarfile_to_samples_nothrow(src, handler=log_and_continue):
 
 class detshuffle2(wds.PipelineStage):
     def __init__(
-            self,
-            bufsize=1000,
-            initial=100,
-            seed=0,
-            epoch=-1,
+        self,
+        bufsize=1000,
+        initial=100,
+        seed=0,
+        epoch=-1,
     ):
         self.bufsize = bufsize
         self.initial = initial
@@ -130,26 +132,30 @@ def get_wds_dataset(args, preprocess_vid, is_train, epoch=0, floor=False, tokeni
     pipeline = [wds.SimpleShardList(args.train_data)]
     is_train = True
 
-    pipeline.extend([
-        detshuffle2(
-            bufsize=_SHARD_SHUFFLE_SIZE,
-            initial=_SHARD_SHUFFLE_INITIAL,
-            seed=args.seed,
-            epoch=shared_epoch,
-        ),
-        wds.split_by_node,
-        wds.split_by_worker,
-        tarfile_to_samples_nothrow,  # wds.tarfile_to_samples(handler=log_and_continue),
-    ])
+    pipeline.extend(
+        [
+            detshuffle2(
+                bufsize=_SHARD_SHUFFLE_SIZE,
+                initial=_SHARD_SHUFFLE_INITIAL,
+                seed=args.seed,
+                epoch=shared_epoch,
+            ),
+            wds.split_by_node,
+            wds.split_by_worker,
+            tarfile_to_samples_nothrow,  # wds.tarfile_to_samples(handler=log_and_continue),
+        ]
+    )
 
-    pipeline.extend([
-        wds.select(filter_no_caption_or_no_video),
-        wds.decode(wds.torch_video, handler=log_and_continue),
-        wds.rename(video="mp4", text="txt"),
-        wds.map_dict(video=preprocess_vid, text=lambda text: tokenizer(text)[0]),
-        wds.to_tuple("video", "text"),
-        wds.batched(args.batch_size, partial=not is_train)
-    ])
+    pipeline.extend(
+        [
+            wds.select(filter_no_caption_or_no_video),
+            wds.decode(wds.torch_video, handler=log_and_continue),
+            wds.rename(video="mp4", text="txt"),
+            wds.map_dict(video=preprocess_vid, text=lambda text: tokenizer(text)[0]),
+            wds.to_tuple("video", "text"),
+            wds.batched(args.batch_size, partial=not is_train),
+        ]
+    )
 
     dataset = wds.DataPipeline(*pipeline)
 

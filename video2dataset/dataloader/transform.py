@@ -10,22 +10,30 @@ try:
     import torch.nn as nn
     import torchvision.transforms.functional as F
 
-    from torchvision.transforms import Normalize, Compose, RandomResizedCrop, InterpolationMode, ToTensor, Resize, \
-    CenterCrop, ToPILImage
+    from torchvision.transforms import (
+        Normalize,
+        Compose,
+        RandomResizedCrop,
+        InterpolationMode,
+        ToTensor,
+        Resize,
+        CenterCrop,
+        ToPILImage,
+    )
 
-   from open_clip.constants import OPENAI_DATASET_MEAN, OPENAI_DATASET_STD
+    from open_clip.constants import OPENAI_DATASET_MEAN, OPENAI_DATASET_STD
 except:
     OPENAI_DATASET_MEAN, OPENAI_DATASET_STD = None, None
 
 
 def video_transform(
-        frame_size: int,
-        n_frames: int,
-        take_every_nth: int,
-        is_train: bool,
-        frame_mean: Optional[Tuple[float, ...]] = None,
-        frame_std: Optional[Tuple[float, ...]] = None,
-    ):
+    frame_size: int,
+    n_frames: int,
+    take_every_nth: int,
+    is_train: bool,
+    frame_mean: Optional[Tuple[float, ...]] = None,
+    frame_std: Optional[Tuple[float, ...]] = None,
+):
 
     frame_mean = frame_mean or OPENAI_DATASET_MEAN
     if not isinstance(frame_mean, (list, tuple)):
@@ -35,8 +43,8 @@ def video_transform(
     if not isinstance(frame_std, (list, tuple)):
         frame_std = (frame_std,) * 3
 
-    normalize = Normalize(mean=frame_mean, std=frame_std) 
-    
+    normalize = Normalize(mean=frame_mean, std=frame_std)
+
     if is_train:
         transforms = [
             ToPILImage(),
@@ -60,12 +68,13 @@ def video_transform(
         ]
 
     frame_transform = Compose(transforms)
+
     def apply_frame_transform(sample):
         video, audio, video_meta = sample
         video = video.permute(0, 3, 1, 2)
 
         video = video[::take_every_nth]
-        video = video[:n_frames] # TODO: maybe make this middle n frames
+        video = video[:n_frames]  # TODO: maybe make this middle n frames
 
         # TODO: maybe padding isn't the way to go
         # TODO: also F.pad is acting up for some reason
@@ -73,7 +82,7 @@ def video_transform(
         # video = F.pad(video, tuple([0, 0]*len(video.shape[-3:]) + [0, n_frames - video.shape[0]]))
         if video.shape[0] < n_frames:
             padded_video = torch.zeros(n_frames, *video.shape[1:])
-            padded_video[:video.shape[0]] = video
+            padded_video[: video.shape[0]] = video
             video = padded_video
 
         # TODO: this .float() is weird, look how this is done in other places
