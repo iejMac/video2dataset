@@ -1,8 +1,11 @@
 """Create dataset from video links and metadata."""
-
+import os
+import sys
+import signal
+import fire
+import fsspec
 
 from typing import List, Optional
-import fire
 
 from .logger import LoggerProcess
 from .data_writer import (
@@ -13,12 +16,9 @@ from .data_writer import (
     DummySampleWriter,
 )
 from .input_sharder import InputSharder
+from .output_sharder import OutputSharder
 from .distributor import multiprocessing_distributor, pyspark_distributor
-import fsspec
-import sys
-import signal
-import os
-from .worker import Worker
+from .workers import DownloadWorker, DummyWorker
 
 
 def video2dataset(
@@ -126,10 +126,37 @@ def video2dataset(
             done_shards,
             tmp_path,
         )
-    else: # video dataset already exists and we use dataloader to iterate
-        # shard_iterator = DataLoader()
-        shard_iterator = None
-
+        worker = DownloadWorker(
+            sample_writer_class=sample_writer_class,
+            save_caption=save_caption,
+            output_folder=output_folder,
+            column_list=shard_iterator.column_list,
+            thread_count=thread_count,
+            timeout=timeout,
+            number_sample_per_shard=number_sample_per_shard,
+            oom_shard_count=oom_shard_count,
+            video_size=video_size,
+            resize_mode=resize_mode,
+            video_fps=video_fps,
+            audio_rate=audio_rate,
+            tmp_dir=tmp_dir,
+            yt_metadata_args=yt_metadata_args,
+            captions_are_subtitles=captions_are_subtitles,
+            encode_formats=encode_formats,
+        )
+    elif stage == "dummy":
+        shard_iterator = OutputSharder(
+            url_list,
+            input_format,
+            done_shards,
+            tmp_path,
+            group_shards=1,
+        )
+        worker = DummyWorker(
+            shard_iterator=shard_iterator
+        )
+    else: 
+        raise ValueError(f"Invalid stage: {stage}")
 
     if output_format == "webdataset":
         sample_writer_class = WebDatasetSampleWriter
@@ -144,25 +171,6 @@ def video2dataset(
     else:
         raise ValueError(f"Invalid output format {output_format}")
 
-    worker = Worker(
-        sample_writer_class=sample_writer_class,
-        save_caption=save_caption,
-        output_folder=output_folder,
-        column_list=shard_iterator.column_list,
-        thread_count=thread_count,
-        timeout=timeout,
-        number_sample_per_shard=number_sample_per_shard,
-        oom_shard_count=oom_shard_count,
-        video_size=video_size,
-        resize_mode=resize_mode,
-        video_fps=video_fps,
-        audio_rate=audio_rate,
-        tmp_dir=tmp_dir,
-        yt_metadata_args=yt_metadata_args,
-        captions_are_subtitles=captions_are_subtitles,
-        encode_formats=encode_formats,
-    )
-
     print("Starting the downloading of this file")
     if distributor == "multiprocessing":
         distributor_fn = multiprocessing_distributor
@@ -170,6 +178,8 @@ def video2dataset(
         distributor_fn = pyspark_distributor
     else:
         raise ValueError(f"Distributor {distributor} not supported")
+
+    quit()
 
     distributor_fn(
         processes_count,
