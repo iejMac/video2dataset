@@ -1,28 +1,19 @@
 """video dataset creation"""
-import io
 import logging
-import math
-import random
-import torchvision
-import tempfile
 import webdataset as wds
 
-from dataclasses import dataclass
-from multiprocessing import Value
-from pathlib import Path
-from torch.utils.data import DataLoader
-from torch.utils.data.dataloader import default_collate
-from webdataset.filters import _shuffle
 from webdataset.tariterators import base_plus_ext, url_opener, tar_file_expander, valid_sample
+
+# pylint: disable=E1135
 
 
 def filter_no_caption_or_no_video(sample):
-    has_caption = ('txt' in sample)
-    has_video = ('mp4' in sample)
+    has_caption = "txt" in sample
+    has_video = "mp4" in sample
     return has_caption and has_video
 
 
-def group_by_keys_nothrow(data, keys=base_plus_ext, lcase=True, suffixes=None, handler=None):
+def group_by_keys_nothrow(data, keys=base_plus_ext, lcase=True, suffixes=None):
     """Return function over iterator that groups key, value pairs into samples.
     :param keys: function that splits the key into key and extension (base_plus_ext)
     :param lcase: convert suffixes to lower case (Default value = True)
@@ -48,33 +39,42 @@ def group_by_keys_nothrow(data, keys=base_plus_ext, lcase=True, suffixes=None, h
     if valid_sample(current_sample):
         yield current_sample
 
+
 def log_and_continue(exn):
     """Call in an exception handler to ignore any exception, issue a warning, and continue."""
-    logging.warning(f'Handling webdataset error ({repr(exn)}). Ignoring.')
+    logging.warning(f"Handling webdataset error ({repr(exn)}). Ignoring.")
     return True
+
 
 def tarfile_to_samples_nothrow(src, handler=log_and_continue):
     # NOTE this is a re-impl of the webdataset impl with group_by_keys that doesn't throw
     streams = url_opener(src, handler=handler)
     files = tar_file_expander(streams, handler=handler)
-    samples = group_by_keys_nothrow(files, handler=handler)
+    samples = group_by_keys_nothrow(files)
     return samples
 
 
 def get_bytes_dataloader(shards, workers):
+    """
+    Get bytes dataloader from shards
+    """
     pipeline = [wds.SimpleShardList(shards)]
 
-    pipeline.extend([
-        wds.split_by_node,
-        wds.split_by_worker,
-        tarfile_to_samples_nothrow,  # wds.tarfile_to_samples(handler=log_and_continue),
-    ])
+    pipeline.extend(
+        [
+            wds.split_by_node,
+            wds.split_by_worker,
+            tarfile_to_samples_nothrow,  # wds.tarfile_to_samples(handler=log_and_continue),
+        ]
+    )
 
-    pipeline.extend([
-        wds.select(filter_no_caption_or_no_video),
-        wds.rename(key= "__key__", video="mp4", text="txt", meta="json"),
-        wds.to_tuple("key", "video", "text", "meta"),
-    ])
+    pipeline.extend(
+        [
+            wds.select(filter_no_caption_or_no_video),
+            wds.rename(key="__key__", video="mp4", text="txt", meta="json"),
+            wds.to_tuple("key", "video", "text", "meta"),
+        ]
+    )
 
     dataset = wds.DataPipeline(*pipeline)
 
