@@ -4,11 +4,11 @@ import webdataset as wds
 
 from webdataset.tariterators import base_plus_ext, url_opener, tar_file_expander, valid_sample
 
+
 def filter_no_caption_or_no_video(sample):
     has_caption = "txt" in sample
     has_video = "mp4" in sample
     return has_caption and has_video
-
 
 
 def group_by_keys_nothrow(

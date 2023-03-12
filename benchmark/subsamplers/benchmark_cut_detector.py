@@ -1,5 +1,5 @@
 """
-Benchmark dataloader speed
+Benchmark cut detector speed
 """
 import time
 from video2dataset.dataloader import get_bytes_dataloader
@@ -10,7 +10,6 @@ import tempfile
 
 # Benchmark videos are the WebVid validation split (5000 videos)
 SHARDS = "/fsx/daniel_mend/test_v2ds/webvid_val/dataset/{00000..00004}.tar"
-
 
 def benchmark_cut_detector(workers, cut_detection_mode, framerates=None):
     subsampler = CutDetectionSubsampler(cut_detection_mode=cut_detection_mode, framerates=framerates)
@@ -27,7 +26,7 @@ def benchmark_cut_detector(workers, cut_detection_mode, framerates=None):
         cuts = subsampler(streams)
         dt = time.time() - t
         time_taken += dt
-        n_frames += cuts["cuts_original_fps"][-1][-1]
+        n_frames += cuts["cuts_original_fps"][-1][-1] # this is the number of frames in the video
         count += 1
     return {"vids_per_second": count / time_taken, "frames_per_second": n_frames / time_taken}
 
