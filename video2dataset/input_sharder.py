@@ -75,7 +75,7 @@ class InputSharder:
                 elif self.input_format == "json":
                     df = pa.Table.from_pandas(pd.read_json(file))
                 elif self.input_format == "csv":
-                    df = csv_pq.read_csv(file)
+                    df = pa.Table.from_pandas(pd.read_csv(file))
                 elif self.input_format == "tsv":
                     df = csv_pq.read_csv(file, parse_options=csv_pq.ParseOptions(delimiter="\t"))
                 else:
