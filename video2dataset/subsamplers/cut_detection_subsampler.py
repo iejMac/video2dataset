@@ -34,8 +34,6 @@ class CutDetectionSubsampler:
     """
 
     def __init__(self, cut_detection_mode="all", framerates=None):
-        if cut_detection_mode not in ["all", "longest"]:
-            raise NotImplementedError()
         self.framerates = framerates
         self.cut_detection_mode = cut_detection_mode
 

@@ -54,6 +54,7 @@ class Worker:
         tmp_dir,
         yt_metadata_args,
         captions_are_subtitles,
+        detect_cuts,
         cut_detection_mode,
         cuts_are_clips,
         encode_formats,
@@ -76,7 +77,8 @@ class Worker:
         self.clipping_subsampler = ClippingSubsampler(oom_clip_count, encode_formats)
         self.cut_detection_mode = cut_detection_mode
         self.cut_framerates = cut_framerates
-        if cut_detection_mode is not None:
+        self.detect_cuts = detect_cuts
+        if detect_cuts:
             self.cut_detector = CutDetectionSubsampler(cut_detection_mode=cut_detection_mode, framerates=cut_framerates)
         self.cuts_are_clips = cuts_are_clips
         self.noop_subsampler = NoOpSubsampler()
@@ -197,7 +199,7 @@ class Worker:
                         meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
                         meta["lines"] = [" ".join(line_dict["lines"]) for line_dict in subtitles]
 
-                    elif self.cut_detection_mode is not None:  # apply cut detection to get clips
+                    elif self.detect_cuts:  # apply cut detection to get clips
                         meta["cuts"] = self.cut_detector(streams)
 
                         if self.cuts_are_clips:
