@@ -23,7 +23,7 @@ except ModuleNotFoundError as e:
 
 
 def _convert_to_rgb(image):
-    return image.convert('RGB')
+    return image.convert("RGB")
 
 
 def video_transform(

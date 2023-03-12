@@ -31,8 +31,10 @@ def group_by_keys_nothrow(
         #  this happening in the current LAION400m dataset if a tar ends with same prefix as the next
         #  begins, rare, but can happen since prefix aren't unique across tar files in that dataset
         if (
-            current_sample is None or prefix != current_sample["__key__"] or suffix in current_sample
-        ):  # pylint: disable=unsupported-membership-test
+            current_sample is None
+            or prefix != current_sample["__key__"]
+            or suffix in current_sample  # pylint: disable=unsupported-membership-test
+        ):
             if valid_sample(current_sample):
                 yield current_sample
             current_sample = dict(__key__=prefix, __url__=filesample["__url__"])
