@@ -11,3 +11,4 @@ wandb
 pandas
 tqdm
 timeout-decorator
+scenedetect[opencv]
