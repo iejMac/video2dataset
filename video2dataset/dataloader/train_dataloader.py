@@ -142,7 +142,6 @@ def get_wds_dataset(args, preprocess_vid, is_train, epoch=0, floor=False, tokeni
         tarfile_to_samples_nothrow,  # wds.tarfile_to_samples(handler=log_and_continue),
     ])
 
-
     pipeline.extend([
         wds.select(filter_no_caption_or_no_video),
         wds.decode(wds.torch_video, handler=log_and_continue),
@@ -173,7 +172,6 @@ def get_wds_dataset(args, preprocess_vid, is_train, epoch=0, floor=False, tokeni
 
     dataloader.num_batches = num_batches
     dataloader.num_samples = num_samples
-
 
     return DataInfo(dataloader=dataloader, shared_epoch=shared_epoch)
 
