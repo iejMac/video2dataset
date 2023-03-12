@@ -22,6 +22,10 @@ except ModuleNotFoundError as e:
     OPENAI_DATASET_MEAN, OPENAI_DATASET_STD = None, None
 
 
+def _convert_to_rgb(image):
+    return image.convert('RGB')
+
+
 def video_transform(
     frame_size: int,
     n_frames: int,

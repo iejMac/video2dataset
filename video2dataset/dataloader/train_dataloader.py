@@ -25,7 +25,7 @@ class SharedEpoch:
 @dataclass
 class DataInfo:
     dataloader: DataLoader
-    shared_epoch: SharedEpoch = None
+    shared_epoch: SharedEpoch
     sampler = None
 
     def set_epoch(self, epoch):
