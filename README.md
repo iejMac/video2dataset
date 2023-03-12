@@ -59,10 +59,6 @@ It can be used to analyze the results efficiently.
 
 .json files will also be saved with the same name suffixed by _stats, they contain stats collected during downloading (download time, number of success, ...)
 
-## Python examples
-
-* [Here's an example PyTorch data loader for reading the output of video2dataset](https://github.com/iejMac/video2dataset/blob/main/examples/data_loader.py)
-
 
 ## API
 
