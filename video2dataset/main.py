@@ -48,6 +48,10 @@ def video2dataset(
     tmp_dir: str = "/tmp",
     yt_metadata_args: dict = None,
     captions_are_subtitles: bool = False,
+    detect_cuts: bool = False,
+    cut_detection_mode: str = "longest",
+    cut_framerates: list = None,
+    cuts_are_clips: bool = False,
     encode_formats: dict = None,
 ):
     """
@@ -155,6 +159,10 @@ def video2dataset(
         yt_metadata_args=yt_metadata_args,
         captions_are_subtitles=captions_are_subtitles,
         encode_formats=encode_formats,
+        detect_cuts=detect_cuts,
+        cut_detection_mode=cut_detection_mode,
+        cut_framerates=cut_framerates,
+        cuts_are_clips=cuts_are_clips,
     )
 
     print("Starting the downloading of this file")

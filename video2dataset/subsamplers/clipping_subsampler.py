@@ -37,8 +37,12 @@ class ClippingSubsampler:
         clips = metadata.pop("clips")
         lines = metadata.pop("lines") if "lines" in metadata else None
 
+        if isinstance(clips[0], float):  # make sure clips looks like [[start, end]] and not [start, end]
+            clips = [clips]
+
         ind = 2
         # we assume there's always one clip which we want to take
+
         s_p, e_p = clips[0]
         s_p, e_p = get_seconds(s_p), get_seconds(e_p)
         splits = [s_p, e_p]
