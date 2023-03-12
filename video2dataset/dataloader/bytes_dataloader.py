@@ -61,7 +61,7 @@ def tarfile_to_samples_nothrow(src, handler=log_and_continue):
     return samples
 
 
-def get_bytes_dataloader(shards, workers):
+def get_bytes_dataloader(shards, dl_workers):
     pipeline = [wds.SimpleShardList(shards)]
 
     pipeline.extend([
@@ -81,7 +81,7 @@ def get_bytes_dataloader(shards, workers):
     dataloader = wds.WebLoader(
         dataset,
         batch_size=None,
-        num_workers=workers,
+        num_workers=dl_workers,
         persistent_workers=True,
         prefetch_factor=8,
         pin_memory=True,
