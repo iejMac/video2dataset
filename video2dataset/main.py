@@ -131,7 +131,6 @@ def video2dataset(
     else:
         raise ValueError(f"Invalid output format {output_format}")
 
-    shard_iterator, worker = None, None
     if stage == "download":
         shard_iterator = InputSharder(
             url_list,
@@ -167,12 +166,12 @@ def video2dataset(
             cuts_are_clips=cuts_are_clips,
         )
     elif stage == "subset":
-        shard_iterator = OutputSharder(
+        shard_iterator = OutputSharder(  # type: ignore
             url_list,
             input_format,
             done_shards,
         )
-        worker = SubsetWorker(
+        worker = SubsetWorker(  # type: ignore
             sample_writer_class=sample_writer_class,
             output_folder=output_folder,
             thread_count=thread_count,
