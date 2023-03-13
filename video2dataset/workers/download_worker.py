@@ -126,8 +126,6 @@ class DownloadWorker:
             .append(pa.field("error_message", pa.string()))
         )
 
-        print(schema)
-
         pydict = df.select(self.column_list).to_pydict()
         shard_to_dl = list(enumerate(zip(*(pydict[col] for col in self.column_list))))
         del pydict
