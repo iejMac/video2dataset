@@ -52,6 +52,9 @@ def video2dataset(
     cut_detection_mode: str = "longest",
     cut_framerates: list = None,
     cuts_are_clips: bool = False,
+    detect_optical_flow: bool = False,
+    feature_params: dict = None,
+    lk_params: dict = None,
     encode_formats: dict = None,
 ):
     """
@@ -163,6 +166,9 @@ def video2dataset(
         cut_detection_mode=cut_detection_mode,
         cut_framerates=cut_framerates,
         cuts_are_clips=cuts_are_clips,
+        detect_optical_flow=detect_optical_flow,
+        feature_params=feature_params,
+        lk_params=lk_params
     )
 
     print("Starting the downloading of this file")
