@@ -1,6 +1,5 @@
 """creates a subset of an existing dataset inside the sample dimension"""
 import time
-import os
 import json
 import pyarrow as pa
 import traceback

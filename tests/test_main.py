@@ -40,7 +40,7 @@ def test_e2e(input_file):
                 )
 
         # multistage test
-        shard_list = tmpdir + ("/{00000..00001}.tar" if 'webvid' in input_file else "/{00000..00000}.tar")
+        shard_list = tmpdir + ("/{00000..00001}.tar" if "webvid" in input_file else "/{00000..00000}.tar")
         tmpdir2 = tmpdir + "/transformed"
 
         video2dataset(
@@ -51,7 +51,7 @@ def test_e2e(input_file):
             number_sample_per_shard=samples_per_shard,
             processes_count=1,
             stage="subset",
-            encode_formats={}, # only copy over metadata and caption
+            encode_formats={},  # only copy over metadata and caption
         )
 
         for shard in ["00000", "00001"] if sample_count / samples_per_shard > 1.0 else ["00000"]:
@@ -60,7 +60,4 @@ def test_e2e(input_file):
                     len([x for x in tarfile.open(tmpdir2 + f"/{shard}.tar").getnames() if x.endswith(f".{ext}")])
                     == samples_per_shard
                 )
-            assert (
-                len([x for x in tarfile.open(tmpdir2 + f"/{shard}.tar").getnames() if x.endswith(f".mp4")])
-                == 0
-            )
+            assert len([x for x in tarfile.open(tmpdir2 + f"/{shard}.tar").getnames() if x.endswith(f".mp4")]) == 0
