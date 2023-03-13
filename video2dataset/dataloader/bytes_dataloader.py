@@ -79,8 +79,6 @@ def get_bytes_dataloader(shards, dl_workers=0):
     pipeline.extend(
         [
             wds.select(filter_no_caption_or_no_video),
-            wds.rename(key="__key__", video="mp4", text="txt", meta="json"),
-            wds.to_tuple("key", "video", "text", "meta"),
         ]
     )
 

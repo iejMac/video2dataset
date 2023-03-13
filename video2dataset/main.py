@@ -18,7 +18,7 @@ from .data_writer import (
 from .input_sharder import InputSharder
 from .output_sharder import OutputSharder
 from .distributor import multiprocessing_distributor, pyspark_distributor
-from .workers import DownloadWorker, DummyWorker
+from .workers import DownloadWorker, SubsetWorker
 
 
 def video2dataset(
@@ -157,20 +157,21 @@ def video2dataset(
             captions_are_subtitles=captions_are_subtitles,
             encode_formats=encode_formats,
         )
-    elif stage == "dummy":
+    elif stage == "subset":
         shard_iterator = OutputSharder(
             url_list,
             input_format,
             done_shards,
             tmp_path,
         )
-        worker = DummyWorker(
+        worker = SubsetWorker(
             sample_writer_class=sample_writer_class,
             output_folder=output_folder,
             thread_count=thread_count,
             number_sample_per_shard=number_sample_per_shard,
             oom_shard_count=oom_shard_count,
             tmp_dir=tmp_dir,
+            encode_formats=encode_formats,
         )
     else: 
         raise ValueError(f"Invalid stage: {stage}")

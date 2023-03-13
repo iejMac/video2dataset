@@ -1,7 +1,7 @@
-"""the downloader module handles the downloading"""
-
+"""creates a subset of an existing dataset inside the sample dimension"""
 import math
 import time
+import json
 import pyarrow as pa
 import traceback
 
@@ -26,9 +26,8 @@ def compute_key(key, shard_id, oom_sample_per_shard, oom_shard_count):
     return str_key
 
 
-class DummyWorker:
-    """The downloader class gets calls with shards, download them then call the writer to write them down"""
-
+class SubsetWorker:
+    """The loader class reads the shards, then the selected data is chosen and writen by the writer"""
     def __init__(
         self,
         sample_writer_class,
@@ -36,6 +35,7 @@ class DummyWorker:
         thread_count,
         number_sample_per_shard,
         oom_shard_count,
+        encode_formats,
         tmp_dir,
     ) -> None:
         self.sample_writer_class = sample_writer_class
@@ -43,10 +43,9 @@ class DummyWorker:
         self.number_sample_per_shard = number_sample_per_shard
         self.oom_shard_count = oom_shard_count
         self.thread_count = thread_count
-
-        # TODO: clean this up
-        self.save_caption=True
-        self.encode_formats = {"video": "mp4", "audio": "mp3"}
+        self.encode_formats = encode_formats
+        self.inv_encode_formats = dict([(v, k) for k, v in encode_formats.items()])
+        self.save_caption= "txt" in self.encode_formats.values()
 
     def __call__(
         self,
@@ -87,17 +86,57 @@ class DummyWorker:
         error_message = None
 
         dataloader = get_bytes_dataloader([shard])
-        for key, video, text, meta in dataloader:
+        for sample in dataloader:
+            # Gather subset of dataset
+            key = sample["__key__"]
+            caption = sample.get("txt", b"").decode("utf-8")
+            meta = json.loads(sample.get("json", b"{}").decode("utf-8"))
 
-            # Do your subsampling:
-            video = video
+            streams = {}
+            for mod, fmt in self.encode_formats.items():
+                streams[mod] = sample[fmt]
 
             if error_message is not None:
                 failed_to_transform += 1
                 status = "failed_to_subsample"
+                status_dict.increment(error_message)
+                meta["status"] = status
+                meta["error_message"] = error_message
+                sample_writer.write(
+                    {},
+                    str_key,
+                    sample_data[caption_indice] if caption_indice is not None else None,
+                    meta,
+                )
                 continue
+
             successes += 1
             status = "success"
             status_dict.increment(status)
+            meta["status"] = status
 
+            sample_writer.write(
+                streams,
+                key,
+                caption,
+                meta,
+            )
+
+        sample_writer.close()
         end_time = time.time()
+
+        '''
+        write_stats(
+            self.output_folder,
+            shard_id,
+            count,
+            successes,
+            failed_to_download,
+            failed_to_subsample,
+            bytes_downloaded,
+            start_time,
+            end_time,
+            status_dict,
+            self.oom_shard_count,
+        )
+        '''
