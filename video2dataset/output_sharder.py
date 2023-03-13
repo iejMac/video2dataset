@@ -1,8 +1,6 @@
 """Reader is module to read the url list and return shards"""
 import braceexpand
 
-from multiprocessing.pool import ThreadPool
-
 
 class OutputSharder:
     """
@@ -21,7 +19,6 @@ class OutputSharder:
         shard_list,
         input_format,
         done_shards,
-        tmp_path,
     ) -> None:
 
         self.input_format = input_format

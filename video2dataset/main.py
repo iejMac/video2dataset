@@ -170,7 +170,6 @@ def video2dataset(
             url_list,
             input_format,
             done_shards,
-            tmp_path,
         )
         worker = SubsetWorker(
             sample_writer_class=sample_writer_class,
@@ -178,7 +177,6 @@ def video2dataset(
             thread_count=thread_count,
             number_sample_per_shard=number_sample_per_shard,
             oom_shard_count=oom_shard_count,
-            tmp_dir=tmp_dir,
             encode_formats=encode_formats,
         )
     else:

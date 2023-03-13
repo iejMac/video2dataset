@@ -1,5 +1,4 @@
 """creates a subset of an existing dataset inside the sample dimension"""
-import math
 import time
 import json
 import pyarrow as pa
@@ -7,20 +6,8 @@ import traceback
 
 import fsspec
 
-from multiprocessing.pool import ThreadPool
-from threading import Semaphore
-from typing import List, Any
-
 from video2dataset.dataloader import get_bytes_dataloader
-from video2dataset.logger import CappedCounter
-from video2dataset.logger import write_stats
-from video2dataset.subsamplers import (
-    ClippingSubsampler,
-    FrameSubsampler,
-    NoOpSubsampler,
-    ResolutionSubsampler,
-    AudioRateSubsampler,
-)
+from video2dataset.logger import CappedCounter, write_stats
 
 
 class SubsetWorker:
@@ -34,7 +21,6 @@ class SubsetWorker:
         number_sample_per_shard,
         oom_shard_count,
         encode_formats,
-        tmp_dir,
     ) -> None:
         self.sample_writer_class = sample_writer_class
         self.output_folder = output_folder
@@ -42,7 +28,6 @@ class SubsetWorker:
         self.oom_shard_count = oom_shard_count
         self.thread_count = thread_count
         self.encode_formats = encode_formats
-        self.inv_encode_formats = dict([(v, k) for k, v in encode_formats.items()])
         self.save_caption = True
 
     def __call__(
@@ -77,7 +62,6 @@ class SubsetWorker:
         sample_writer = self.sample_writer_class(
             shard_id, self.output_folder, self.save_caption, self.oom_shard_count, schema, self.encode_formats
         )
-        oom_sample_per_shard = math.ceil(math.log10(self.number_sample_per_shard))
 
         successes = 0
         failed_to_subsample = 0
