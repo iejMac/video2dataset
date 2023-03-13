@@ -181,7 +181,7 @@ def video2dataset(
             tmp_dir=tmp_dir,
             encode_formats=encode_formats,
         )
-    else: 
+    else:
         raise ValueError(f"Invalid stage: {stage}")
 
     print("Starting the downloading of this file")

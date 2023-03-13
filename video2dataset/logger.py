@@ -196,8 +196,12 @@ def write_stats(
         "status_dict": status_dict.dump(),
     }
     fs, output_path = fsspec.core.url_to_fs(output_folder)
-    shard_name = shard_id if isinstance(shard_id, str) else "{shard_id:0{oom_shard_count}d}".format(  # pylint: disable=consider-using-f-string
-        shard_id=shard_id, oom_shard_count=oom_shard_count
+    shard_name = (
+        shard_id
+        if isinstance(shard_id, str)
+        else "{shard_id:0{oom_shard_count}d}".format(  # pylint: disable=consider-using-f-string
+            shard_id=shard_id, oom_shard_count=oom_shard_count
+        )
     )
     json_file = f"{output_path}/{shard_name}_stats.json"
     with fs.open(json_file, "w") as f:

@@ -14,11 +14,18 @@ from typing import List, Any
 from video2dataset.dataloader import get_bytes_dataloader
 from video2dataset.logger import CappedCounter
 from video2dataset.logger import write_stats
-from video2dataset.subsamplers import ClippingSubsampler, FrameSubsampler, NoOpSubsampler, ResolutionSubsampler, AudioRateSubsampler
+from video2dataset.subsamplers import (
+    ClippingSubsampler,
+    FrameSubsampler,
+    NoOpSubsampler,
+    ResolutionSubsampler,
+    AudioRateSubsampler,
+)
 
 
 class SubsetWorker:
     """The loader class reads the shards, then the selected data is chosen and writen by the writer"""
+
     def __init__(
         self,
         sample_writer_class,
@@ -59,7 +66,7 @@ class SubsetWorker:
         shard, shard_id = row
         start_time = time.time()
 
-        fs, shard_path = fsspec.core.url_to_fs(shard[:-len(".tar")] + ".parquet")
+        fs, shard_path = fsspec.core.url_to_fs(shard[: -len(".tar")] + ".parquet")
         with fs.open(shard_path, "rb") as f:
             df = pa.parquet.read_table(f)
             schema = df.schema
@@ -72,7 +79,7 @@ class SubsetWorker:
         )
         oom_sample_per_shard = math.ceil(math.log10(self.number_sample_per_shard))
 
-        successes = 0 
+        successes = 0
         failed_to_subsample = 0
         error_message = None
 
@@ -119,11 +126,11 @@ class SubsetWorker:
         write_stats(
             self.output_folder,
             shard_id,
-            1, # count
+            1,  # count
             successes,
-            0, # failed to download
+            0,  # failed to download
             failed_to_subsample,
-            0, # bytes downloaded
+            0,  # bytes downloaded
             start_time,
             end_time,
             status_dict,
