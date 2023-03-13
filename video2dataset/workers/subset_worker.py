@@ -17,15 +17,6 @@ from video2dataset.logger import write_stats
 from video2dataset.subsamplers import ClippingSubsampler, FrameSubsampler, NoOpSubsampler, ResolutionSubsampler, AudioRateSubsampler
 
 
-def compute_key(key, shard_id, oom_sample_per_shard, oom_shard_count):
-    true_key = (10**oom_sample_per_shard) * shard_id + key
-    key_format = oom_sample_per_shard + oom_shard_count
-    str_key = "{true_key:0{key_format}d}".format(  # pylint: disable=consider-using-f-string
-        key_format=key_format, true_key=true_key
-    )
-    return str_key
-
-
 class SubsetWorker:
     """The loader class reads the shards, then the selected data is chosen and writen by the writer"""
     def __init__(
@@ -45,7 +36,7 @@ class SubsetWorker:
         self.thread_count = thread_count
         self.encode_formats = encode_formats
         self.inv_encode_formats = dict([(v, k) for k, v in encode_formats.items()])
-        self.save_caption= "txt" in self.encode_formats.values()
+        self.save_caption = True
 
     def __call__(
         self,
@@ -125,18 +116,16 @@ class SubsetWorker:
         sample_writer.close()
         end_time = time.time()
 
-        '''
         write_stats(
             self.output_folder,
             shard_id,
-            count,
+            1, # count
             successes,
-            failed_to_download,
+            0, # failed to download
             failed_to_subsample,
-            bytes_downloaded,
+            0, # bytes downloaded
             start_time,
             end_time,
             status_dict,
             self.oom_shard_count,
         )
-        '''

@@ -32,7 +32,7 @@ class OutputSharder:
         elif self.input_format == "files":
             self.shard_ids = [s.split("/")[-1] for s in self.shard_list]
 
-        self.shards = [(s, s_id) for s_id, s in zip(self.shard_ids, self.shard_list) if s_id not in self.done_shards]
+        self.shards = [(s, s_id) for s_id, s in zip(self.shard_ids, self.shard_list) if int(s_id) not in self.done_shards]
 
     def __iter__(self):
         """

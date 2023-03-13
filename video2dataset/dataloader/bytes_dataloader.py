@@ -73,11 +73,6 @@ def get_bytes_dataloader(shards, dl_workers=0):
             wds.split_by_node,
             wds.split_by_worker,
             tarfile_to_samples_nothrow,  # wds.tarfile_to_samples(handler=log_and_continue),
-        ]
-    )
-
-    pipeline.extend(
-        [
             wds.select(filter_no_caption_or_no_video),
         ]
     )
