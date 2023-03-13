@@ -160,6 +160,10 @@ def video2dataset(
             yt_metadata_args=yt_metadata_args,
             captions_are_subtitles=captions_are_subtitles,
             encode_formats=encode_formats,
+            detect_cuts=detect_cuts,
+            cut_detection_mode=cut_detection_mode,
+            cut_framerates=cut_framerates,
+            cuts_are_clips=cuts_are_clips,
         )
     elif stage == "subset":
         shard_iterator = OutputSharder(
