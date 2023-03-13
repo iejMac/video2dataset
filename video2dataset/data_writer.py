@@ -60,7 +60,7 @@ class ParquetSampleWriter:
         self.oom_shard_count = oom_shard_count
         for fmt in encode_formats.values():
             schema = schema.append(pa.field(fmt, pa.binary()))
-        shard_name = "{shard_id:0{oom_shard_count}d}".format(  # pylint: disable=consider-using-f-string
+        shard_name = shard_id if isinstance(shard_id, str) else "{shard_id:0{oom_shard_count}d}".format(  # pylint: disable=consider-using-f-string
             shard_id=shard_id, oom_shard_count=oom_shard_count
         )
         output_file = f"{output_folder}/{shard_name}.parquet"
@@ -89,7 +89,7 @@ class WebDatasetSampleWriter:
 
     def __init__(self, shard_id, output_folder, save_caption, oom_shard_count, schema, encode_formats):
         self.oom_shard_count = oom_shard_count
-        shard_name = "{shard_id:0{oom_shard_count}d}".format(  # pylint: disable=consider-using-f-string
+        shard_name = shard_id if isinstance(shard_id, str) else "{shard_id:0{oom_shard_count}d}".format(  # pylint: disable=consider-using-f-string
             shard_id=shard_id, oom_shard_count=oom_shard_count
         )
         self.shard_id = shard_id
@@ -153,7 +153,7 @@ class TFRecordSampleWriter:
             ) from e
 
         self.oom_shard_count = oom_shard_count
-        shard_name = "{shard_id:0{oom_shard_count}d}".format(  # pylint: disable=consider-using-f-string
+        shard_name = shard_id if isinstance(shard_id, str) else "{shard_id:0{oom_shard_count}d}".format(  # pylint: disable=consider-using-f-string
             shard_id=shard_id, oom_shard_count=oom_shard_count
         )
         self.shard_id = shard_id
@@ -227,7 +227,7 @@ class FilesSampleWriter:
 
     def __init__(self, shard_id, output_folder, save_caption, oom_shard_count, schema, encode_formats):
         self.oom_shard_count = oom_shard_count
-        shard_name = "{shard_id:0{oom_shard_count}d}".format(  # pylint: disable=consider-using-f-string
+        shard_name = shard_id if isinstance(shard_id, str) else "{shard_id:0{oom_shard_count}d}".format(  # pylint: disable=consider-using-f-string
             shard_id=shard_id, oom_shard_count=oom_shard_count
         )
         self.shard_id = shard_id

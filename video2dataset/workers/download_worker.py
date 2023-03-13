@@ -12,9 +12,9 @@ from threading import Semaphore
 from typing import List, Any
 
 from video2dataset.data_reader import VideoDataReader
-from .logger import CappedCounter
-from .logger import write_stats
-from .subsamplers import ClippingSubsampler, FrameSubsampler, NoOpSubsampler, ResolutionSubsampler, AudioRateSubsampler
+from video2dataset.logger import CappedCounter
+from video2dataset.logger import write_stats
+from video2dataset.subsamplers import ClippingSubsampler, FrameSubsampler, NoOpSubsampler, ResolutionSubsampler, AudioRateSubsampler
 
 
 def compute_key(key, shard_id, oom_sample_per_shard, oom_shard_count):
@@ -107,6 +107,8 @@ class DownloadWorker:
             .append(pa.field("status", pa.string()))
             .append(pa.field("error_message", pa.string()))
         )
+
+        print(schema)
 
         pydict = df.select(self.column_list).to_pydict()
         shard_to_dl = list(enumerate(zip(*(pydict[col] for col in self.column_list))))

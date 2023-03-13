@@ -21,12 +21,10 @@ class OutputSharder:
         input_format,
         done_shards,
         tmp_path,
-        group_shards=1,
     ) -> None:
 
         self.input_format = input_format
         self.done_shards = done_shards
-        self.group_shards = group_shards # TODO: use this to make the shape of shard list [-1, group_shards]
         self.shard_list = list(braceexpand.braceexpand(shard_list))
 
         if self.input_format == "webdataset":
@@ -34,14 +32,12 @@ class OutputSharder:
         elif self.input_format == "files":
             self.shard_ids = [s.split("/")[-1] for s in self.shard_list]
 
-        # TODO: this should be array of arrays of (s_id, s) pairs the second of which is group_shards size
-        # for now just hacking to sizze 1
-        self.shards = [[s] for s_id, s in zip(self.shard_ids, self.shard_list) if s_id not in self.done_shards]
+        self.shards = [(s, s_id) for s_id, s in zip(self.shard_ids, self.shard_list) if s_id not in self.done_shards]
 
     def __iter__(self):
         """
         Iterate over shards, yield shards of size group_shards size
         Each shard is a tuple (shard_id, shard)
         """
-        for shard_ids, shards in self.shards:
-            yield (shard_ids, shards)
+        for s, s_id in self.shards:
+            yield (s, s_id) 

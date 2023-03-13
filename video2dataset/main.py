@@ -114,6 +114,19 @@ def video2dataset(
     logger_process.done_shards = done_shards
     logger_process.start()
 
+    if output_format == "webdataset":
+        sample_writer_class = WebDatasetSampleWriter
+    elif output_format == "parquet":
+        sample_writer_class = ParquetSampleWriter  # type: ignore
+    elif output_format == "files":
+        sample_writer_class = FilesSampleWriter  # type: ignore
+    elif output_format == "tfrecord":
+        sample_writer_class = TFRecordSampleWriter  # type: ignore
+    elif output_format == "dummy":
+        sample_writer_class = DummySampleWriter  # type: ignore
+    else:
+        raise ValueError(f"Invalid output format {output_format}")
+
     if stage == "download":
         shard_iterator = InputSharder(
             url_list,
@@ -150,26 +163,17 @@ def video2dataset(
             input_format,
             done_shards,
             tmp_path,
-            group_shards=1,
         )
         worker = DummyWorker(
-            shard_iterator=shard_iterator
+            sample_writer_class=sample_writer_class,
+            output_folder=output_folder,
+            thread_count=thread_count,
+            number_sample_per_shard=number_sample_per_shard,
+            oom_shard_count=oom_shard_count,
+            tmp_dir=tmp_dir,
         )
     else: 
         raise ValueError(f"Invalid stage: {stage}")
-
-    if output_format == "webdataset":
-        sample_writer_class = WebDatasetSampleWriter
-    elif output_format == "parquet":
-        sample_writer_class = ParquetSampleWriter  # type: ignore
-    elif output_format == "files":
-        sample_writer_class = FilesSampleWriter  # type: ignore
-    elif output_format == "tfrecord":
-        sample_writer_class = TFRecordSampleWriter  # type: ignore
-    elif output_format == "dummy":
-        sample_writer_class = DummySampleWriter  # type: ignore
-    else:
-        raise ValueError(f"Invalid output format {output_format}")
 
     print("Starting the downloading of this file")
     if distributor == "multiprocessing":
@@ -178,8 +182,6 @@ def video2dataset(
         distributor_fn = pyspark_distributor
     else:
         raise ValueError(f"Distributor {distributor} not supported")
-
-    quit()
 
     distributor_fn(
         processes_count,

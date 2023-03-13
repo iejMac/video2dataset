@@ -58,8 +58,14 @@ def tarfile_to_samples_nothrow(src, handler=log_and_continue):
     return samples
 
 
-def get_bytes_dataloader(shards, dl_workers):
-    """returns bytes dataloader"""
+def get_bytes_dataloader(shards, dl_workers=0):
+    """
+    returns bytes dataloader
+
+    shards - list of shards to load from
+    dl_workers - how many workers the dataloader has access to
+                 if dl_workers == 0 then doesn't wrap dataset in PyTorch DataLoader
+    """
     pipeline = [wds.SimpleShardList(shards)]
 
     pipeline.extend(
@@ -78,15 +84,16 @@ def get_bytes_dataloader(shards, dl_workers):
         ]
     )
 
-    dataset = wds.DataPipeline(*pipeline)
+    dataloader = wds.DataPipeline(*pipeline)
 
-    dataloader = wds.WebLoader(
-        dataset,
-        batch_size=None,
-        num_workers=dl_workers,
-        persistent_workers=True,
-        prefetch_factor=8,
-        pin_memory=True,
-    )
+    if dl_workers > 0:
+        dataloader = wds.WebLoader(
+            dataset,
+            batch_size=None,
+            num_workers=dl_workers,
+            persistent_workers=True,
+            prefetch_factor=8,
+            pin_memory=True,
+        )
 
     return dataloader
