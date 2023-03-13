@@ -12,7 +12,7 @@ from webdataset.tariterators import base_plus_ext, url_opener, tar_file_expander
 try:
     from torch.utils.data import DataLoader
 except ModuleNotFoundError as e:
-    print(str(e))
+    DataLoader = None
 
 
 class SharedEpoch:
