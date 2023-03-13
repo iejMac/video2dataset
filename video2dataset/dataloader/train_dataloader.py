@@ -6,9 +6,13 @@ import webdataset as wds
 
 from dataclasses import dataclass
 from multiprocessing import Value
-from torch.utils.data import DataLoader
 from webdataset.filters import _shuffle
 from webdataset.tariterators import base_plus_ext, url_opener, tar_file_expander, valid_sample
+
+try:
+    from torch.utils.data import DataLoader
+except ModuleNotFoundError as e:
+    DataLoader = None  # pylint: disable=invalid-name
 
 
 class SharedEpoch:
