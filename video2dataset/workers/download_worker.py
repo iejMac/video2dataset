@@ -10,11 +10,19 @@ import fsspec
 from multiprocessing.pool import ThreadPool
 from threading import Semaphore
 from typing import List, Any
+import numpy as np
 
 from video2dataset.data_reader import VideoDataReader
 from video2dataset.logger import CappedCounter
 from video2dataset.logger import write_stats
-from video2dataset.subsamplers import ClippingSubsampler, FrameSubsampler, NoOpSubsampler, ResolutionSubsampler, AudioRateSubsampler
+from video2dataset.subsamplers import (
+    ClippingSubsampler,
+    CutDetectionSubsampler,
+    FrameSubsampler,
+    NoOpSubsampler,
+    ResolutionSubsampler,
+    AudioRateSubsampler,
+)
 
 
 def compute_key(key, shard_id, oom_sample_per_shard, oom_shard_count):
@@ -46,7 +54,11 @@ class DownloadWorker:
         tmp_dir,
         yt_metadata_args,
         captions_are_subtitles,
+        detect_cuts,
+        cut_detection_mode,
+        cuts_are_clips,
         encode_formats,
+        cut_framerates,
         oom_clip_count=5,
     ) -> None:
         self.sample_writer_class = sample_writer_class
@@ -63,6 +75,12 @@ class DownloadWorker:
         self.data_reader = VideoDataReader(video_size, audio_rate, timeout, tmp_dir, yt_metadata_args, encode_formats)
 
         self.clipping_subsampler = ClippingSubsampler(oom_clip_count, encode_formats)
+        self.cut_detection_mode = cut_detection_mode
+        self.cut_framerates = cut_framerates
+        self.detect_cuts = detect_cuts
+        if detect_cuts:
+            self.cut_detector = CutDetectionSubsampler(cut_detection_mode=cut_detection_mode, framerates=cut_framerates)
+        self.cuts_are_clips = cuts_are_clips
         self.noop_subsampler = NoOpSubsampler()
 
         video_subsamplers: List[Any] = []
@@ -183,6 +201,13 @@ class DownloadWorker:
                         meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
                         meta["lines"] = [" ".join(line_dict["lines"]) for line_dict in subtitles]
 
+                    elif self.detect_cuts:  # apply cut detection to get clips
+                        meta["cuts"] = self.cut_detector(streams)
+
+                        if self.cuts_are_clips:
+                            cuts = (np.array(meta["cuts"]["cuts_original_fps"]) / meta["cuts"]["original_fps"]).tolist()
+                            meta["clips"] = cuts
+
                     # 1 video -> many videos (either clipping or noop which does identity broadcasting)
                     broadcast_subsampler = (
                         self.clipping_subsampler
@@ -218,7 +243,6 @@ class DownloadWorker:
                     subsampled_streams_list = [
                         dict(zip(subsampled_streams, s)) for s in zip(*subsampled_streams.values())
                     ]
-
                     for subsampled_streams, meta in zip(subsampled_streams_list, metas):
                         meta["status"] = status
 

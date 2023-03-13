@@ -48,6 +48,10 @@ def video2dataset(
     tmp_dir: str = "/tmp",
     yt_metadata_args: dict = None,
     captions_are_subtitles: bool = False,
+    detect_cuts: bool = False,
+    cut_detection_mode: str = "longest",
+    cut_framerates: list = None,
+    cuts_are_clips: bool = False,
     encode_formats: dict = None,
     stage: str = "download",
 ):
