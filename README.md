@@ -108,6 +108,7 @@ This module exposes a single function `download` which takes the same arguments 
 * **cut_detection_mode** Can be either "longest" or "all" -- "longest" will select the longest contiguous (i.e. no jump-cuts) section of video, and "all" will select all contiguous sections of video to store in metadata (default *"longest"*)
 * **cut_framerates** a list of additional framerates to detect jump cuts at. If None, jump cuts will only be detected at the original framerate of the video (default *None*)
 * **cuts_are_clips** whether or not to turn each contiguous section of each input video into a distinct ouput video (default *False*)
+* **stage** which stage of processing to execute in betweeen downloading + cheap subsampling and costly subsampling (default *"download"*)
 
 ## Downloading YouTube Metadata
 
@@ -199,3 +200,15 @@ You can use `make black` to reformat the code
 ## Special Contributors:
 
 * [ChatGPT](https://chat.openai.com) - FrameSubsampler implementation
+
+## Citation
+```
+@misc{beaumont-2023-video2dataset,
+  author = {Romain Beaumont, Maciej Kilian},
+  title = {video2dataset: Easily turn large sets of video urls to a video dataset},
+  year = {2023},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/iejMac/video2dataset}}
+}
+```
