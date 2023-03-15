@@ -7,7 +7,6 @@ from functools import partial
 
 from dataclasses import dataclass
 from multiprocessing import Value
-from torch.utils.data import DataLoader
 from webdataset.filters import _shuffle
 from webdataset.tariterators import base_plus_ext, url_opener, tar_file_expander, valid_sample
 
@@ -15,6 +14,11 @@ from .custom_wds import WebDatasetWithChangedDecoder, dict_collation_fn
 from .transform import VideoResizer, CutsAdder
 from .video_decode import VideoDecorder, VideoDecorderWithCutDetection
 from .filters import *
+
+try:
+    from torch.utils.data import DataLoader
+except ModuleNotFoundError as e:
+    DataLoader = None  # pylint: disable=invalid-name
 
 
 class SharedEpoch:

@@ -13,9 +13,9 @@ from typing import List, Any
 import numpy as np
 
 from video2dataset.data_reader import VideoDataReader
-from .logger import CappedCounter
-from .logger import write_stats
-from .subsamplers import (
+from video2dataset.logger import CappedCounter
+from video2dataset.logger import write_stats
+from video2dataset.subsamplers import (
     ClippingSubsampler,
     CutDetectionSubsampler,
     FrameSubsampler,
@@ -34,7 +34,7 @@ def compute_key(key, shard_id, oom_sample_per_shard, oom_shard_count):
     return str_key
 
 
-class Worker:
+class DownloadWorker:
     """The downloader class gets calls with shards, download them then call the writer to write them down"""
 
     def __init__(
