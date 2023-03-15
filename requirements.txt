@@ -12,3 +12,6 @@ pandas
 tqdm
 timeout-decorator
 scenedetect[opencv]
+decord
+torch>=1.7.1,<2
+langdetect
