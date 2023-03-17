@@ -55,10 +55,10 @@ class OpticalFlowSubsampler:
                     next = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
                     flow = cv2.calcOpticalFlowFarneback(prvs, next, None, 0.5, 3, 15, 3, 5, 1.2, 0)
 
-                    optical_flow.append(flow.tolist())
+                    optical_flow.append(flow)
                     prvs = next
 
             except Exception as err:  # pylint: disable=broad-except
                 return [], str(err)
 
-        return optical_flow, None
+        return np.array(optical_flow), None

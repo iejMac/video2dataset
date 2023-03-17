@@ -81,11 +81,11 @@ class OpticalFlowWorker:
 
             streams = {}
             for mod, fmt in self.encode_formats.items():
-                streams[mod] = sample[fmt]
+                streams[mod] = sample.get(fmt, b"")
 
             # Apply OpticalFlowSubsampler to filter the sample
             optical_flow, error_message = self.optical_flow_subsampler(streams['video'])
-            
+
             if error_message is not None:
                 failed_to_subsample += 1
                 status = "failed_to_subsample"
@@ -104,8 +104,11 @@ class OpticalFlowWorker:
             status = "success"
             status_dict.increment(status)
             meta["status"] = status
-            meta["optical_flow"] = optical_flow
 
+            streams["optical_flow"] = optical_flow.tobytes()
+            meta["optical_flow_shape"] = optical_flow.shape
+            meta["optical_flow_dtype"] = 'fp32'
+            
             sample_writer.write(
                 streams,
                 key,
