@@ -2,6 +2,8 @@ import time
 import json
 import pyarrow as pa
 import traceback
+import io
+import numpy as np
 
 import fsspec
 
@@ -10,6 +12,15 @@ from video2dataset.logger import CappedCounter, write_stats
 
 # Import the OpticalFlowSubsampler class (assumes you have it implemented)
 from video2dataset.subsamplers import OpticalFlowSubsampler
+
+def numpy_npz_dumps(numpy_dict):
+    """Dump data into a bytestring using numpy npz format.
+    :param data: data to be dumped
+    """
+
+    stream = io.BytesIO()
+    np.savez_compressed(stream, **numpy_dict)
+    return stream.getvalue()
 
 class OpticalFlowWorker:
     """The loader class reads the shards, processes them using OpticalFlowSubsampler, and writes the output"""
@@ -72,16 +83,16 @@ class OpticalFlowWorker:
         successes = 0
         failed_to_subsample = 0
 
-        dataloader = get_bytes_dataloader([shard])
+        dataloader = get_bytes_dataloader([shard]) # TODO: does the bytes dataloader retrieve the npz metadata? i dont want to overwrite other shards' metadata
         for sample in dataloader:
             # Gather subset of dataset
             key = sample["__key__"]
             caption = sample.get("txt", b"").decode("utf-8")
             meta = json.loads(sample.get("json", b"{}").decode("utf-8"))
-
+            
             streams = {}
             for mod, fmt in self.encode_formats.items():
-                streams[mod] = sample.get(fmt, b"")
+                streams[mod] = sample.get(fmt, b"") 
 
             # Apply OpticalFlowSubsampler to filter the sample
             optical_flow, error_message = self.optical_flow_subsampler(streams['video'])
@@ -104,10 +115,11 @@ class OpticalFlowWorker:
             status = "success"
             status_dict.increment(status)
             meta["status"] = status
+            
+            streams["numpy_metadata"] = sample.get("numpy_metadata", {})
+            streams["numpy_metadata"]["optical_flow"] = optical_flow
 
-            streams["optical_flow"] = optical_flow.tobytes()
-            meta["optical_flow_shape"] = optical_flow.shape
-            meta["optical_flow_dtype"] = 'fp32'
+            streams["numpy_metadata"] = numpy_npz_dumps(streams["numpy_metadata"])
             
             sample_writer.write(
                 streams,

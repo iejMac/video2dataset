@@ -61,4 +61,4 @@ class OpticalFlowSubsampler:
             except Exception as err:  # pylint: disable=broad-except
                 return [], str(err)
 
-        return np.array(optical_flow), None
+        return np.array(optical_flow, dtype=np.float16), None
