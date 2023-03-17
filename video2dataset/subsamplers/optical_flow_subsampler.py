@@ -16,9 +16,9 @@ class OpticalFlowSubsampler:
     Detects optical flow in video frames
     """
 
-    def __init__(self, detector="cv2", take_every_nth=1):
-        self.take_every_nth = take_every_nth
+    def __init__(self, detector="cv2", fps=-1):
         self.detector = detector
+        self.fps = fps
 
     def __call__(self, video_bytes):
         optical_flow = []
@@ -26,23 +26,39 @@ class OpticalFlowSubsampler:
             video_path = os.path.join(tmpdir, 'input.mp4')
             with open(video_path, "wb") as f:
                 f.write(video_bytes)
+            try:
+                cap = cv2.VideoCapture(video_path)
+                original_fps = cap.get(cv2.CAP_PROP_FPS)
 
-            cap = cv2.VideoCapture(video_path)
-            ret, frame1 = cap.read()
-            prvs = cv.cvtColor(frame1, cv.COLOR_BGR2GRAY)
-            fc = 0
-            
-            while ret:
-                ret, frame2 = cap.read()
-                fc += 1
+                if self.fps == -1:
+                    self.fps = original_fps
+                    take_every_nth = 1
+                elif self.fps > original_fps:
+                    take_every_nth = 1
+                else:
+                    take_every_nth = int(round(original_fps / self.fps))
 
-                if fc % self.take_every_nth != 0:
-                    continue
+                ret, frame1 = cap.read()
+                prvs = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
+                fc = 0
                 
-                next = cv.cvtColor(frame2, cv.COLOR_BGR2GRAY)
-                flow = cv.calcOpticalFlowFarneback(prvs, next, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+                while True:
+                    ret, frame2 = cap.read()
+                    fc += 1
 
-                optical_flow.append(flow)
-                prvs = next
+                    if not ret:
+                        break
 
-        return optical_flow
+                    if fc % take_every_nth != 0:
+                        continue
+                    
+                    next = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
+                    flow = cv2.calcOpticalFlowFarneback(prvs, next, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+
+                    optical_flow.append(flow.tolist())
+                    prvs = next
+
+            except Exception as err:  # pylint: disable=broad-except
+                return [], str(err)
+
+        return optical_flow, None
