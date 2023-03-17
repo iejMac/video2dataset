@@ -1,115 +1,48 @@
 """
-clipping subsampler turns full videos into clips of videos according to clip_col
-
-TODO: implement subtitle splitting (can be done just by indexing subtitle dict during clipping
+optical flow detection
 """
 import os
 import copy
 import glob
 import ffmpeg
 import tempfile
-
+import cv2
 from datetime import datetime
-
+import torch
+import numpy as np
 
 class OpticalFlowSubsampler:
     """
-    Cuts videos up into segments according to the 'clips' metadata
-
-    expects:
-    - clips to be sorted in increasing order and non-overlapping
-    - time to be in the format "%H:%M:%S.%f", or a number representing the second of the timestamp
+    Detects optical flow in video frames
     """
 
-    def __init__(self, oom_clip_count, encode_formats):
-        pass
+    def __init__(self, detector="cv2", take_every_nth=1):
+        self.take_every_nth = take_every_nth
+        self.detector = detector
 
-    def __call__(self, streams, metadata):
-        clips = metadata.pop("clips")
-        lines = metadata.pop("lines") if "lines" in metadata else None
+    def __call__(self, video_bytes):
+        optical_flow = []
+        with tempfile.TemporaryDirectory() as tmpdir:
+            video_path = os.path.join(tmpdir, 'input.mp4')
+            with open(video_path, "wb") as f:
+                f.write(video_bytes)
 
-        if isinstance(clips[0], float):  # make sure clips looks like [[start, end]] and not [start, end]
-            clips = [clips]
+            cap = cv2.VideoCapture(video_path)
+            ret, frame1 = cap.read()
+            prvs = cv.cvtColor(frame1, cv.COLOR_BGR2GRAY)
+            fc = 0
+            
+            while ret:
+                ret, frame2 = cap.read()
+                fc += 1
 
-        ind = 2
-        # we assume there's always one clip which we want to take
+                if fc % self.take_every_nth != 0:
+                    continue
+                
+                next = cv.cvtColor(frame2, cv.COLOR_BGR2GRAY)
+                flow = cv.calcOpticalFlowFarneback(prvs, next, None, 0.5, 3, 15, 3, 5, 1.2, 0)
 
-        s_p, e_p = clips[0]
-        s_p, e_p = get_seconds(s_p), get_seconds(e_p)
-        splits = [s_p, e_p]
-        # list of indicies of clips to take, used to discard non-contiguous sections
-        take_inds = [1]
+                optical_flow.append(flow)
+                prvs = next
 
-        # TODO: make nicer
-        for s, e in clips[1:]:
-            s, e = get_seconds(s), get_seconds(e)
-
-            if s - e_p <= 1.0:  # no one needs 1.0 second clips + creates less files
-                splits += [e]
-                take_inds.append(ind)
-            else:
-                splits += [s, e]
-                take_inds.append(ind + 1)
-
-            ind += 1 if s - e_p <= 1.0 else 2
-            e_p = e
-        segment_times = ",".join([str(spl) for spl in splits])
-
-        streams_clips = {}
-
-        for k in streams.keys():
-            stream_bytes = streams[k]
-            if stream_bytes is None:
-                continue
-            encode_format = self.encode_formats[k]
-
-            with tempfile.TemporaryDirectory() as tmpdir:
-                # TODO: we need to put the extension into the metadata
-                # TODO: This can be done better using pipes I just don't feel like sinking too much time into this rn
-                with open(os.path.join(tmpdir, f"input.{encode_format}"), "wb") as f:
-                    f.write(stream_bytes)
-                try:
-                    _ = (
-                        ffmpeg.input(f"{tmpdir}/input.{encode_format}")
-                        .output(
-                            f"{tmpdir}/clip_%d.{encode_format}",
-                            c="copy",
-                            map=0,
-                            f="segment",
-                            segment_times=segment_times,
-                            reset_timestamps=1,
-                        )
-                        .run(capture_stdout=True, quiet=True)
-                    )
-
-                except Exception as err:  # pylint: disable=broad-except
-                    return [], [], str(err)
-
-                stream_clips = glob.glob(f"{tmpdir}/clip*.{encode_format}")
-                stream_clips.sort()
-                correct_clips = []
-                for clip_id, (clip, ind) in enumerate(zip(clips, take_inds)):
-                    if ind < len(stream_clips):
-                        correct_clips.append((clip_id, clip, stream_clips[ind]))
-                # clips_lost = len(take_inds) - len(correct_clips) # TODO report this somehow
-
-                stream_clips, metadata_clips = [], []
-                for i, (clip_id, clip_span, clip_pth) in enumerate(correct_clips):
-                    with open(clip_pth, "rb") as vid_f:
-                        clip_bytes = vid_f.read()
-                    stream_clips.append(clip_bytes)
-
-                    clip_key = "{clip_id:0{oom_clip_count}d}".format(  # pylint: disable=consider-using-f-string
-                        clip_id=clip_id, oom_clip_count=self.oom_clip_count
-                    )
-                    meta_clip = copy.deepcopy(metadata)
-                    # set the timeframe of this clip
-                    meta_clip["clips"] = [clip_span]
-                    meta_clip["key"] = f"{meta_clip['key']}_{clip_key}"
-                    if lines is not None:
-                        meta_clip["yt_meta_dict"]["subtitles"] = lines[i]
-                    metadata_clips.append(meta_clip)
-
-                streams_clips[k] = stream_clips
-
-        return streams_clips, metadata_clips, None
+        return optical_flow
