@@ -117,7 +117,7 @@ class OpticalFlowWorker:
             meta["status"] = status
             
             streams["numpy_metadata"] = sample.get("npz", {})
-            if streams["numpy_metadata"] is not {}:
+            if isinstance(streams["numpy_metadata"], bytes):
                 npz_bytes = io.BytesIO(streams["numpy_metadata"])
                 streams["numpy_metadata"] = dict(np.load(npz_bytes))
             streams["numpy_metadata"]["optical_flow"] = optical_flow
