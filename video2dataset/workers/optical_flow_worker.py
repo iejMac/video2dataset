@@ -116,7 +116,10 @@ class OpticalFlowWorker:
             status_dict.increment(status)
             meta["status"] = status
             
-            streams["numpy_metadata"] = sample.get("numpy_metadata", {})
+            streams["numpy_metadata"] = sample.get("npz", {})
+            if streams["numpy_metadata"] is not {}:
+                npz_bytes = io.BytesIO(streams["numpy_metadata"])
+                streams["numpy_metadata"] = dict(np.load(npz_bytes))
             streams["numpy_metadata"]["optical_flow"] = optical_flow
 
             streams["numpy_metadata"] = numpy_npz_dumps(streams["numpy_metadata"])
