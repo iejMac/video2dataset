@@ -1,3 +1,6 @@
+"""
+Worker for optical flow stage
+"""
 import time
 import json
 import pyarrow as pa
@@ -13,17 +16,38 @@ from video2dataset.logger import CappedCounter, write_stats
 # Import the OpticalFlowSubsampler class (assumes you have it implemented)
 from video2dataset.subsamplers import OpticalFlowSubsampler
 
+
 def numpy_npz_dumps(numpy_dict):
-    """Dump data into a bytestring using numpy npz format.
-    :param data: data to be dumped
+    """
+    Dump a dictionary of numpy arrays into a bytestring using numpy npz format.
+
+    Args:
+        numpy_dict (dict): A dictionary containing numpy arrays as values.
+
+    Returns:
+        bytes: A bytestring representing the compressed numpy arrays.
     """
 
     stream = io.BytesIO()
     np.savez_compressed(stream, **numpy_dict)
     return stream.getvalue()
 
+
 class OpticalFlowWorker:
-    """The loader class reads the shards, processes them using OpticalFlowSubsampler, and writes the output"""
+    """
+    A class to read shards, process them using OpticalFlowSubsampler, and write the output.
+
+    Attributes:
+        sample_writer_class (type): The class used to write samples.
+        output_folder (str): The folder to write the output.
+        thread_count (int): The number of threads.
+        number_sample_per_shard (int): The number of samples per shard.
+        oom_shard_count (int): The number of out-of-memory shards.
+        encode_formats (dict): The encoding formats.
+        detector (str): The optical flow detector type.
+        fps (int): The target frames per second.
+        optical_flow_subsampler (OpticalFlowSubsampler): The OpticalFlowSubsampler instance.
+    """
 
     def __init__(
         self,
@@ -63,8 +87,15 @@ class OpticalFlowWorker:
         self,
         row,
     ):
-        """Function to start video processing in one process using OpticalFlowSubsampler"""
+        """
+        Process a video shard using the OpticalFlowSubsampler.
 
+        Args:
+            row (tuple): A tuple containing the shard and shard_id.
+
+        Raises:
+            Except
+        """
         shard, shard_id = row
         start_time = time.time()
 
@@ -83,19 +114,18 @@ class OpticalFlowWorker:
         successes = 0
         failed_to_subsample = 0
 
-        dataloader = get_bytes_dataloader([shard]) # TODO: does the bytes dataloader retrieve the npz metadata? i dont want to overwrite other shards' metadata
+        dataloader = get_bytes_dataloader([shard])
         for sample in dataloader:
             # Gather subset of dataset
             key = sample["__key__"]
             caption = sample.get("txt", b"").decode("utf-8")
             meta = json.loads(sample.get("json", b"{}").decode("utf-8"))
-            
+
             streams = {}
             for mod, fmt in self.encode_formats.items():
-                streams[mod] = sample.get(fmt, b"") 
+                streams[mod] = sample.get(fmt, b"")
 
-            # Apply OpticalFlowSubsampler to filter the sample
-            optical_flow, error_message = self.optical_flow_subsampler(streams['video'])
+            optical_flow, error_message = self.optical_flow_subsampler(streams["video"])
 
             if error_message is not None:
                 failed_to_subsample += 1
@@ -115,7 +145,7 @@ class OpticalFlowWorker:
             status = "success"
             status_dict.increment(status)
             meta["status"] = status
-            
+
             streams["numpy_metadata"] = sample.get("npz", {})
             if isinstance(streams["numpy_metadata"], bytes):
                 npz_bytes = io.BytesIO(streams["numpy_metadata"])
@@ -123,7 +153,7 @@ class OpticalFlowWorker:
             streams["numpy_metadata"]["optical_flow"] = optical_flow
 
             streams["numpy_metadata"] = numpy_npz_dumps(streams["numpy_metadata"])
-            
+
             sample_writer.write(
                 streams,
                 key,

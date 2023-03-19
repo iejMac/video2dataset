@@ -55,7 +55,7 @@ def video2dataset(
     encode_formats: dict = None,
     stage: str = "download",
     optical_flow_detector: str = "cv2",
-    optical_flow_fps: int = -1
+    optical_flow_fps: int = -1,
 ):
     """
     create video dataset from video links
