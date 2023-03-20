@@ -5,7 +5,59 @@ import os
 import tempfile
 import cv2
 import numpy as np
+import torch
 
+from raft.raft import RAFT
+from raft.utils import InputPadder
+
+class AttrDict(dict):
+    def __init__(self, *args, **kwargs):
+        super(AttrDict, self).__init__(*args, **kwargs)
+        self.__dict__ = self
+
+class RAFTDetector:
+    def __init__(self, model_name="raft-things", small=False, mixed_precision=False, alternate_corr=False, device='cuda'):
+        self.args = AttrDict(dict(
+            model=model_name,
+            small=small,
+            mixed_precision=mixed_precision,
+            alternate_corr=alternate_corr
+        ))
+
+        self.model = RAFT(self.args)
+
+        ## DOWNLOAD WEIGHTS HERE ##
+        weights_path = None # do something with model_name
+        ## ===================== ##
+
+        self.model.load_state_dict(
+            torch.load(weights_path)
+        )
+
+        model = model.module
+
+        self.device = device
+        model.to(device)
+        model.eval()
+
+        self.padder = None
+
+    def preprocess(self, frame):
+        if not self.padder:
+            self.padder = InputPadder(frame.shape)
+            
+        tens = torch.from_numpy(frame).permute(2, 0, 1).float()
+        return tens[None].to(self.device)
+
+    def __call__(self, f1, f2):
+        f1, f2 = self.preprocess(f1), self.preprocess(f2)
+        f1, f2 = self.padder.pad(f1, f2)
+
+        _, flow_up = self.model(f1, f2, iters=20, test_mode=True)
+        return flow_up
+        
+    def reset_padder(self):
+        self.padder = None
 
 class Cv2Detector:
     """
@@ -30,6 +82,9 @@ class Cv2Detector:
         self.poly_sigma = poly_sigma
         self.flags = flags
 
+    def preprocess(self, frame):
+        return cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
     def __call__(self, frame1, frame2):
         """
         Calculate optical flow between two frames using Farneback method.
@@ -41,6 +96,7 @@ class Cv2Detector:
         Returns:
             numpy.ndarray: The computed optical flow.
         """
+        frame1, frame2 = self.preprocess(frame1), self.preprocess(frame2)
         return cv2.calcOpticalFlowFarneback(
             frame1,
             frame2,
@@ -64,13 +120,26 @@ class OpticalFlowSubsampler:
         fps (int): The target frames per second. Defaults to -1 (original FPS).
     """
 
-    def __init__(self, detector="cv2", fps=-1, params=None):
+    def __init__(self, detector="cv2", fps=-1, params=None, device=None):
         if detector == "cv2":
             if params:
                 pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags = params
                 self.detector = Cv2Detector(pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags)
             else:
                 self.detector = Cv2Detector()
+        elif detector == "RAFT":
+            if params:
+                model_name, is_small, mixed_precision, alternate_corr = params
+                if not device:
+                    device = "cuda:0" # TODO: can i do this better?
+                self.detector = RAFTDetector(model_name, is_small, mixed_precision, alternate_corr, device)
+            else:
+                if not device:
+                    device = "cuda:0"
+                self.detector = RAFTDetector(device=device)
+        else:
+            raise NotImplementedError()
+
         self.fps = fps
 
     def __call__(self, video_bytes):
@@ -92,7 +161,7 @@ class OpticalFlowSubsampler:
                     take_every_nth = int(round(original_fps / self.fps))
 
                 ret, frame1 = cap.read()
-                prvs = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
+                prvs = frame1
                 fc = 0
 
                 while True:
@@ -105,7 +174,8 @@ class OpticalFlowSubsampler:
                     if fc % take_every_nth != 0:
                         continue
 
-                    next_frame = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
+                    next_frame = frame2
+
                     flow = self.detector(prvs, next_frame)
 
                     optical_flow.append(flow)
