@@ -34,6 +34,7 @@ def _convert_to_rgb(image):
 
 class VideoResizer(PRNGMixin):
     """Resizes frames to specified height and width"""
+
     def __init__(
         self,
         size=None,
@@ -60,9 +61,7 @@ class VideoResizer(PRNGMixin):
             print(f"{self.__class__.__name__} is resizing video to size {self.resize_size} ...")
 
             if self.crop_size:
-                print(
-                    f'... and {"random" if self.random_crop else "center"} cropping to size {self.crop_size}.'
-                )
+                print(f'... and {"random" if self.random_crop else "center"} cropping to size {self.crop_size}.')
         else:
             print(f"WARNING: {self.__class__.__name__} is not resizing or croppping videos. Is this intended?")
 
@@ -230,6 +229,7 @@ def video_transform(
 
 class CutsAdder:
     """Adds cuts to video sample"""
+
     def __init__(self, cuts_key, video_key="mp4"):
         self.cuts_key = cuts_key
         self.video_key = video_key

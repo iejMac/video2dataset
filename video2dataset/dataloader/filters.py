@@ -6,6 +6,7 @@ from webdataset.autodecode import decoders  # pylint: disable=unused-import
 
 class LanguageFilter:
     """Filters the dataset based on the language"""
+
     def __init__(self, languages="en", lang_key="txt"):
         self.languages = languages
         if not isinstance(self.languages, list) and self.languages is not None:
@@ -29,6 +30,7 @@ class LanguageFilter:
 
 class KeyFilter:
     """Filters the dataset based on the key"""
+
     def __init__(self, video_key="mp4"):
         self.video_key = video_key
 
@@ -41,6 +43,7 @@ class KeyFilter:
 
 class AestheticsFilter:
     """Filters the dataset based on aesthethics"""
+
     def __init__(self, aesthetic_thld=None, aesthetic_key="AESTHETIC_SCORE"):
         self.aesthetic_thld = aesthetic_thld
         self.aesthetic_key = aesthetic_key
@@ -59,6 +62,7 @@ class AestheticsFilter:
 
 class UnsafeFilter:
     """Filters the dataset based on the probability a sample is unsafe"""
+
     def __init__(self, p_unsafe_threshold):
         self.p_unsafe_threshold = p_unsafe_threshold
 

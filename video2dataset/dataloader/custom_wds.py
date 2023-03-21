@@ -42,6 +42,7 @@ def dict_collation_fn(samples, combine_tensors=True, combine_scalars=True):
 
 class KeyPassThroughDecoder(Decoder):
     """Decoder which allows you to pass through some keys"""
+
     def __init__(self, *args, passthrough_keys=None, **kwargs):
         """
         Initialize the KeyPassThroughDecoder.
