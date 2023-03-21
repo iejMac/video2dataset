@@ -226,5 +226,5 @@ class CutsAdder(object):
         assert self.cuts_key in sample, f'no field with key "{self.cuts_key}" in sample, but this is required.'
         assert self.video_key in sample, f'no field with key "{self.video_key}" in sample, but this is required.'
         sample[self.video_key] = {self.video_key: sample[self.video_key], self.cuts_key: sample[self.cuts_key]}
-        del sample[self.video_key]
+        del sample[self.cuts_key]
         return sample
