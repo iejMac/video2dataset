@@ -5,9 +5,9 @@ from torch.utils.data import IterableDataset
 
 
 import webdataset as wds
-from webdataset import DataPipeline, filters, shardlists,cache, tariterators
+from webdataset import DataPipeline, filters, shardlists, cache, tariterators
 from webdataset.compat import FluidInterface
-from webdataset.autodecode import Decoder,ImageHandler
+from webdataset.autodecode import Decoder, ImageHandler
 
 
 def dict_collation_fn(samples, combine_tensors=True, combine_scalars=True):
@@ -40,14 +40,15 @@ def dict_collation_fn(samples, combine_tensors=True, combine_scalars=True):
             result[key] = list(batched[key])
     return result
 
+
 class KeyPassThroughDecoder(Decoder):
-    def __init__(self,*args, passthrough_keys=None,**kwargs):
-        super().__init__(*args,**kwargs)
+    def __init__(self, *args, passthrough_keys=None, **kwargs):
+        super().__init__(*args, **kwargs)
         self.passthrough_keys = passthrough_keys
         if self.passthrough_keys is None:
             self.passthrough_keys = []
 
-    def decode(self,sample):
+    def decode(self, sample):
         """Decode an entire sample.
 
         :param sample: the sample, a dictionary of key value pairs
@@ -70,19 +71,23 @@ class KeyPassThroughDecoder(Decoder):
                 else:
                     result[k] = v
             else:
-                assert isinstance(v, bytes) or k in self.passthrough_keys, \
-                    f'key: {k}; passthrough_keys: {self.passthrough_keys}'
+                assert (
+                    isinstance(v, bytes) or k in self.passthrough_keys
+                ), f"key: {k}; passthrough_keys: {self.passthrough_keys}"
                 result[k] = self.decode1(k, v)
         return result
 
-class FluidInterfaceWithChangedDecode(FluidInterface):
 
-    def decode(self, *args, pre=None, post=None, only=None, partial=False, passthrough_keys=None,
-               handler=wds.reraise_exception):
+class FluidInterfaceWithChangedDecode(FluidInterface):
+    def decode(
+        self, *args, pre=None, post=None, only=None, partial=False, passthrough_keys=None, handler=wds.reraise_exception
+    ):
         handlers = [ImageHandler(x) if isinstance(x, str) else x for x in args]
-        decoder = KeyPassThroughDecoder(handlers, passthrough_keys=passthrough_keys,
-                                        pre=pre, post=post, only=only, partial=partial)
+        decoder = KeyPassThroughDecoder(
+            handlers, passthrough_keys=passthrough_keys, pre=pre, post=post, only=only, partial=partial
+        )
         return self.map(decoder, handler=handler)
+
 
 class WebDatasetWithChangedDecoder(DataPipeline, FluidInterfaceWithChangedDecode):
     """Small fluid-interface wrapper for DataPipeline."""
@@ -137,4 +142,3 @@ class WebDatasetWithChangedDecoder(DataPipeline, FluidInterfaceWithChangedDecode
                     cache_dir=cache_dir,
                 )
             )
-

@@ -150,39 +150,40 @@ def reassemble(x):
 
         # this is updating the output of video decoders
         if isinstance(x[key], tuple) and len(x[key]) == 2:
-            new_dict.update({f'{subk}': x[key][-1][subk] for subk in x[key][-1]})
+            new_dict.update({f"{subk}": x[key][-1][subk] for subk in x[key][-1]})
 
         x[key] = x[key][0]
     x.update(new_dict)
     del new_dict
     return x
 
+
 def exists(cls, attr):
-    if isinstance(cls,dict):
+    if isinstance(cls, dict):
         return attr in cls
     else:
-        return hasattr(cls,attr)
+        return hasattr(cls, attr)
 
 
 def get_video_dataset(
-        urls,
-        batch_size,
-        drop_last=False,
-        shardshuffle=None,
-        video_key='mp4',
-        cuts_key=None,
-        shuffle=False,
-        repeat=False,
-        decoder_kwargs=None,
-        aesthetics_threshold=None,
-        allowed_languages=None,
-        p_unsafe_threshold=None,
-        resize_size=None,
-        crop_size=None,
-        random_crop=False,
-        original_height_key='original_height',
-        original_width_key='original_width'
-    ):
+    urls,
+    batch_size,
+    drop_last=False,
+    shardshuffle=None,
+    video_key="mp4",
+    cuts_key=None,
+    shuffle=False,
+    repeat=False,
+    decoder_kwargs=None,
+    aesthetics_threshold=None,
+    allowed_languages=None,
+    p_unsafe_threshold=None,
+    resize_size=None,
+    crop_size=None,
+    random_crop=False,
+    original_height_key="original_height",
+    original_width_key="original_width",
+):
 
     """
     Generates a webdataset given the specified parameters.
@@ -217,17 +218,12 @@ def get_video_dataset(
     if cuts_key:
         dataset_cls = WebDatasetWithChangedDecoder
         video_decoder_cls = partial(VideoDecorderWithCutDetection, cuts_key=cuts_key)
-        additional_decoder_kwargs = {'passthrough_keys': [video_key]}
+        additional_decoder_kwargs = {"passthrough_keys": [video_key]}
     else:
         dataset_cls = wds.WebDataset
         video_decoder_cls = VideoDecorder
 
-    dset = dataset_cls(
-        urls,
-        nodesplitter=wds.split_by_node,
-        shardshuffle=shardshuffle,
-        handler=wds.warn_and_continue
-    )
+    dset = dataset_cls(urls, nodesplitter=wds.split_by_node, shardshuffle=shardshuffle, handler=wds.warn_and_continue)
 
     # TODO: do we need shuffle control on both levels?
     # why not just one shuffle param that controls shardshuffle and regular shuffle
@@ -252,14 +248,22 @@ def get_video_dataset(
     # store iflters in some list in order
 
     dset = (
-            dset.decode(video_decoder_cls(**decoder_kwargs), handler=wds.warn_and_continue, **additional_decoder_kwargs)
-            .map(reassemble, handler=wds.warn_and_continue)
-            .select(language_filter)
-            .select(unsafe_filter)
-            .select(aesthetics_filter)
-            .map(VideoResizer(size=resize_size, crop_size=crop_size, random_crop=random_crop,
-                              key=video_key, width_key=original_width_key, height_key=original_height_key))
-            .batched(batch_size, partial=drop_last, collation_fn=dict_collation_fn)
+        dset.decode(video_decoder_cls(**decoder_kwargs), handler=wds.warn_and_continue, **additional_decoder_kwargs)
+        .map(reassemble, handler=wds.warn_and_continue)
+        .select(language_filter)
+        .select(unsafe_filter)
+        .select(aesthetics_filter)
+        .map(
+            VideoResizer(
+                size=resize_size,
+                crop_size=crop_size,
+                random_crop=random_crop,
+                key=video_key,
+                width_key=original_width_key,
+                height_key=original_height_key,
+            )
+        )
+        .batched(batch_size, partial=drop_last, collation_fn=dict_collation_fn)
     )
 
     return dset

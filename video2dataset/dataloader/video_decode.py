@@ -10,6 +10,8 @@ from webdataset.autodecode import decoders
 
 
 decord.bridge.set_bridge("torch")
+
+
 class PRNGMixin(object):
     """
     Adds a prng property which is a numpy RandomState which gets
@@ -25,66 +27,64 @@ class PRNGMixin(object):
             self._prng = np.random.RandomState()
         return self._prng
 
-class AbstractVideoDecoder(PRNGMixin):
 
+class AbstractVideoDecoder(PRNGMixin):
     def __init__(self):
         super().__init__()
 
-    def get_frames(self,*args,**kwargs):
-        raise NotImplementedError(f'{self.__class__.__name__} is abstract')
+    def get_frames(self, *args, **kwargs):
+        raise NotImplementedError(f"{self.__class__.__name__} is abstract")
 
     def __call__(self, *args, **kwargs):
-        raise NotImplementedError(f'{self.__class__.__name__} is abstract')
-
-
+        raise NotImplementedError(f"{self.__class__.__name__} is abstract")
 
 
 class VideoDecorder(AbstractVideoDecoder):
-
-    def __init__(self, n_frames=None, fps=None, num_threads=4, tmpdir='/scratch/',
-                 min_fps=1, max_fps=32):
+    def __init__(self, n_frames=None, fps=None, num_threads=4, tmpdir="/scratch/", min_fps=1, max_fps=32):
         super().__init__()
         self.n_frames = n_frames
-        if fps is not None and not isinstance(fps,Iterable):
-            fps = [fps,]
+        if fps is not None and not isinstance(fps, Iterable):
+            fps = [
+                fps,
+            ]
         self.fps = fps
         self.min_fps = min_fps
         self.max_fps = max_fps
         # for frame rate conditioning
-        if self.fps == 'sample':
+        if self.fps == "sample":
             # this means we sample fps in every iteration
-            self.fs_ids = {fr: i for i, fr in enumerate(range(self.min_fps, self.max_fps+1))}
+            self.fs_ids = {fr: i for i, fr in enumerate(range(self.min_fps, self.max_fps + 1))}
         elif isinstance(self.fps, list):
             self.fs_ids = {fr: i for i, fr in enumerate(self.fps)}
         else:
             self.fs_ids = None
-            assert self.fps is None, f'invalid fps value specified: {self.fps}....'
+            assert self.fps is None, f"invalid fps value specified: {self.fps}...."
 
         self.num_threads = num_threads
 
-        infostring2 = ''
-        if self.fps == 'sample':
-            infostring1 = 'a randomly sampled'
-            infostring2=f' in between [{self.min_fps},{self.max_fps}]'
-        elif isinstance(self.fps,list):
+        infostring2 = ""
+        if self.fps == "sample":
+            infostring1 = "a randomly sampled"
+            infostring2 = f" in between [{self.min_fps},{self.max_fps}]"
+        elif isinstance(self.fps, list):
             infostring1 = ",".join([str(f) for f in self.fps])
         else:
-            infostring1 = 'native'
+            infostring1 = "native"
         info = f'Decoding video clips of length {self.n_frames} with "decord". Subsampling clips to {infostring1} fps {infostring2}'
 
         print(info)
 
         self.tmpdir = tmpdir
-        print(f'Setting {self.tmpdir} as temporary directory for the decoder')
+        print(f"Setting {self.tmpdir} as temporary directory for the decoder")
 
     def get_frames(self, reader, n_frames, stride, **kwargs):
         if n_frames * stride > len(reader) - 1:
-            raise ValueError('video clip not long enough for decoding')
+            raise ValueError("video clip not long enough for decoding")
 
         # sample frame start and choose scene
-        frame_start = self.prng.choice(int(len(reader))-int(n_frames*stride),1).item()
+        frame_start = self.prng.choice(int(len(reader)) - int(n_frames * stride), 1).item()
         # only decode the frames which are actually needed
-        frames = reader.get_batch(np.arange(frame_start,frame_start+n_frames*stride,stride).tolist())
+        frames = reader.get_batch(np.arange(frame_start, frame_start + n_frames * stride, stride).tolist())
 
         return frames, frame_start
 
@@ -106,50 +106,49 @@ class VideoDecorder(AbstractVideoDecoder):
             n_frames = self.n_frames
 
         native_fps = int(np.round(reader.get_avg_fps()))
-        if isinstance(self.fps,list):
+        if isinstance(self.fps, list):
             fps_choices = list(filter(lambda x: x <= native_fps, self.fps))
             if not fps_choices:
                 return None
             chosen_fps = self.prng.choice([fps for fps in fps_choices], 1).item()
 
-        elif self.fps =='sample':
+        elif self.fps == "sample":
             if native_fps < self.min_fps:
                 return None
             max_fps = min(native_fps, self.max_fps)
-            additional_info.update({'fps_id': 0})
-            chosen_fps = self.prng.choice(np.arange(self.min_fps, max_fps+1),1).item()
+            additional_info.update({"fps_id": 0})
+            chosen_fps = self.prng.choice(np.arange(self.min_fps, max_fps + 1), 1).item()
         else:
             chosen_fps = native_fps
 
         fs_id = self.fs_ids[chosen_fps] if self.fs_ids else 0
         stride = int(np.round(native_fps / chosen_fps))
-        additional_info.update({'fps_id': torch.Tensor([fs_id]*n_frames).long()})
+        additional_info.update({"fps_id": torch.Tensor([fs_id] * n_frames).long()})
 
-        frames, start_frame = self.get_frames(reader, n_frames,stride, scene_list=scene_list)
+        frames, start_frame = self.get_frames(reader, n_frames, stride, scene_list=scene_list)
         frames = frames.float().numpy()
 
-        additional_info['original_height'] = torch.full((frames.shape[0],),
-                                                          fill_value=frames.shape[1]).long()
-        additional_info['original_width'] = torch.full((frames.shape[0],),
-                                                       fill_value=frames.shape[2]).long()
-
+        additional_info["original_height"] = torch.full((frames.shape[0],), fill_value=frames.shape[1]).long()
+        additional_info["original_width"] = torch.full((frames.shape[0],), fill_value=frames.shape[2]).long()
 
         if self.n_frames is not None and frames.shape[0] < self.n_frames:
-            raise ValueError('Decoded video not long enough, skipping')
+            raise ValueError("Decoded video not long enough, skipping")
 
         # return compatible with torchvisioin API
-        additional_info.update({'native_fps': chosen_fps if chosen_fps is not None else native_fps})
-        additional_info.update({'start_frame': start_frame})
+        additional_info.update({"native_fps": chosen_fps if chosen_fps is not None else native_fps})
+        additional_info.update({"start_frame": start_frame})
         out = (list(frames), additional_info)
         return out
 
-class VideoDecorderWithCutDetection(VideoDecorder):
 
-    def __init__(self, *args, cuts_key='npy', **kwargs):
-        super().__init__(*args,**kwargs)
+class VideoDecorderWithCutDetection(VideoDecorder):
+    def __init__(self, *args, cuts_key="npy", **kwargs):
+        super().__init__(*args, **kwargs)
         self.cuts_key = cuts_key
         if self.cuts_key not in decoders:
-            raise KeyError(f'{self.__class__.__name__} received {self.cuts_key} as cuts_key, but that one is no decoder known to webdataset')
+            raise KeyError(
+                f"{self.__class__.__name__} received {self.cuts_key} as cuts_key, but that one is no decoder known to webdataset"
+            )
 
     def __call__(self, key, data):
         extension = re.sub(r".*[.]", "", key)
@@ -159,7 +158,7 @@ class VideoDecorderWithCutDetection(VideoDecorder):
         cut_list = decoders[self.cuts_key](data[self.cuts_key])
         data = data[extension]
 
-        return super().__call__(key,data,scene_list=cut_list)
+        return super().__call__(key, data, scene_list=cut_list)
 
     def get_frames(self, reader, n_frames, stride, scene_list):
 
@@ -167,12 +166,12 @@ class VideoDecorderWithCutDetection(VideoDecorder):
         # filter out subclips shorther than minimal required length
         scene_list = list(filter(lambda x: x[1] - x[0] > min_len, scene_list))
         if len(scene_list) == 0:
-            raise ValueError('video clips not long enough for decoding')
+            raise ValueError("video clips not long enough for decoding")
 
-        clip_id = self.prng.choice(len(scene_list),1).item()
+        clip_id = self.prng.choice(len(scene_list), 1).item()
         start, end = scene_list[clip_id].tolist()
         # sample frame start and choose scene
-        frame_start = self.prng.choice(int(end-start) - int(n_frames * stride), 1).item() + start
+        frame_start = self.prng.choice(int(end - start) - int(n_frames * stride), 1).item() + start
         # only decode the frames which are actually needed
         frames = reader.get_batch(np.arange(frame_start, frame_start + n_frames * stride, stride).tolist())
 
