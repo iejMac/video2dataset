@@ -48,12 +48,11 @@ def reassemble(x):
 def get_video_dataset(
     urls,
     batch_size,
-    drop_last=False,
-    shardshuffle=None,
-    video_key="mp4",
-    cuts_key=None,
     shuffle=False,
     repeat=False,
+    drop_last=False,
+    video_key="mp4",
+    cuts_key=None,
     decoder_kwargs=None,
     aesthetics_threshold=None,
     allowed_languages=None,
@@ -71,12 +70,11 @@ def get_video_dataset(
     Parameters:
         urls (str): The path to the dataset.
         batch_size (int): The number of samples per batch.
-        drop_last (bool, optional): Whether to drop the last incomplete batch. Default is False.
-        shardshuffle (bool, optional): Whether to shuffle shards. Default is None.
-        video_key (str, optional): The key for video files. Default is 'mp4'.
-        cuts_key (str, optional): The key for cut detection. Default is None.
         shuffle (bool, optional): Whether to shuffle the dataset. Default is False.
         repeat (bool, optional): Whether to repeat the dataset. Default is False.
+        drop_last (bool, optional): Whether to drop the last incomplete batch. Default is False.
+        video_key (str, optional): The key for video files. Default is 'mp4'.
+        cuts_key (str, optional): The key for cut detection. Default is None.
         decoder_kwargs (dict, optional): Keyword arguments for the video decoder. Default is an empty dictionary.
         aesthetics_threshold (float, optional): Aesthetic threshold for filtering. Default is None.
         allowed_languages (list, optional): List of allowed languages. Default is None.
@@ -103,10 +101,7 @@ def get_video_dataset(
         dataset_cls = wds.WebDataset
         video_decoder_cls = VideoDecorder
 
-    dset = dataset_cls(urls, nodesplitter=wds.split_by_node, shardshuffle=shardshuffle, handler=wds.warn_and_continue)
-
-    # TODO: do we need shuffle control on both levels?
-    # why not just one shuffle param that controls shardshuffle and regular shuffle
+    dset = dataset_cls(urls, nodesplitter=wds.split_by_node, shardshuffle=shuffle, handler=wds.warn_and_continue)
 
     if repeat:
         dset = dset.repeat()
