@@ -1,3 +1,4 @@
+"""Video Decoders"""
 import os
 import re
 import numpy as np
@@ -12,7 +13,7 @@ from webdataset.autodecode import decoders
 decord.bridge.set_bridge("torch")
 
 
-class PRNGMixin(object):
+class PRNGMixin:
     """
     Adds a prng property which is a numpy RandomState which gets
     reinitialized whenever the pid changes to avoid synchronized sampling
@@ -29,8 +30,6 @@ class PRNGMixin(object):
 
 
 class AbstractVideoDecoder(PRNGMixin):
-    def __init__(self):
-        super().__init__()
 
     def get_frames(self, *args, **kwargs):
         raise NotImplementedError(f"{self.__class__.__name__} is abstract")
@@ -40,6 +39,7 @@ class AbstractVideoDecoder(PRNGMixin):
 
 
 class VideoDecorder(AbstractVideoDecoder):
+    """Basic video decoder that uses decord"""
     def __init__(self, n_frames=None, fps=None, num_threads=4, tmpdir="/scratch/", min_fps=1, max_fps=32):
         super().__init__()
         self.n_frames = n_frames
@@ -70,14 +70,15 @@ class VideoDecorder(AbstractVideoDecoder):
             infostring1 = ",".join([str(f) for f in self.fps])
         else:
             infostring1 = "native"
-        info = f'Decoding video clips of length {self.n_frames} with "decord". Subsampling clips to {infostring1} fps {infostring2}'
+        info = f'Decoding video clips of length {self.n_frames} with "decord".' + \
+        f' Subsampling clips to {infostring1} fps {infostring2}'
 
         print(info)
 
         self.tmpdir = tmpdir
         print(f"Setting {self.tmpdir} as temporary directory for the decoder")
 
-    def get_frames(self, reader, n_frames, stride, **kwargs):
+    def get_frames(self, reader, n_frames, stride, **kwargs):  # pylint: disable=arguments-differ
         if n_frames * stride > len(reader) - 1:
             raise ValueError("video clip not long enough for decoding")
 
@@ -88,12 +89,12 @@ class VideoDecorder(AbstractVideoDecoder):
 
         return frames, frame_start
 
-    def __call__(self, key, data, scene_list=None):
+    def __call__(self, key, data, scene_list=None):  # pylint: disable=arguments-differ
         extension = re.sub(r".*[.]", "", key)
         if extension not in "mp4 ogv mjpeg avi mov h264 mpg webm wmv".split():
             return None
 
-        additional_info = dict()
+        additional_info = {}
         with tempfile.TemporaryDirectory(dir=self.tmpdir) as dirname:
             fname = os.path.join(dirname, f"file.{extension}")
             with open(fname, "wb") as stream:
@@ -110,7 +111,7 @@ class VideoDecorder(AbstractVideoDecoder):
             fps_choices = list(filter(lambda x: x <= native_fps, self.fps))
             if not fps_choices:
                 return None
-            chosen_fps = self.prng.choice([fps for fps in fps_choices], 1).item()
+            chosen_fps = self.prng.choice(list(fps_choices), 1).item()
 
         elif self.fps == "sample":
             if native_fps < self.min_fps:
@@ -142,15 +143,17 @@ class VideoDecorder(AbstractVideoDecoder):
 
 
 class VideoDecorderWithCutDetection(VideoDecorder):
+    """Video decoder that uses decord with cut detection"""
     def __init__(self, *args, cuts_key="npy", **kwargs):
         super().__init__(*args, **kwargs)
         self.cuts_key = cuts_key
         if self.cuts_key not in decoders:
             raise KeyError(
-                f"{self.__class__.__name__} received {self.cuts_key} as cuts_key, but that one is no decoder known to webdataset"
+                f"{self.__class__.__name__} received {self.cuts_key} as cuts_key," + \
+                " but that one is no decoder known to webdataset"
             )
 
-    def __call__(self, key, data):
+    def __call__(self, key, data):  # pylint: disable=arguments-differ,signature-differs
         extension = re.sub(r".*[.]", "", key)
         if extension not in "mp4 ogv mjpeg avi mov h264 mpg webm wmv".split():
             return None
@@ -160,7 +163,7 @@ class VideoDecorderWithCutDetection(VideoDecorder):
 
         return super().__call__(key, data, scene_list=cut_list)
 
-    def get_frames(self, reader, n_frames, stride, scene_list):
+    def get_frames(self, reader, n_frames, stride, scene_list):  # pylint: disable=arguments-differ
 
         min_len = n_frames * stride
         # filter out subclips shorther than minimal required length

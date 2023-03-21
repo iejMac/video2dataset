@@ -1,3 +1,4 @@
+"""Custom WebDatasets"""
 import yaml
 import numpy as np
 import torch
@@ -20,42 +21,50 @@ def dict_collation_fn(samples, combine_tensors=True, combine_scalars=True):
     :rtype: dict
     """
     keys = set.intersection(*[set(sample.keys()) for sample in samples])
-    batched = {key: [] for key in keys}
-
-    for s in samples:
-        [batched[key].append(s[key]) for key in batched]
+    batched = {key: [s[key] for s in samples] for key in keys}
 
     result = {}
-    for key in batched:
-        if isinstance(batched[key][0], (int, float)):
+    for key, values in batched.items():  # Iterate over both key and values
+        first_value = values[0]
+        if isinstance(first_value, (int, float)):
             if combine_scalars:
-                result[key] = np.array(list(batched[key]))
-        elif isinstance(batched[key][0], torch.Tensor):
+                result[key] = np.array(values)
+        elif isinstance(first_value, torch.Tensor):
             if combine_tensors:
-                result[key] = torch.stack(list(batched[key]))
-        elif isinstance(batched[key][0], np.ndarray):
+                result[key] = torch.stack(values)
+        elif isinstance(first_value, np.ndarray):
             if combine_tensors:
-                result[key] = np.array(list(batched[key]))
+                result[key] = np.array(values)
         else:
-            result[key] = list(batched[key])
+            result[key] = values
+
     return result
 
 
 class KeyPassThroughDecoder(Decoder):
+    """Decoder which allows you to pass through some keys"""
     def __init__(self, *args, passthrough_keys=None, **kwargs):
+        """
+        Initialize the KeyPassThroughDecoder.
+
+        :param *args: Positional arguments to be passed to the base Decoder class.
+        :param passthrough_keys: List of keys to bypass the decoding process.
+        :param **kwargs: Keyword arguments to be passed to the base Decoder class.
+        """
         super().__init__(*args, **kwargs)
-        self.passthrough_keys = passthrough_keys
-        if self.passthrough_keys is None:
-            self.passthrough_keys = []
+        self.passthrough_keys = passthrough_keys or []  # Simplified passthrough_keys initialization
 
     def decode(self, sample):
-        """Decode an entire sample.
+        """
+        Decode an entire sample.
 
-        :param sample: the sample, a dictionary of key value pairs
+        :param dict sample: The sample, a dictionary of key-value pairs.
+        :return: Decoded sample.
+        :rtype: dict
         """
         result = {}
         assert isinstance(sample, dict), sample
-        for k, v in list(sample.items()):
+        for k, v in sample.items():  # Removed unnecessary list conversion
             if k[0] == "_":
                 if isinstance(v, bytes):
                     v = v.decode("utf-8")
@@ -89,6 +98,7 @@ class FluidInterfaceWithChangedDecode(FluidInterface):
         return self.map(decoder, handler=handler)
 
 
+# TODO: pylint says this needs __getitem__
 class WebDatasetWithChangedDecoder(DataPipeline, FluidInterfaceWithChangedDecode):
     """Small fluid-interface wrapper for DataPipeline."""
 
@@ -97,7 +107,6 @@ class WebDatasetWithChangedDecoder(DataPipeline, FluidInterfaceWithChangedDecode
         urls,
         handler=wds.reraise_exception,
         resampled=False,
-        repeat=False,
         shardshuffle=None,
         cache_size=0,
         cache_dir=None,
@@ -110,7 +119,7 @@ class WebDatasetWithChangedDecoder(DataPipeline, FluidInterfaceWithChangedDecode
             assert not resampled
             self.append(urls)
         elif isinstance(urls, str) and (urls.endswith(".yaml") or urls.endswith(".yml")):
-            with (open(urls)) as stream:
+            with open(urls, "rb") as stream:
                 spec = yaml.safe_load(stream)
             assert "datasets" in spec
             self.append(shardlists.MultiShardSample(spec))

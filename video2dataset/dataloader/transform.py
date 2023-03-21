@@ -22,7 +22,7 @@ try:
     )
 
     from open_clip.constants import OPENAI_DATASET_MEAN, OPENAI_DATASET_STD
-except ModuleNotFoundError as e:
+except ModuleNotFoundError as _:
     OPENAI_DATASET_MEAN, OPENAI_DATASET_STD = None, None
 
 from .video_decode import PRNGMixin
@@ -33,6 +33,7 @@ def _convert_to_rgb(image):
 
 
 class VideoResizer(PRNGMixin):
+    """Resizes frames to specified height and width"""
     def __init__(
         self,
         size=None,
@@ -60,12 +61,13 @@ class VideoResizer(PRNGMixin):
 
             if self.crop_size:
                 print(
-                    f'... and {"random" if self.random_crop else "center"} cropping to size {self.crop_size} afterwards.'
+                    f'... and {"random" if self.random_crop else "center"} cropping to size {self.crop_size}.'
                 )
         else:
             print(f"WARNING: {self.__class__.__name__} is not resizing or croppping videos. Is this intended?")
 
-    def get_rand_reference(self, resize_size, h, w):
+    def _get_rand_reference(self, resize_size, h, w):
+        """gets random reference"""
         assert resize_size is None or (
             self.crop_size[0] <= resize_size[0] and self.crop_size[1] <= resize_size[1]
         ), "Resize size must be greater or equal than crop_size"
@@ -93,7 +95,8 @@ class VideoResizer(PRNGMixin):
         reference = [y, x]
         return reference
 
-    def get_resize_size(self, frame, orig_h, orig_w):
+    def _get_resize_size(self, frame, orig_h, orig_w):
+        """gets resize size"""
         if self.resize_size is not None:
             if isinstance(self.resize_size, int):
                 f = self.resize_size / min((orig_h, orig_w))
@@ -107,9 +110,10 @@ class VideoResizer(PRNGMixin):
 
         return resize_size, (h, w)
 
-    def get_reference_frame(self, resize_size, h, w):
+    def _get_reference_frame(self, resize_size, h, w):
+        """gets reference frame"""
         if self.random_crop:
-            reference = self.get_rand_reference(resize_size, h, w)
+            reference = self._get_rand_reference(resize_size, h, w)
         else:
             reference = [s // 2 for s in [h, w]]
 
@@ -135,10 +139,10 @@ class VideoResizer(PRNGMixin):
         orig_h = data[self.height_key][0].item()
         orig_w = data[self.width_key][0].item()
 
-        resize_size, (h, w) = self.get_resize_size(frames[0], orig_h, orig_w)
-        reference = self.get_reference_frame(resize_size, h, w)
+        resize_size, (h, w) = self._get_resize_size(frames[0], orig_h, orig_w)
+        reference = self._get_reference_frame(resize_size, h, w)
 
-        for i, frame in enumerate(frames):
+        for frame in frames:
 
             if resize_size is not None:
                 frame = cv2.resize(frame, tuple(reversed(resize_size)), interpolation=cv2.INTER_LANCZOS4)
@@ -224,7 +228,8 @@ def video_transform(
     return apply_frame_transform
 
 
-class CutsAdder(object):
+class CutsAdder:
+    """Adds cuts to video sample"""
     def __init__(self, cuts_key, video_key="mp4"):
         self.cuts_key = cuts_key
         self.video_key = video_key

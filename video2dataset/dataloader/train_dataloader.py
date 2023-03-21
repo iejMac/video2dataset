@@ -13,7 +13,7 @@ from webdataset.tariterators import base_plus_ext, url_opener, tar_file_expander
 from .custom_wds import WebDatasetWithChangedDecoder, dict_collation_fn
 from .transform import VideoResizer, CutsAdder
 from .video_decode import VideoDecorder, VideoDecorderWithCutDetection
-from .filters import *
+from .filters import KeyFilter, LanguageFilter, AesthethicsFilter, UnsafeFilter  # pylint: disable=unused-import
 
 try:
     from torch.utils.data import DataLoader
@@ -142,10 +142,17 @@ _SAMPLE_SHUFFLE_INITIAL = 1000
 
 
 def reassemble(x):
-    new_dict = dict()
+    """
+    Process a dictionary by updating its values based on certain conditions.
+
+    :param dict x: The input dictionary to process.
+    :return: The processed dictionary.
+    :rtype: dict
+    """
+    new_dict = {}
 
     for key in x:
-        if key not in f"mp4 ogv mjpeg avi mov h264 mpg webm wmv".split():
+        if key not in "mp4 ogv mjpeg avi mov h264 mpg webm wmv".split():
             continue
 
         # this is updating the output of video decoders
@@ -212,7 +219,7 @@ def get_video_dataset(
     """
 
     if decoder_kwargs is None:
-        decoder_kwargs = dict()
+        decoder_kwargs = {}
 
     additional_decoder_kwargs = {}
     if cuts_key:
