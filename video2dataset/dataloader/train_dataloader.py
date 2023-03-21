@@ -164,35 +164,54 @@ def exists(cls, attr):
         return hasattr(cls,attr)
 
 
-def get_video_dataset(args,):
+def get_video_dataset(
+        urls,
+        batch_size,
+        drop_last=False,
+        shardshuffle=None,
+        cuts_key=None,
+        shuffle=False,
+        repeat=False,
+        video_key='mp4',
+        decoder_kwargs=None,
+        aesthetics_threshold=None,
+        allowed_languages=None,
+        p_unsafe_threshold=None,
+        resize_size=None,
+        crop_size=None,
+        random_crop=False,
+        original_height_key='original_height',
+        original_width_key='original_width'
+    ):
 
-    # TODO think about different ways of pasing args to dataloader (personally, I prefer omegaconf)
-    tars = args.data
-    # batching
-    batch_size = args.batch_size
-    drop_last = args.drop_last if exists(args,'drop_last') else False
-    # basic webdataset params
-    shardshuffle=args.shardshuffle if exists(args,'shardshuffle') else None
-    cuts_key = args.cuts_key if exists(args,'cut_key') else None
-    shuffle = args.shuffle if exists(args,'shuffle') else False
-    repeat = args.repeat if exists(args,'repeat') else False
-    video_key = args.video_key if exists(args,'video_key') else 'mp4'
-    decoder_kwargs = args.decoder_kwargs if exists(args,'decoder_kwargs') else dict()
-    # asethetics filter
-    aesthetics_threshold = args.aesthetics_threshold if exists(args,'aesthetics_threshold') else None
-    # language_filter
-    allowed_languages = args.allowed_languages if exists(args,'allowed_languages') else None
-    # p_unsafe filter
-    p_unsafe_threshold = args.p_unsafe_threshold if exists(args, 'p_unsafe_threshold') else None
-    # resizer params
-    resize_size = args.resize_size if exists(args, 'resize_size') else None
-    crop_size = args.crop_size if exists(args, 'crop_size') else None
-    # default center crop
-    random_crop = args.random_crop if exists(args, 'random_crop') else False
-    # get original height and width from dataset
-    original_height_key = args.original_height_key if exists(args, 'original_height_key') else 'original_height'
-    original_width_key = args.original_width_key if exists(args, 'original_width_key') else 'original_width'
+    """
+    Generates a webdataset given the specified parameters.
 
+    Parameters:
+    urls (str): The path to the dataset.
+    batch_size (int): The number of samples per batch.
+    drop_last (bool, optional): Whether to drop the last incomplete batch. Default is False.
+    shardshuffle (bool, optional): Whether to shuffle shards. Default is None.
+    cuts_key (str, optional): The key for cut detection. Default is None.
+    shuffle (bool, optional): Whether to shuffle the dataset. Default is False.
+    repeat (bool, optional): Whether to repeat the dataset. Default is False.
+    video_key (str, optional): The key for video files. Default is 'mp4'.
+    decoder_kwargs (dict, optional): Keyword arguments for the video decoder. Default is an empty dictionary.
+    aesthetics_threshold (float, optional): Aesthetic threshold for filtering. Default is None.
+    allowed_languages (list, optional): List of allowed languages. Default is None.
+    p_unsafe_threshold (float, optional): Probability threshold for unsafe content filtering. Default is None.
+    resize_size (tuple, optional): Tuple of (width, height) for resizing the video. Default is None.
+    crop_size (tuple, optional): Tuple of (width, height) for cropping the video. Default is None.
+    random_crop (bool, optional): Whether to apply random cropping. Default is False.
+    original_height_key (str, optional): The key for the original video height. Default is 'original_height'.
+    original_width_key (str, optional): The key for the original video width. Default is 'original_width'.
+
+    Returns:
+    WebDataset: The processed webdataset.
+    """
+
+    if decoder_kwargs is None:
+        decoder_kwargs = dict()
 
     additional_decoder_kwargs = {}
     if cuts_key:
@@ -203,8 +222,7 @@ def get_video_dataset(args,):
         dataset_cls = wds.WebDataset
         video_decoder_cls = VideoDecorder
 
-
-    dset = dataset_cls(tars,nodesplitter=wds.split_by_node,shardshuffle=shardshuffle,handler=wds.warn_and_continue)
+    dset = dataset_cls(urls, nodesplitter=wds.split_by_node, shardshuffle=shardshuffle, handler=wds.warn_and_continue)
 
     if repeat:
         dset = dset.repeat()
@@ -212,34 +230,27 @@ def get_video_dataset(args,):
     if shuffle:
         dset = dset.shuffle(shuffle)
 
-
     key_filter = KeyFilter(video_key=video_key)
     dset = dset.select(key_filter)
 
-    # add cut detection
     if cuts_key:
         cut_adder = CutsAdder(cuts_key=cuts_key, video_key=video_key)
         dset = dset.map(cut_adder, handler=wds.warn_and_continue)
 
-    # various optional filters TODO add more if needed
     aesthetics_filter = AestheticsFilter(aesthetic_thld=aesthetics_threshold)
     language_filter = LanguageFilter(languages=allowed_languages)
     unsafe_filter = UnsafeFilter(p_unsafe_threshold=p_unsafe_threshold)
 
-    dset = (dset.decode(video_decoder_cls(**decoder_kwargs), handler=wds.warn_and_continue, **additional_decoder_kwargs).
-            map(reassemble, handler=wds.warn_and_continue).
-            select(language_filter).
-            select(unsafe_filter).
-            select(aesthetics_filter).
-            map(VideoResizer(size=resize_size, crop_size=crop_size,random_crop=random_crop,
-                             key=video_key,width_key=original_width_key, height_key=original_height_key))
-            .batched(batch_size,partial=drop_last,
-                     collation_fn=dict_collation_fn)
-            )
+    dset = (dset.decode(video_decoder_cls(**decoder_kwargs), handler=wds.warn_and_continue, **additional_decoder_kwargs)
+            .map(reassemble, handler=wds.warn_and_continue)
+            .select(language_filter)
+            .select(unsafe_filter)
+            .select(aesthetics_filter)
+            .map(VideoResizer(size=resize_size, crop_size=crop_size, random_crop=random_crop,
+                              key=video_key, width_key=original_width_key, height_key=original_height_key))
+            .batched(batch_size, partial=drop_last, collation_fn=dict_collation_fn))
 
     return dset
-
-
 
 
 def get_wds_dataset(args, preprocess_vid, is_train, epoch=0, tokenizer=None):
