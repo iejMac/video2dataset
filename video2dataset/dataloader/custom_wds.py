@@ -1,5 +1,4 @@
 """Custom WebDatasets"""
-import yaml
 import numpy as np
 import torch
 from torch.utils.data import IterableDataset
@@ -118,11 +117,6 @@ class WebDatasetWithChangedDecoder(DataPipeline, FluidInterfaceWithChangedDecode
         if isinstance(urls, IterableDataset):
             assert not resampled
             self.append(urls)
-        elif isinstance(urls, str) and (urls.endswith(".yaml") or urls.endswith(".yml")):
-            with open(urls, "rb") as stream:
-                spec = yaml.safe_load(stream)
-            assert "datasets" in spec
-            self.append(shardlists.MultiShardSample(spec))
         elif isinstance(urls, dict):
             assert "datasets" in urls
             self.append(shardlists.MultiShardSample(urls))
