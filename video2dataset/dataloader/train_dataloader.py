@@ -13,7 +13,7 @@ from webdataset.tariterators import base_plus_ext, url_opener, tar_file_expander
 from .custom_wds import WebDatasetWithChangedDecoder, dict_collation_fn
 from .transform import VideoResizer, CutsAdder
 from .video_decode import VideoDecorder, VideoDecorderWithCutDetection
-from .filters import KeyFilter, LanguageFilter, AesthethicsFilter, UnsafeFilter  # pylint: disable=unused-import
+from .filters import KeyFilter, LanguageFilter, AestheticsFilter, UnsafeFilter  # pylint: disable=unused-import
 
 try:
     from torch.utils.data import DataLoader
