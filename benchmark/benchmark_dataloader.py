@@ -16,10 +16,14 @@ def benchmark_train_dl(num_frames, num_workers,bs=1, num_threads=4,
     decoder_kwargs = {'n_frames': num_frames,
                       'fps': None,
                       'num_threads':num_threads}
-    args = Namespace(data=SHARDS,batch_size=bs,decoder_kwargs=decoder_kwargs,
-                     resize_size=resize_size,crop_size=crop_size)
 
-    dset = get_video_dataset(args)
+    dset = get_video_dataset(
+        urls=SHARDS,
+        batch_size=bs,
+        decoder_kwargs=decoder_kwargs,
+        resize_size=resize_size,
+        crop_size=crop_size,
+    )
     dl = WebLoader(dset,batch_size=None,num_workers=num_workers)
     count = 0
     t0 = time.time()
