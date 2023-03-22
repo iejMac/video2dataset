@@ -30,19 +30,6 @@ def benchmark_train_dl(num_frames, num_workers, bs=1, num_threads=4, resize_size
     return count / (tf - t0)
 
 
-def benchmark_bytes_dl():
-    # 326.06278216697706
-    dl = get_bytes_dataloader(SHARDS, 12)
-
-    count = 0
-    t0 = time.time()
-    for samp in dl:
-        key, vb, cap, meta = samp
-        count += 1
-    tf = time.time()
-    return count / (tf - t0)
-
-
 if __name__ == "__main__":
     # print("Benchmarking bytes dataloader...")
     # print(benchmark_bytes_dl())

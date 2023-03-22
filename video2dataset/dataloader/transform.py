@@ -4,6 +4,7 @@ Transformations you might want to apply to data during loading
 import math
 from typing import Optional, Tuple
 import cv2
+import torch
 import numpy as np
 
 from .video_decode import PRNGMixin
@@ -129,6 +130,8 @@ class VideoResizer(PRNGMixin):
 
                 frame = frame[int(y_) : int(y_) + self.crop_size[0], int(x_) : int(x_) + self.crop_size[1]]
 
+            # TODO: maybe lets add other options for normalization
+            # will need for VideoCLIP built on top of CLIP
             frame = frame.astype(float) / 127.5 - 1.0
 
             frame = torch.from_numpy(frame)

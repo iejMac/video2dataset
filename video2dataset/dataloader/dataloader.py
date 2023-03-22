@@ -15,11 +15,6 @@ from .transform import VideoResizer, CutsAdder
 from .video_decode import VideoDecorder, VideoDecorderWithCutDetection
 from .filters import KeyFilter, LanguageFilter, AestheticsFilter, UnsafeFilter  # pylint: disable=unused-import
 
-try:
-    from torch.utils.data import DataLoader
-except ModuleNotFoundError as e:
-    DataLoader = None  # pylint: disable=invalid-name
-
 
 def reassemble(x):
     """
@@ -97,6 +92,9 @@ def get_video_dataset(
         dataset_cls = WebDatasetWithChangedDecoder
         video_decoder_cls = partial(VideoDecorderWithCutDetection, cuts_key=cuts_key)
         additional_decoder_kwargs = {"passthrough_keys": [video_key]}
+    elif decoder_kwargs == {}: # nothing means just read the bytes
+        dataset_cls = wds.WebDataset
+        video_decoder_cls = None
     else:
         dataset_cls = wds.WebDataset
         video_decoder_cls = VideoDecorder
@@ -118,27 +116,34 @@ def get_video_dataset(
     aesthetics_filter = AestheticsFilter(aesthetic_thld=aesthetics_threshold)
     language_filter = LanguageFilter(languages=allowed_languages)
     unsafe_filter = UnsafeFilter(p_unsafe_threshold=p_unsafe_threshold)
+    # TODO: in the futuer only include filters we want to use based on params
+    filters = [aesthetics_filter, language_filter, unsafe_filter]
 
-    # TODO: loop over filters doing .select(Filter)
-    # store iflters in some list in order
-
-    dset = (
-        dset.decode(video_decoder_cls(**decoder_kwargs), handler=wds.warn_and_continue, **additional_decoder_kwargs)
-        .map(reassemble, handler=wds.warn_and_continue)
-        .select(language_filter)
-        .select(unsafe_filter)
-        .select(aesthetics_filter)
-        .map(
-            VideoResizer(
-                size=resize_size,
-                crop_size=crop_size,
-                random_crop=random_crop,
-                key=video_key,
-                width_key=original_width_key,
-                height_key=original_height_key,
-            )
+    # Decoding
+    if decoder_kwargs != {}:
+        dset = (
+            dset.decode(video_decoder_cls(**decoder_kwargs), handler=wds.warn_and_continue, **additional_decoder_kwargs)
+            .map(reassemble, handler=wds.warn_and_continue)
         )
-        .batched(batch_size, partial=drop_last, collation_fn=dict_collation_fn)
-    )
+
+    # Filters
+    for fltr in filters:
+        dset = dset.select(fltr)
+
+    # Resizing
+    if decoder_kwargs != {}: # bytes
+        dset = (
+            dset.map(
+                VideoResizer(
+                    size=resize_size,
+                    crop_size=crop_size,
+                    random_crop=random_crop,
+                    key=video_key,
+                    width_key=original_width_key,
+                    height_key=original_height_key,
+                )
+            )
+            .batched(batch_size, partial=drop_last, collation_fn=dict_collation_fn)
+        )
 
     return dset
