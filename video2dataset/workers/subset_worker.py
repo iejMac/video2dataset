@@ -6,7 +6,7 @@ import traceback
 
 import fsspec
 
-from video2dataset.dataloader import get_bytes_dataloader
+from video2dataset.dataloader import get_video_dataset
 from video2dataset.logger import CappedCounter, write_stats
 
 
@@ -67,7 +67,11 @@ class SubsetWorker:
         failed_to_subsample = 0
         error_message = None
 
-        dataloader = get_bytes_dataloader([shard])
+        dataloader = get_video_dataset(
+            urls=[shard],
+            batch_size=1,
+            decoder_kwargs={},
+        )
         for sample in dataloader:
             # Gather subset of dataset
             key = sample["__key__"]
