@@ -4,7 +4,7 @@ wget -nc http://www.robots.ox.ac.uk/~maxbain/webvid/results_2M_val.csv
 
 video2dataset --url_list="results_2M_val.csv" \
         --input_format="csv" \
-        --output-format="files" \
+        --output-format="webdataset" \
 	--output_folder="dataset" \
         --url_col="contentUrl" \
         --caption_col="name" \
