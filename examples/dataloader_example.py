@@ -6,7 +6,6 @@ from video2dataset.dataloader import get_video_dataset
 SHARDS = "dataset/{00000..00004}.tar"
 
 if __name__ == "__main__":
-
     decoder_kwargs = {
         "n_frames": 8, # get 8 frames from each video
         "fps": 10, # downsample to 10 FPS
@@ -28,11 +27,10 @@ if __name__ == "__main__":
     dl = WebLoader(dset, batch_size=None, num_workers=num_workers)
 
     for sample in dl:
-        print(sample.keys())
+        video_batch = sample["mp4"]
+        print(video_batch.shape) # torch.Size([32, 8, 256, 256, 3])
 
-
-
-
-
-
-
+        # TODO: need to add option for text/metadata preprocessing (tokenization etc.)
+        text_batch = sample["txt"]
+        print(text_batch[0])
+        metadata_batch = sample["json"]
