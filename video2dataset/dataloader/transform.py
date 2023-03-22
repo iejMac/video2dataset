@@ -2,7 +2,6 @@
 Transformations you might want to apply to data during loading
 """
 import math
-from typing import Optional, Tuple
 import cv2
 import torch
 import numpy as np

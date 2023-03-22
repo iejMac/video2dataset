@@ -1,14 +1,6 @@
 """video dataset creation"""
-import logging
-import math
-import random
 import webdataset as wds
 from functools import partial
-
-from dataclasses import dataclass
-from multiprocessing import Value
-from webdataset.filters import _shuffle
-from webdataset.tariterators import base_plus_ext, url_opener, tar_file_expander, valid_sample
 
 from .custom_wds import WebDatasetWithChangedDecoder, dict_collation_fn
 from .transform import VideoResizer, CutsAdder

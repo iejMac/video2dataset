@@ -1,3 +1,4 @@
+"""Custom WebDataset classes"""
 import numpy as np
 import torch
 from torch.utils.data import IterableDataset
