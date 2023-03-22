@@ -92,7 +92,7 @@ def get_video_dataset(
         dataset_cls = WebDatasetWithChangedDecoder
         video_decoder_cls = partial(VideoDecorderWithCutDetection, cuts_key=cuts_key)
         additional_decoder_kwargs = {"passthrough_keys": [video_key]}
-    elif decoder_kwargs == {}: # nothing means just read the bytes
+    elif decoder_kwargs == {}:  # nothing means just read the bytes
         dataset_cls = wds.WebDataset
         video_decoder_cls = None
     else:
@@ -121,29 +121,25 @@ def get_video_dataset(
 
     # Decoding
     if decoder_kwargs != {}:
-        dset = (
-            dset.decode(video_decoder_cls(**decoder_kwargs), handler=wds.warn_and_continue, **additional_decoder_kwargs)
-            .map(reassemble, handler=wds.warn_and_continue)
-        )
+        dset = dset.decode(
+            video_decoder_cls(**decoder_kwargs), handler=wds.warn_and_continue, **additional_decoder_kwargs
+        ).map(reassemble, handler=wds.warn_and_continue)
 
     # Filters
     for fltr in filters:
         dset = dset.select(fltr)
 
     # Resizing
-    if decoder_kwargs != {}: # bytes
-        dset = (
-            dset.map(
-                VideoResizer(
-                    size=resize_size,
-                    crop_size=crop_size,
-                    random_crop=random_crop,
-                    key=video_key,
-                    width_key=original_width_key,
-                    height_key=original_height_key,
-                )
+    if decoder_kwargs != {}:  # bytes
+        dset = dset.map(
+            VideoResizer(
+                size=resize_size,
+                crop_size=crop_size,
+                random_crop=random_crop,
+                key=video_key,
+                width_key=original_width_key,
+                height_key=original_height_key,
             )
-            .batched(batch_size, partial=drop_last, collation_fn=dict_collation_fn)
-        )
+        ).batched(batch_size, partial=drop_last, collation_fn=dict_collation_fn)
 
     return dset
