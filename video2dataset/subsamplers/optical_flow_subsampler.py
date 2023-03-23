@@ -4,23 +4,47 @@ optical flow detection
 import cv2
 import numpy as np
 
+
 def resize_image_with_aspect_ratio(image, target_shortest_side=16):
+    """
+    Resize an input image while maintaining its aspect ratio.
+
+    This function takes an image and resizes it so that its shortest side
+    matches the specified target length. The other side is scaled accordingly
+    to maintain the original aspect ratio of the image. The function returns
+    the resized image and the scaling factor used for resizing.
+
+    Parameters
+    ----------
+    image : numpy.ndarray
+        The input image represented as a NumPy array with shape (height, width, channels).
+    target_shortest_side : int, optional
+        The desired length for the shortest side of the resized image (default is 16).
+
+    Returns
+    -------
+    resized_image : numpy.ndarray
+        The resized image with the same number of channels as the input image.
+    scaling_factor : float
+        The scaling factor used to resize the image.
+    """
     # Get the original dimensions of the image
     height, width = image.shape[:2]
-    
+
     # Calculate the new dimensions while maintaining the aspect ratio
     if height < width:
         new_height = target_shortest_side
         new_width = int(width * (target_shortest_side / height))
-        scaling_factor = height/new_height
+        scaling_factor = height / new_height
     else:
         new_width = target_shortest_side
         new_height = int(height * (target_shortest_side / width))
-        scaling_factor = width/new_width
+        scaling_factor = width / new_width
     # Resize the image using the calculated dimensions
     resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
 
     return resized_image, scaling_factor
+
 
 class Cv2Detector:
     """
@@ -69,18 +93,21 @@ class Cv2Detector:
         """
         frame1, scaling_factor = self.preprocess(frame1)
         frame2, _ = self.preprocess(frame2)
-        return cv2.calcOpticalFlowFarneback(
-            frame1,
-            frame2,
-            None,
-            self.pyr_scale,
-            self.levels,
-            self.winsize,
-            self.iterations,
-            self.poly_n,
-            self.poly_sigma,
-            self.flags,
-        ) * scaling_factor
+        return (
+            cv2.calcOpticalFlowFarneback(
+                frame1,
+                frame2,
+                None,
+                self.pyr_scale,
+                self.levels,
+                self.winsize,
+                self.iterations,
+                self.poly_n,
+                self.poly_sigma,
+                self.flags,
+            )
+            * scaling_factor
+        )
 
 
 class OpticalFlowSubsampler:
