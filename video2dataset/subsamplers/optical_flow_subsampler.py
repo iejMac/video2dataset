@@ -1,14 +1,9 @@
 """
 optical flow detection
 """
-import os
-import tempfile
 import cv2
 import numpy as np
-import torch
 
-from raft.raft import RAFT
-from raft.utils import InputPadder
 
 class Cv2Detector:
     """
@@ -71,7 +66,7 @@ class OpticalFlowSubsampler:
         fps (int): The target frames per second. Defaults to -1 (original FPS).
     """
 
-    def __init__(self, detector="cv2", fps=-1, params=None, device=None):
+    def __init__(self, detector="cv2", fps=-1, params=None):
         if detector == "cv2":
             if params:
                 pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags = params
@@ -83,46 +78,39 @@ class OpticalFlowSubsampler:
 
         self.fps = fps
 
-    def __call__(self, video_bytes):
+    def __call__(self, frames, original_fps):
         optical_flow = []
-        with tempfile.TemporaryDirectory() as tmpdir:
-            video_path = os.path.join(tmpdir, "input.mp4")
-            with open(video_path, "wb") as f:
-                f.write(video_bytes)
-            try:
-                cap = cv2.VideoCapture(video_path)
-                original_fps = cap.get(cv2.CAP_PROP_FPS)
 
-                if self.fps == -1:
-                    self.fps = original_fps
-                    take_every_nth = 1
-                elif self.fps > original_fps:
-                    take_every_nth = 1
-                else:
-                    take_every_nth = int(round(original_fps / self.fps))
+        if self.fps == -1:
+            self.fps = original_fps
+            take_every_nth = 1
+        elif self.fps > original_fps:
+            take_every_nth = 1
+        else:
+            take_every_nth = int(round(original_fps / self.fps))
 
-                ret, frame1 = cap.read()
-                prvs = frame1
-                fc = 0
+        try:
+            frame1 = frames[0]
+            prvs = frame1
+            fc = 0
 
-                while True:
-                    ret, frame2 = cap.read()
-                    fc += 1
+            for frame2 in frames[1:]:
+                fc += 1
+                if fc % take_every_nth != 0:
+                    continue
 
-                    if not ret:
-                        break
+                next_frame = frame2
 
-                    if fc % take_every_nth != 0:
-                        continue
+                flow = self.detector(prvs, next_frame)
 
-                    next_frame = frame2
+                optical_flow.append(flow)
+                prvs = next_frame
+        except Exception as err:  # pylint: disable=broad-except
+            return [], None, str(err)
 
-                    flow = self.detector(prvs, next_frame)
+        opt_flow = np.array(optical_flow)
+        mean_magnitude_per_frame = np.linalg.norm(opt_flow, axis=-1).mean(axis=(1, 2))
+        mean_magnitude = float(mean_magnitude_per_frame.mean())
 
-                    optical_flow.append(flow)
-                    prvs = next_frame
-
-            except Exception as err:  # pylint: disable=broad-except
-                return [], str(err)
-
-        return np.array(optical_flow, dtype=np.float16), None
+        metrics = [mean_magnitude, mean_magnitude_per_frame.tolist()]
+        return opt_flow.astype(np.float16), metrics, None

@@ -90,7 +90,6 @@ def get_video_dataset(
     else:
         dataset_cls = wds.WebDataset
         video_decoder_cls = VideoDecorder
-
     dset = dataset_cls(urls, nodesplitter=wds.split_by_node, shardshuffle=shuffle, handler=wds.warn_and_continue)
 
     if repeat:

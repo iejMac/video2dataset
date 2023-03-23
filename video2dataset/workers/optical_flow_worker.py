@@ -2,19 +2,18 @@
 Worker for optical flow stage
 """
 import time
-import json
 import pyarrow as pa
 import traceback
 import io
 import numpy as np
-
 import fsspec
+import tempfile
+import os
+import cv2
 
-from video2dataset.dataloader import get_bytes_dataloader
 from video2dataset.logger import CappedCounter, write_stats
-
-# Import the OpticalFlowSubsampler class (assumes you have it implemented)
 from video2dataset.subsamplers import OpticalFlowSubsampler
+from video2dataset.dataloader import get_video_dataset
 
 
 def numpy_npz_dumps(numpy_dict):
@@ -31,6 +30,64 @@ def numpy_npz_dumps(numpy_dict):
     stream = io.BytesIO()
     np.savez_compressed(stream, **numpy_dict)
     return stream.getvalue()
+
+
+def frames_to_mp4_bytes(frames, fps=30, codec="mp4v"):
+    """
+    Convert a list of frames to an mp4 video encoded as bytes.
+
+    Args:
+        frames (list): A list of frames.
+        fps (int): The frames per second of the video. Default is 30.
+        codec (str): The codec to use for encoding. Default is 'mp4v'.
+
+    Returns:
+        bytes: A bytestring representing the encoded video.
+    """
+    # Get frame dimensions from the first frame
+    height, width, _ = frames[0].shape
+
+    # Create a temporary file to save the video
+    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmpfile:
+        video_path = tmpfile.name
+
+        # Define the codec and create a VideoWriter object
+        fourcc = cv2.VideoWriter_fourcc(*codec)
+        out = cv2.VideoWriter(video_path, fourcc, fps, (width, height))
+
+        # Write the frames to the video
+        for frame in frames:
+            out.write(frame)
+
+        # Release the VideoWriter
+        out.release()
+
+        # Read the video file as bytes
+        with open(video_path, "rb") as f:
+            video_bytes = f.read()
+
+    # Remove the temporary video file
+    os.remove(video_path)
+
+    return video_bytes
+
+
+def convert_frames_depth(frames, target_depth=np.uint8):
+    """
+    Convert the frame depth of a list of frames.
+
+    Args:
+        frames (list): A list of frames.
+        target_depth (numpy.dtype): The target depth. Default is np.uint8.
+
+    Returns:
+        list: A list of converted frames.
+    """
+    converted_frames = []
+    for frame in frames:
+        converted_frame = frame.astype(target_depth)
+        converted_frames.append(converted_frame)
+    return converted_frames
 
 
 class OpticalFlowWorker:
@@ -114,18 +171,30 @@ class OpticalFlowWorker:
         successes = 0
         failed_to_subsample = 0
 
-        dataloader = get_bytes_dataloader([shard])
-        for sample in dataloader:
+        decoder_kwargs = {"n_frames": None, "fps": None, "num_threads": 4}
+
+        dset = get_video_dataset(
+            urls=shard,
+            batch_size=1,
+            decoder_kwargs=decoder_kwargs,
+            resize_size=None,
+            crop_size=None,
+        )
+
+        for sample in dset:
             # Gather subset of dataset
-            key = sample["__key__"]
-            caption = sample.get("txt", b"").decode("utf-8")
-            meta = json.loads(sample.get("json", b"{}").decode("utf-8"))
+            key = sample["__key__"][0]
+            caption = sample.get("txt", b"")[0]
+            meta = sample.get("json", {})[0]
 
             streams = {}
+            frames = np.array(sample.get("mp4")[0])
+            native_fps = sample.get("native_fps").item()
+
             for mod, fmt in self.encode_formats.items():
                 streams[mod] = sample.get(fmt, b"")
 
-            optical_flow, error_message = self.optical_flow_subsampler(streams["video"])
+            optical_flow, metrics, error_message = self.optical_flow_subsampler(frames, native_fps)
 
             if error_message is not None:
                 failed_to_subsample += 1
@@ -146,13 +215,21 @@ class OpticalFlowWorker:
             status_dict.increment(status)
             meta["status"] = status
 
+            mean_magnitude, mean_magnitude_per_frame = metrics
+            meta["mean_optical_flow_magnitude"] = mean_magnitude
+            meta["mean_optical_flow_magnitude_per_frame"] = mean_magnitude_per_frame
+            meta["optical_flow_fps"] = self.fps
+
             streams["numpy_metadata"] = sample.get("npz", {})
             if isinstance(streams["numpy_metadata"], bytes):
                 npz_bytes = io.BytesIO(streams["numpy_metadata"])
                 streams["numpy_metadata"] = dict(np.load(npz_bytes))
             streams["numpy_metadata"]["optical_flow"] = optical_flow
-
             streams["numpy_metadata"] = numpy_npz_dumps(streams["numpy_metadata"])
+
+            input_frames = convert_frames_depth(frames[:, :, :, ::-1], target_depth=np.uint8)
+            mp4_bytes = frames_to_mp4_bytes(input_frames, fps=native_fps)
+            streams["video"] = mp4_bytes
 
             sample_writer.write(
                 streams,

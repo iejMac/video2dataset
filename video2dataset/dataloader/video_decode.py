@@ -81,11 +81,14 @@ class VideoDecorder(AbstractVideoDecoder):
         print(f"Setting {self.tmpdir} as temporary directory for the decoder")
 
     def get_frames(self, reader, n_frames, stride, **kwargs):  # pylint: disable=arguments-differ
-        if n_frames * stride > len(reader) - 1:
+        if n_frames * stride > len(reader):
             raise ValueError("video clip not long enough for decoding")
 
         # sample frame start and choose scene
-        frame_start = self.prng.choice(int(len(reader)) - int(n_frames * stride), 1).item()
+        if n_frames == len(reader):
+            frame_start = 0
+        else:
+            frame_start = self.prng.choice(int(len(reader)) - int(n_frames * stride), 1).item()
         # only decode the frames which are actually needed
         frames = reader.get_batch(np.arange(frame_start, frame_start + n_frames * stride, stride).tolist())
 
