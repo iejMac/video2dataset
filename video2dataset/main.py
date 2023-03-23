@@ -4,6 +4,7 @@ import sys
 import signal
 import fire
 import fsspec
+import numpy as np
 
 from typing import List, Optional
 
@@ -56,6 +57,8 @@ def video2dataset(
     stage: str = "download",
     optical_flow_detector: str = "cv2",
     optical_flow_fps: int = -1,
+    optical_flow_downsample_dims: tuple = None,
+    optical_flow_dtype: type = np.float16
 ):
     """
     create video dataset from video links
@@ -196,6 +199,8 @@ def video2dataset(
             encode_formats=encode_formats,
             detector=optical_flow_detector,
             fps=optical_flow_fps,
+            downsample_dims=optical_flow_downsample_dims,
+            dtype=optical_flow_dtype,
         )
     else:
         raise ValueError(f"Invalid stage: {stage}")

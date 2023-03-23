@@ -19,7 +19,7 @@ class Cv2Detector:
         flags (int): Additional flags for the cv2.calcOpticalFlowFarneback function. Defaults to 0.
     """
 
-    def __init__(self, pyr_scale=0.5, levels=3, winsize=15, iterations=3, poly_n=5, poly_sigma=1.2, flags=0):
+    def __init__(self, pyr_scale=0.5, levels=3, winsize=15, iterations=3, poly_n=5, poly_sigma=1.2, flags=0, downsample_dims=None):
         self.pyr_scale = pyr_scale
         self.levels = levels
         self.winsize = winsize
@@ -27,9 +27,14 @@ class Cv2Detector:
         self.poly_n = poly_n
         self.poly_sigma = poly_sigma
         self.flags = flags
+        self.downsample_dims = downsample_dims
 
     def preprocess(self, frame):
-        return cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        out = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        if self.downsample_dims:
+            out = cv2.resize(out, self.downsample_dims)
+
+        return out
 
     def __call__(self, frame1, frame2):
         """
@@ -66,17 +71,19 @@ class OpticalFlowSubsampler:
         fps (int): The target frames per second. Defaults to -1 (original FPS).
     """
 
-    def __init__(self, detector="cv2", fps=-1, params=None):
+    def __init__(self, detector="cv2", fps=-1, params=None, downsample_dims=None, dtype=np.float16):
         if detector == "cv2":
             if params:
                 pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags = params
-                self.detector = Cv2Detector(pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags)
+                self.detector = Cv2Detector(pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags, downsample_dims=downsample_dims)
             else:
-                self.detector = Cv2Detector()
+                self.detector = Cv2Detector(downsample_dims=downsample_dims)
         else:
             raise NotImplementedError()
 
         self.fps = fps
+        self.downsample_dims = downsample_dims
+        self.dtype = dtype
 
     def __call__(self, frames, original_fps):
         optical_flow = []
@@ -113,4 +120,4 @@ class OpticalFlowSubsampler:
         mean_magnitude = float(mean_magnitude_per_frame.mean())
 
         metrics = [mean_magnitude, mean_magnitude_per_frame.tolist()]
-        return opt_flow.astype(np.float16), metrics, None
+        return opt_flow.astype(self.dtype), metrics, None

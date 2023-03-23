@@ -116,6 +116,8 @@ class OpticalFlowWorker:
         encode_formats,
         detector,
         fps,
+        downsample_dims,
+        dtype
     ) -> None:
         self.sample_writer_class = sample_writer_class
         self.output_folder = output_folder
@@ -126,7 +128,15 @@ class OpticalFlowWorker:
         self.save_caption = True
         self.detector = detector
         self.fps = fps
-        self.optical_flow_subsampler = OpticalFlowSubsampler(detector=detector, fps=fps)
+        self.downsample_dims = downsample_dims
+        self.dtype = dtype
+
+        self.optical_flow_subsampler = OpticalFlowSubsampler(
+            detector=detector, 
+            fps=fps,
+            downsample_dims = downsample_dims,
+            dtype=dtype
+        )
 
     def __call__(
         self,
@@ -171,7 +181,7 @@ class OpticalFlowWorker:
         successes = 0
         failed_to_subsample = 0
 
-        decoder_kwargs = {"n_frames": None, "fps": None, "num_threads": 4}
+        decoder_kwargs = {"n_frames": None, "fps": None, "num_threads": 4, "return_bytes": True}
 
         dset = get_video_dataset(
             urls=shard,
@@ -218,6 +228,9 @@ class OpticalFlowWorker:
             meta["mean_optical_flow_magnitude"] = mean_magnitude
             meta["mean_optical_flow_magnitude_per_frame"] = mean_magnitude_per_frame
             meta["optical_flow_fps"] = self.fps
+            if self.downsample_dims:
+                meta["optical_flow_downsample_dims"] = self.downsample_dims
+            meta["optical_flow_dtype"] = str(self.dtype)
 
             streams["numpy_metadata"] = sample.get("npz", {})
             if isinstance(streams["numpy_metadata"], bytes):
@@ -226,9 +239,9 @@ class OpticalFlowWorker:
             streams["numpy_metadata"]["optical_flow"] = optical_flow
             streams["numpy_metadata"] = numpy_npz_dumps(streams["numpy_metadata"])
 
-            input_frames = convert_frames_depth(frames[:, :, :, ::-1], target_depth=np.uint8)
-            mp4_bytes = frames_to_mp4_bytes(input_frames, fps=native_fps)
-            streams["video"] = mp4_bytes
+            #input_frames = convert_frames_depth(frames[:, :, :, ::-1], target_depth=np.uint8)
+            #mp4_bytes = frames_to_mp4_bytes(input_frames, fps=native_fps)
+            streams["video"] = sample.get("video_bytes")[0]
 
             sample_writer.write(
                 streams,
