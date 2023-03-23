@@ -4,6 +4,23 @@ optical flow detection
 import cv2
 import numpy as np
 
+def resize_image_with_aspect_ratio(image, target_shortest_side=16):
+    # Get the original dimensions of the image
+    height, width = image.shape[:2]
+    
+    # Calculate the new dimensions while maintaining the aspect ratio
+    if height < width:
+        new_height = target_shortest_side
+        new_width = int(width * (target_shortest_side / height))
+        scaling_factor = height/new_height
+    else:
+        new_width = target_shortest_side
+        new_height = int(height * (target_shortest_side / width))
+        scaling_factor = width/new_width
+    # Resize the image using the calculated dimensions
+    resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
+
+    return resized_image, scaling_factor
 
 class Cv2Detector:
     """
@@ -20,7 +37,7 @@ class Cv2Detector:
     """
 
     def __init__(
-        self, pyr_scale=0.5, levels=3, winsize=15, iterations=3, poly_n=5, poly_sigma=1.2, flags=0, downsample_dims=None
+        self, pyr_scale=0.5, levels=3, winsize=15, iterations=3, poly_n=5, poly_sigma=1.2, flags=0, downsample_size=None
     ):
         self.pyr_scale = pyr_scale
         self.levels = levels
@@ -29,14 +46,15 @@ class Cv2Detector:
         self.poly_n = poly_n
         self.poly_sigma = poly_sigma
         self.flags = flags
-        self.downsample_dims = downsample_dims
+        self.downsample_size = downsample_size
 
     def preprocess(self, frame):
         out = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        if self.downsample_dims:
-            out = cv2.resize(out, self.downsample_dims)
+        scaling_factor = 1
+        if self.downsample_size:
+            out, scaling_factor = resize_image_with_aspect_ratio(out, self.downsample_size)
 
-        return out
+        return out, scaling_factor
 
     def __call__(self, frame1, frame2):
         """
@@ -49,7 +67,8 @@ class Cv2Detector:
         Returns:
             numpy.ndarray: The computed optical flow.
         """
-        frame1, frame2 = self.preprocess(frame1), self.preprocess(frame2)
+        frame1, scaling_factor = self.preprocess(frame1)
+        frame2, _ = self.preprocess(frame2)
         return cv2.calcOpticalFlowFarneback(
             frame1,
             frame2,
@@ -61,7 +80,7 @@ class Cv2Detector:
             self.poly_n,
             self.poly_sigma,
             self.flags,
-        )
+        ) * scaling_factor
 
 
 class OpticalFlowSubsampler:
@@ -73,20 +92,20 @@ class OpticalFlowSubsampler:
         fps (int): The target frames per second. Defaults to -1 (original FPS).
     """
 
-    def __init__(self, detector="cv2", fps=-1, params=None, downsample_dims=None, dtype=np.float16):
+    def __init__(self, detector="cv2", fps=-1, params=None, downsample_size=None, dtype=np.float16):
         if detector == "cv2":
             if params:
                 pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags = params
                 self.detector = Cv2Detector(
-                    pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags, downsample_dims=downsample_dims
+                    pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags, downsample_size=downsample_size
                 )
             else:
-                self.detector = Cv2Detector(downsample_dims=downsample_dims)
+                self.detector = Cv2Detector(downsample_size=downsample_size)
         else:
             raise NotImplementedError()
 
         self.fps = fps
-        self.downsample_dims = downsample_dims
+        self.downsample_size = downsample_size
         self.dtype = dtype
 
     def __call__(self, frames, original_fps):
