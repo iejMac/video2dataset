@@ -178,12 +178,12 @@ def test_cut_detection_subsampler(cut_detection_mode, framerates):
 )
 def test_optical_flow_subsampler(detector, fps, params):
     current_folder = os.path.dirname(__file__)
-    video = os.path.join(current_folder, "test_files/test_video.mp4")
+    video = os.path.join(current_folder, "test_files/test_optical_flow.mp4")
 
     cap = cv2.VideoCapture(video)
     native_fps = cap.get(cv2.CAP_PROP_FPS)
     frames = []
-    while cap.isOpened():
+    for _ in range(100):
         ret, frame = cap.read()
         if not ret:
             break
@@ -203,10 +203,10 @@ def test_optical_flow_subsampler(detector, fps, params):
 
     if fps == 1:
         if params is None:
-            assert np.isclose(mean_magnitude, 0.34899580478668213, rtol=1e-3)  # verified independently on colab
+            assert np.isclose(mean_magnitude, 0.00225532218919966, rtol=1e-3)  # verified independently on colab
         elif params is not None:
             assert np.isclose(
-                mean_magnitude, 0.38814088702201843, rtol=1e-3
+                mean_magnitude, 0.0034578320931094217, rtol=1e-3
             )  # np.isclose due to potential numerical precision issues
     elif fps == 2:  # fps = 2, params = None
-        assert np.isclose(mean_magnitude, 0.17484518190618945, rtol=1e-3)
+        assert np.isclose(mean_magnitude, 0.0011257734728123598, rtol=1e-3)
