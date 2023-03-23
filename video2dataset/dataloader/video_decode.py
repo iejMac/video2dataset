@@ -40,7 +40,9 @@ class AbstractVideoDecoder(PRNGMixin):
 class VideoDecorder(AbstractVideoDecoder):
     """Basic video decoder that uses decord"""
 
-    def __init__(self, n_frames=None, fps=None, num_threads=4, tmpdir="/scratch/", min_fps=1, max_fps=32, return_bytes=False):
+    def __init__(
+        self, n_frames=None, fps=None, num_threads=4, tmpdir="/scratch/", min_fps=1, max_fps=32, return_bytes=False
+    ):
         super().__init__()
         self.n_frames = n_frames
         if fps is not None and not isinstance(fps, Iterable):
@@ -144,7 +146,7 @@ class VideoDecorder(AbstractVideoDecoder):
         # return compatible with torchvisioin API
         additional_info.update({"native_fps": chosen_fps if chosen_fps is not None else native_fps})
         additional_info.update({"start_frame": start_frame})
-        
+
         if self.return_bytes:
             additional_info.update({"video_bytes": data})
         out = (list(frames), additional_info)

@@ -117,7 +117,7 @@ class OpticalFlowWorker:
         detector,
         fps,
         downsample_dims,
-        dtype
+        dtype,
     ) -> None:
         self.sample_writer_class = sample_writer_class
         self.output_folder = output_folder
@@ -132,10 +132,7 @@ class OpticalFlowWorker:
         self.dtype = dtype
 
         self.optical_flow_subsampler = OpticalFlowSubsampler(
-            detector=detector, 
-            fps=fps,
-            downsample_dims = downsample_dims,
-            dtype=dtype
+            detector=detector, fps=fps, downsample_dims=downsample_dims, dtype=dtype
         )
 
     def __call__(
@@ -239,8 +236,8 @@ class OpticalFlowWorker:
             streams["numpy_metadata"]["optical_flow"] = optical_flow
             streams["numpy_metadata"] = numpy_npz_dumps(streams["numpy_metadata"])
 
-            #input_frames = convert_frames_depth(frames[:, :, :, ::-1], target_depth=np.uint8)
-            #mp4_bytes = frames_to_mp4_bytes(input_frames, fps=native_fps)
+            # input_frames = convert_frames_depth(frames[:, :, :, ::-1], target_depth=np.uint8)
+            # mp4_bytes = frames_to_mp4_bytes(input_frames, fps=native_fps)
             streams["video"] = sample.get("video_bytes")[0]
 
             sample_writer.write(

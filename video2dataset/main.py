@@ -58,7 +58,7 @@ def video2dataset(
     optical_flow_detector: str = "cv2",
     optical_flow_fps: int = -1,
     optical_flow_downsample_dims: tuple = None,
-    optical_flow_dtype: type = np.float16
+    optical_flow_dtype: type = np.float16,
 ):
     """
     create video dataset from video links

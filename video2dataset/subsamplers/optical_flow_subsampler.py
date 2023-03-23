@@ -19,7 +19,9 @@ class Cv2Detector:
         flags (int): Additional flags for the cv2.calcOpticalFlowFarneback function. Defaults to 0.
     """
 
-    def __init__(self, pyr_scale=0.5, levels=3, winsize=15, iterations=3, poly_n=5, poly_sigma=1.2, flags=0, downsample_dims=None):
+    def __init__(
+        self, pyr_scale=0.5, levels=3, winsize=15, iterations=3, poly_n=5, poly_sigma=1.2, flags=0, downsample_dims=None
+    ):
         self.pyr_scale = pyr_scale
         self.levels = levels
         self.winsize = winsize
@@ -75,7 +77,9 @@ class OpticalFlowSubsampler:
         if detector == "cv2":
             if params:
                 pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags = params
-                self.detector = Cv2Detector(pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags, downsample_dims=downsample_dims)
+                self.detector = Cv2Detector(
+                    pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags, downsample_dims=downsample_dims
+                )
             else:
                 self.detector = Cv2Detector(downsample_dims=downsample_dims)
         else:
