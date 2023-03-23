@@ -8,3 +8,4 @@ types-requests
 webvtt-py
 tensorflow
 tensorflow_io
+torch

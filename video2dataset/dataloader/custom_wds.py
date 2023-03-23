@@ -99,6 +99,7 @@ class FluidInterfaceWithChangedDecode(FluidInterface):
 
 
 # TODO: pylint says this needs __getitem__
+# pylint: disable=abstract-method
 class WebDatasetWithChangedDecoder(DataPipeline, FluidInterfaceWithChangedDecode):
     """Small fluid-interface wrapper for DataPipeline."""
 

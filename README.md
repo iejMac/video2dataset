@@ -109,6 +109,10 @@ This module exposes a single function `download` which takes the same arguments 
 * **cut_framerates** a list of additional framerates to detect jump cuts at. If None, jump cuts will only be detected at the original framerate of the video (default *None*)
 * **cuts_are_clips** whether or not to turn each contiguous section of each input video into a distinct ouput video (default *False*)
 * **stage** which stage of processing to execute in betweeen downloading + cheap subsampling and costly subsampling (default *"download"*)
+* **optical_flow_detector** Which optical flow detector to use (default *"cv2"*)
+* **optical_flow_fps** what farmerate to compute optical flow at. -1 for native FPS (default: *-1*),
+* **optical_flow_downsample_dims** dimensions to downsample optical flow to, tuple of (width, height). If None, this will perform no downsampling (default *None*)    
+* **optical_flow_dtype** datatype to store optical flow in (*default: np.flaot16*)
 
 ## Downloading YouTube Metadata
 
