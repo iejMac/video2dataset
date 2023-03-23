@@ -93,21 +93,19 @@ class Cv2Detector:
         """
         frame1, scaling_factor = self.preprocess(frame1)
         frame2, _ = self.preprocess(frame2)
-        return (
-            cv2.calcOpticalFlowFarneback(
-                frame1,
-                frame2,
-                None,
-                self.pyr_scale,
-                self.levels,
-                self.winsize,
-                self.iterations,
-                self.poly_n,
-                self.poly_sigma,
-                self.flags,
-            )
-            * scaling_factor
-        )
+
+        return cv2.calcOpticalFlowFarneback(
+            frame1,
+            frame2,
+            None,
+            self.pyr_scale,
+            self.levels,
+            self.winsize,
+            self.iterations,
+            self.poly_n,
+            self.poly_sigma,
+            self.flags,
+        ) * scaling_factor
 
 
 class OpticalFlowSubsampler:
