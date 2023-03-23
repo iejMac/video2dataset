@@ -182,7 +182,6 @@ class OpticalFlowWorker:
         )
 
         for sample in dset:
-            # Gather subset of dataset
             key = sample["__key__"][0]
             caption = sample.get("txt", b"")[0]
             meta = sample.get("json", {})[0]
