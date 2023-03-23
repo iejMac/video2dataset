@@ -40,7 +40,9 @@ class AbstractVideoDecoder(PRNGMixin):
 class VideoDecorder(AbstractVideoDecoder):
     """Basic video decoder that uses decord"""
 
-    def __init__(self, n_frames=None, fps=None, num_threads=4, tmpdir="/scratch/", min_fps=1, max_fps=32):
+    def __init__(
+        self, n_frames=None, fps=None, num_threads=4, tmpdir="/scratch/", min_fps=1, max_fps=32, return_bytes=False
+    ):
         super().__init__()
         self.n_frames = n_frames
         if fps is not None and not isinstance(fps, Iterable):
@@ -50,6 +52,7 @@ class VideoDecorder(AbstractVideoDecoder):
         self.fps = fps
         self.min_fps = min_fps
         self.max_fps = max_fps
+        self.return_bytes = return_bytes
         # for frame rate conditioning
         if self.fps == "sample":
             # this means we sample fps in every iteration
@@ -81,11 +84,14 @@ class VideoDecorder(AbstractVideoDecoder):
         print(f"Setting {self.tmpdir} as temporary directory for the decoder")
 
     def get_frames(self, reader, n_frames, stride, **kwargs):  # pylint: disable=arguments-differ
-        if n_frames * stride > len(reader) - 1:
+        if n_frames * stride > len(reader):
             raise ValueError("video clip not long enough for decoding")
 
         # sample frame start and choose scene
-        frame_start = self.prng.choice(int(len(reader)) - int(n_frames * stride), 1).item()
+        if n_frames == len(reader):
+            frame_start = 0
+        else:
+            frame_start = self.prng.choice(int(len(reader)) - int(n_frames * stride), 1).item()
         # only decode the frames which are actually needed
         frames = reader.get_batch(np.arange(frame_start, frame_start + n_frames * stride, stride).tolist())
 
@@ -140,6 +146,9 @@ class VideoDecorder(AbstractVideoDecoder):
         # return compatible with torchvisioin API
         additional_info.update({"native_fps": chosen_fps if chosen_fps is not None else native_fps})
         additional_info.update({"start_frame": start_frame})
+
+        if self.return_bytes:
+            additional_info.update({"video_bytes": data})
         out = (list(frames), additional_info)
         return out
 
