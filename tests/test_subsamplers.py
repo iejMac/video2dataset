@@ -178,7 +178,7 @@ def test_cut_detection_subsampler(cut_detection_mode, framerates):
 )
 def test_optical_flow_subsampler(detector, fps, params):
     current_folder = os.path.dirname(__file__)
-    video = os.path.join(current_folder, "test_files/test_optical_flow.mp4")
+    video = os.path.join(current_folder, "test_files/test_video.mp4")
 
     cap = cv2.VideoCapture(video)
     native_fps = cap.get(cv2.CAP_PROP_FPS)
