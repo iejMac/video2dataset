@@ -4,6 +4,7 @@ import sys
 import signal
 import fire
 import fsspec
+import numpy as np
 
 from typing import List, Optional
 
@@ -18,7 +19,7 @@ from .data_writer import (
 from .input_sharder import InputSharder
 from .output_sharder import OutputSharder
 from .distributor import multiprocessing_distributor, pyspark_distributor
-from .workers import DownloadWorker, SubsetWorker
+from .workers import DownloadWorker, SubsetWorker, OpticalFlowWorker
 
 
 def video2dataset(
@@ -54,6 +55,10 @@ def video2dataset(
     cuts_are_clips: bool = False,
     encode_formats: dict = None,
     stage: str = "download",
+    optical_flow_detector: str = "cv2",
+    optical_flow_fps: int = -1,
+    optical_flow_downsample_dims: tuple = None,
+    optical_flow_dtype: type = np.float16,
 ):
     """
     create video dataset from video links
@@ -178,6 +183,24 @@ def video2dataset(
             number_sample_per_shard=number_sample_per_shard,
             oom_shard_count=oom_shard_count,
             encode_formats=encode_formats,
+        )
+    elif stage == "optical_flow":
+        shard_iterator = OutputSharder(  # type: ignore
+            url_list,
+            input_format,
+            done_shards,
+        )
+        worker = OpticalFlowWorker(  # type: ignore
+            sample_writer_class=sample_writer_class,
+            output_folder=output_folder,
+            thread_count=thread_count,
+            number_sample_per_shard=number_sample_per_shard,
+            oom_shard_count=oom_shard_count,
+            encode_formats=encode_formats,
+            detector=optical_flow_detector,
+            fps=optical_flow_fps,
+            downsample_dims=optical_flow_downsample_dims,
+            dtype=optical_flow_dtype,
         )
     else:
         raise ValueError(f"Invalid stage: {stage}")

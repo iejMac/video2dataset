@@ -8,3 +8,4 @@ from .frame_subsampler import FrameSubsampler
 from .noop_subsampler import NoOpSubsampler
 from .resolution_subsampler import ResolutionSubsampler
 from .cut_detection_subsampler import CutDetectionSubsampler
+from .optical_flow_subsampler import OpticalFlowSubsampler
