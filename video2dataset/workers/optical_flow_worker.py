@@ -116,7 +116,7 @@ class OpticalFlowWorker:
         encode_formats,
         detector,
         fps,
-        downsample_dims,
+        downsample_size,
         dtype,
     ) -> None:
         self.sample_writer_class = sample_writer_class
@@ -128,11 +128,11 @@ class OpticalFlowWorker:
         self.save_caption = True
         self.detector = detector
         self.fps = fps
-        self.downsample_dims = downsample_dims
+        self.downsample_size = downsample_size
         self.dtype = dtype
 
         self.optical_flow_subsampler = OpticalFlowSubsampler(
-            detector=detector, fps=fps, downsample_dims=downsample_dims, dtype=dtype
+            detector=detector, fps=fps, downsample_size=downsample_size, dtype=dtype
         )
 
     def __call__(
@@ -225,8 +225,8 @@ class OpticalFlowWorker:
             meta["mean_optical_flow_magnitude"] = mean_magnitude
             meta["mean_optical_flow_magnitude_per_frame"] = mean_magnitude_per_frame
             meta["optical_flow_fps"] = self.fps
-            if self.downsample_dims:
-                meta["optical_flow_downsample_dims"] = self.downsample_dims
+            if self.downsample_size:
+                meta["optical_flow_downsample_size"] = self.downsample_size
             meta["optical_flow_dtype"] = str(self.dtype)
 
             streams["numpy_metadata"] = sample.get("npz", {})
