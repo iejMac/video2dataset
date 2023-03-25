@@ -57,7 +57,7 @@ def video2dataset(
     stage: str = "download",
     optical_flow_detector: str = "cv2",
     optical_flow_fps: int = -1,
-    optical_flow_downsample_dims: tuple = None,
+    optical_flow_downsample_size: int = None,
     optical_flow_dtype: type = np.float16,
 ):
     """
@@ -199,7 +199,7 @@ def video2dataset(
             encode_formats=encode_formats,
             detector=optical_flow_detector,
             fps=optical_flow_fps,
-            downsample_dims=optical_flow_downsample_dims,
+            downsample_size=optical_flow_downsample_size,
             dtype=optical_flow_dtype,
         )
     else:
