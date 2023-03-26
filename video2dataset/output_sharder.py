@@ -32,7 +32,7 @@ class OutputSharder:
             self.shard_ids = [s.split("/")[-1] for s in self.shard_list]
 
         self.shards = sampler([
-            (s, s_id) for s_id, s in zip(self.shard_ids, self.shard_list) if int(s_id) not in self.done_shards
+            (s_id, s) for s_id, s in zip(self.shard_ids, self.shard_list) if int(s_id) not in self.done_shards
         ])
 
     def __iter__(self):
@@ -40,5 +40,5 @@ class OutputSharder:
         Iterate over shards, yield shards of size group_shards size
         Each shard is a tuple (shard_id, shard)
         """
-        for s, s_id in self.shards:
+        for s_id, s in self.shards:
             yield (s, s_id)

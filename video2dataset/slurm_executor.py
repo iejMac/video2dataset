@@ -9,7 +9,7 @@ import fire
 
 
 class SlurmDistributor:
-
+    """Parallelism via slurm"""
     def __init__(self,
                  *,
                  worker_args,
