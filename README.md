@@ -111,7 +111,7 @@ This module exposes a single function `download` which takes the same arguments 
 * **stage** which stage of processing to execute in betweeen downloading + cheap subsampling and costly subsampling (default *"download"*)
 * **optical_flow_detector** Which optical flow detector to use (default *"cv2"*)
 * **optical_flow_fps** what farmerate to compute optical flow at. -1 for native FPS (default: *-1*),
-* **optical_flow_downsample_dims** dimensions to downsample optical flow to, tuple of (width, height). If None, this will perform no downsampling (default *None*)    
+* **optical_flow_downsample_size** Dimensions to downsample optical flow to. The shortest side of each frame in a video gets downsized to this length while maintaining the aspect ratio before calculating optical flow.  If None, this will perform no downsampling (default *None*)    
 * **optical_flow_dtype** datatype to store optical flow in (*default: np.flaot16*)
 
 ## Downloading YouTube Metadata
