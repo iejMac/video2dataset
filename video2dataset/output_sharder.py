@@ -19,6 +19,7 @@ class OutputSharder:
         shard_list,
         input_format,
         done_shards,
+        sampler=lambda x: x
     ) -> None:
 
         self.input_format = input_format
@@ -30,9 +31,9 @@ class OutputSharder:
         elif self.input_format == "files":
             self.shard_ids = [s.split("/")[-1] for s in self.shard_list]
 
-        self.shards = [
+        self.shards = sampler([
             (s, s_id) for s_id, s in zip(self.shard_ids, self.shard_list) if int(s_id) not in self.done_shards
-        ]
+        ])
 
     def __iter__(self):
         """

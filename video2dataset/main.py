@@ -2,6 +2,7 @@
 import os
 import sys
 import signal
+import functools
 import fire
 import fsspec
 import numpy as np
@@ -19,7 +20,9 @@ from .data_writer import (
 from .input_sharder import InputSharder
 from .output_sharder import OutputSharder
 from .distributor import multiprocessing_distributor, pyspark_distributor
+from slurm_executor import SlurmDistributor
 from .workers import DownloadWorker, SubsetWorker, OpticalFlowWorker
+
 
 
 def video2dataset(
@@ -59,10 +62,25 @@ def video2dataset(
     optical_flow_fps: int = -1,
     optical_flow_downsample_dims: tuple = None,
     optical_flow_dtype: type = np.float16,
+    sampler = lambda x: x,
+    slurm_cpus_per_task: int=1,
+    slurm_job_name:str='video2dataset',
+    slurm_partition:str=None,
+    slurm_n_nodes:int=1,
+    slurm_gpus_per_node:int=8,
+    slurm_account:str=None,
+    slurm_tasks_per_node:int=1,
+    slurm_nodelist:str=None,
+    slurm_exclude:str=None,
+    slurm_cache_path:str=None,
+    slurm_timeout:int=None,
+    slurm_verbose_wait:bool=False
+
 ):
     """
     create video dataset from video links
     """
+    local_args = dict(locals())
 
     # TODO: find better location for this code
     # TODO: figure out minimum yt_meta_args for subtitles to be added to metadata
@@ -147,6 +165,7 @@ def video2dataset(
             number_sample_per_shard,
             done_shards,
             tmp_path,
+            sampler
         )
         worker = DownloadWorker(
             sample_writer_class=sample_writer_class,
@@ -175,6 +194,7 @@ def video2dataset(
             url_list,
             input_format,
             done_shards,
+            sampler=sampler
         )
         worker = SubsetWorker(  # type: ignore
             sample_writer_class=sample_writer_class,
@@ -189,6 +209,7 @@ def video2dataset(
             url_list,
             input_format,
             done_shards,
+            sampler=sampler
         )
         worker = OpticalFlowWorker(  # type: ignore
             sample_writer_class=sample_writer_class,
@@ -210,6 +231,10 @@ def video2dataset(
         distributor_fn = multiprocessing_distributor
     elif distributor == "pyspark":
         distributor_fn = pyspark_distributor
+    elif distributor == "slurm":
+        slurm_args = {'_'.join(key.split('_')[1:]): local_args[key] for key in local_args if key.startswith('slurm')}
+        worker_args = {key: local_args[key] for key in local_args if not key.startswith('slurm')}
+        distributor_fn = SlurmDistributor(worker_args = worker_args, **slurm_args)
     else:
         raise ValueError(f"Distributor {distributor} not supported")
 

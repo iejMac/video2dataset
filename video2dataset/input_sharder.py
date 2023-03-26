@@ -36,6 +36,7 @@ class InputSharder:
         number_sample_per_shard,
         done_shards,
         tmp_path,
+        sampler = lambda x: x
     ) -> None:
         self.input_format = input_format
         self.url_col = url_col
@@ -44,6 +45,7 @@ class InputSharder:
         self.save_additional_columns = save_additional_columns
         self.number_sample_per_shard = number_sample_per_shard
         self.done_shards = done_shards
+        self.shard_sampler = sampler
 
         fs, url_path = fsspec.core.url_to_fs(url_list)
         self.fs = fs
@@ -55,6 +57,8 @@ class InputSharder:
                 raise Exception(f"No file found at path {url_path} with extension {input_format}")
         else:
             self.input_files = [url_path]
+
+
 
         if self.input_format == "txt":
             self.column_list = ["url"]
@@ -113,6 +117,9 @@ class InputSharder:
             for shard_id in range(number_shards)
             if start_shard_id + shard_id not in self.done_shards
         ]
+
+        shards_to_write = self.shard_sampler(shards_to_write)
+
         if len(shards_to_write) == 0:
             return [], number_shards
 
