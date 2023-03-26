@@ -153,3 +153,13 @@ class CutsAdder:
         sample[self.video_key] = {self.video_key: sample[self.video_key], self.cuts_key: sample[self.cuts_key]}
         del sample[self.cuts_key]
         return sample
+
+
+class CustomTransforms:
+    def __init__(self, key_transform_dict):
+        self.key_transform_dict = key_transform_dict
+
+    def __call__(self, sample):
+        for key, transform in self.key_transform_dict.items():
+            sample[key] = transform(sample[key])
+        return sample
