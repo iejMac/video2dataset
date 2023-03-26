@@ -224,8 +224,8 @@ def executor(worker_args, node_id, n_nodes, num_tasks_per_node, subtask_id):
     sampler = shard_sampler(global_task_id,num_tasks=num_tasks_per_node)
 
     # call script from every subprocess
-    video2dataset(sampler=sampler,**worker_args)
-
+    video2dataset(sampler=sampler, enable_logger=False, enable_wandb=False,
+                  **worker_args)
 
 if __name__ == '__main__':
     fire.Fire(executor)

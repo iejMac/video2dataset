@@ -207,6 +207,19 @@ def write_stats(
     with fs.open(json_file, "w") as f:
         json.dump(stats, f, indent=4)
 
+class NullLogger(object):
+
+    def __init__(self):
+        self.done_shards = None
+
+    def run(self):
+        pass
+
+    def finish(self):
+        pass
+    def join(self):
+        pass
+
 
 # https://docs.python.org/3/library/multiprocessing.html
 # logger process that reads stats files regularly, aggregates and send to wandb / print to terminal
