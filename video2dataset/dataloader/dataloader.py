@@ -64,7 +64,7 @@ def get_video_dataset(
         video_key (str, optional): The key for video files. Default is 'mp4'.
         cuts_key (str, optional): The key for cut detection. Default is None.
         decoder_kwargs (dict, optional): Keyword arguments for the video decoder. Default is an empty dictionary.
-        custom_transforms (dict, optional): Pairs of additional custom transforms to apply to samples (like text tokenization)
+        custom_transforms (dict, optional): Pairs of additional custom transforms to apply to samples 
         aesthetics_threshold (float, optional): Aesthetic threshold for filtering. Default is None.
         allowed_languages (list, optional): List of allowed languages. Default is None.
         p_unsafe_threshold (float, optional): Probability threshold for unsafe content filtering. Default is None.
