@@ -115,6 +115,7 @@ class OpticalFlowWorker:
         oom_shard_count,
         encode_formats,
         detector,
+        detector_params,
         fps,
         downsample_size,
         dtype,
@@ -130,9 +131,10 @@ class OpticalFlowWorker:
         self.fps = fps
         self.downsample_size = downsample_size
         self.dtype = dtype
+        self.detector_params = detector_params
 
         self.optical_flow_subsampler = OpticalFlowSubsampler(
-            detector=detector, fps=fps, downsample_size=downsample_size, dtype=dtype
+            detector=detector, params=detector_params, fps=fps, downsample_size=downsample_size, dtype=dtype
         )
 
     def __call__(

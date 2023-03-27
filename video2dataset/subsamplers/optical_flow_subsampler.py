@@ -4,6 +4,13 @@ optical flow detection
 import cv2
 import numpy as np
 
+try:
+    from raft import RAFT
+    from raft.utils.utils import InputPadder
+    import torch
+except: # RAFT not installed
+    pass
+
 
 def resize_image_with_aspect_ratio(image, target_shortest_side=16):
     """
@@ -45,6 +52,44 @@ def resize_image_with_aspect_ratio(image, target_shortest_side=16):
 
     return resized_image, scaling_factor
 
+class RAFTDetector:
+    def __init__(
+        self, args, downsample_size=None, device='cuda'
+    ):
+        model = torch.nn.DataParallel(RAFT(args))
+        model.load_state_dict(torch.load(args.model))
+
+        model = model.module
+        model.to(device)
+        model.eval()
+
+        self.model = model
+        self.device = device
+        self.downsample_size = downsample_size
+
+    def preprocess(self, frame1, frame2):
+        scaling_factor = 1
+        if self.downsample_size:
+            frame1, scaling_factor = resize_image_with_aspect_ratio(frame1, self.downsample_size)
+            frame2, _ = resize_image_with_aspect_ratio(frame2, self.downsample_size)
+
+        frame1 = frame1.astype(np.uint8)
+        frame1 = torch.from_numpy(frame1).permute(2, 0, 1).float()
+        frame1 = frame1[None].to(self.device)
+
+        frame2 = frame2.astype(np.uint8)
+        frame2 = torch.from_numpy(frame2).permute(2, 0, 1).float()
+        frame2 = frame2[None].to(self.device)
+        
+        padder = InputPadder(frame1.shape)
+        frame1, frame2 = padder.pad(frame1, frame2)
+        return frame1, frame2, scaling_factor
+
+    def __call__(self, frame1, frame2):
+        frame1, frame2, scaling_factor = self.preprocess(frame1, frame2)
+        with torch.no_grad():
+            flow_low, flow_up = self.model(frame1, frame2, iters=20, test_mode=True)
+        return flow_up[0].permute(1, 2, 0).cpu().numpy() * scaling_factor
 
 class Cv2Detector:
     """
@@ -129,6 +174,10 @@ class OpticalFlowSubsampler:
                 )
             else:
                 self.detector = Cv2Detector(downsample_size=downsample_size)
+        elif detector == "raft":
+            assert params is not None
+            args, device = params
+            self.detector = RAFTDetector(args, downsample_size=downsample_size, device=device)
         else:
             raise NotImplementedError()
 
