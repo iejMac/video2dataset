@@ -91,6 +91,47 @@ class RAFTDetector:
             flow_low, flow_up = self.model(frame1, frame2, iters=20, test_mode=True)
         return flow_up[0].permute(1, 2, 0).cpu().numpy() * scaling_factor
 
+def resize_image_with_aspect_ratio(image, target_shortest_side=16):
+    """
+    Resize an input image while maintaining its aspect ratio.
+
+    This function takes an image and resizes it so that its shortest side
+    matches the specified target length. The other side is scaled accordingly
+    to maintain the original aspect ratio of the image. The function returns
+    the resized image and the scaling factor used for resizing.
+
+    Parameters
+    ----------
+    image : numpy.ndarray
+        The input image represented as a NumPy array with shape (height, width, channels).
+    target_shortest_side : int, optional
+        The desired length for the shortest side of the resized image (default is 16).
+
+    Returns
+    -------
+    resized_image : numpy.ndarray
+        The resized image with the same number of channels as the input image.
+    scaling_factor : float
+        The scaling factor used to resize the image.
+    """
+    # Get the original dimensions of the image
+    height, width = image.shape[:2]
+
+    # Calculate the new dimensions while maintaining the aspect ratio
+    if height < width:
+        new_height = target_shortest_side
+        new_width = int(width * (target_shortest_side / height))
+        scaling_factor = height / new_height
+    else:
+        new_width = target_shortest_side
+        new_height = int(height * (target_shortest_side / width))
+        scaling_factor = width / new_width
+    # Resize the image using the calculated dimensions
+    resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
+
+    return resized_image, scaling_factor
+
+
 class Cv2Detector:
     """
     A class to perform optical flow detection using OpenCV's Farneback method.

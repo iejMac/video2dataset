@@ -3,7 +3,7 @@ import webdataset as wds
 from functools import partial
 
 from .custom_wds import WebDatasetWithChangedDecoder, dict_collation_fn
-from .transform import VideoResizer, CutsAdder
+from .transform import VideoResizer, CutsAdder, CustomTransforms
 from .video_decode import VideoDecorder, VideoDecorderWithCutDetection
 from .filters import KeyFilter, LanguageFilter, AestheticsFilter, UnsafeFilter  # pylint: disable=unused-import
 
@@ -41,6 +41,7 @@ def get_video_dataset(
     video_key="mp4",
     cuts_key=None,
     decoder_kwargs=None,
+    custom_transforms=None,
     aesthetics_threshold=None,
     allowed_languages=None,
     p_unsafe_threshold=None,
@@ -63,6 +64,7 @@ def get_video_dataset(
         video_key (str, optional): The key for video files. Default is 'mp4'.
         cuts_key (str, optional): The key for cut detection. Default is None.
         decoder_kwargs (dict, optional): Keyword arguments for the video decoder. Default is an empty dictionary.
+        custom_transforms (dict, optional): Pairs of additional custom transforms to apply to samples.
         aesthetics_threshold (float, optional): Aesthetic threshold for filtering. Default is None.
         allowed_languages (list, optional): List of allowed languages. Default is None.
         p_unsafe_threshold (float, optional): Probability threshold for unsafe content filtering. Default is None.
@@ -131,7 +133,14 @@ def get_video_dataset(
                 key=video_key,
                 width_key=original_width_key,
                 height_key=original_height_key,
-            )
-        ).batched(batch_size, partial=drop_last, collation_fn=dict_collation_fn)
+            ),
+            handler=wds.warn_and_continue,
+        )
+
+    if custom_transforms:
+        dset = dset.map(CustomTransforms(custom_transforms), handler=wds.warn_and_continue)
+
+    if decoder_kwargs != {}:
+        dset = dset.batched(batch_size, partial=drop_last, collation_fn=dict_collation_fn)
 
     return dset
