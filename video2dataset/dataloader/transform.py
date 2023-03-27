@@ -71,8 +71,10 @@ class VideoResizer(PRNGMixin):
         reference = [y, x]
         return reference
 
-    def _get_resize_size(self, frame, orig_h, orig_w):
+    # def _get_resize_size(self, frame, orig_h, orig_w):
+    def _get_resize_size(self, frame):
         """gets resize size"""
+        orig_h, orig_w = frame.shape[:2]
         if self.resize_size is not None:
             if isinstance(self.resize_size, int):
                 f = self.resize_size / min((orig_h, orig_w))
@@ -110,12 +112,16 @@ class VideoResizer(PRNGMixin):
         vidkey = self.key
         frames = data[vidkey]
 
+        if isinstance(frames, int):
+            raise TypeError(f"Frames is int: {frames}")
+
         # for videos: take height and width of first frames since the same for all frames anyways,
         # if resize size is integer, then this is used as the new size of the smaller size
-        orig_h = data[self.height_key][0].item()
-        orig_w = data[self.width_key][0].item()
+        # orig_h = data[self.height_key][0].item()
+        # orig_w = data[self.width_key][0].item()
 
-        resize_size, (h, w) = self._get_resize_size(frames[0], orig_h, orig_w)
+        # resize_size, (h, w) = self._get_resize_size(frames[0], orig_h, orig_w)
+        resize_size, (h, w) = self._get_resize_size(frames[0])
         reference = self._get_reference_frame(resize_size, h, w)
 
         for frame in frames:
@@ -152,4 +158,14 @@ class CutsAdder:
         assert self.video_key in sample, f'no field with key "{self.video_key}" in sample, but this is required.'
         sample[self.video_key] = {self.video_key: sample[self.video_key], self.cuts_key: sample[self.cuts_key]}
         del sample[self.cuts_key]
+        return sample
+
+
+class CustomTransforms:
+    def __init__(self, key_transform_dict):
+        self.key_transform_dict = key_transform_dict
+
+    def __call__(self, sample):
+        for key, transform in self.key_transform_dict.items():
+            sample[key] = transform(sample[key])
         return sample
