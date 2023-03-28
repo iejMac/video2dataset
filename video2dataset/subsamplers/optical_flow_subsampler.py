@@ -8,8 +8,18 @@ try:
     from raft import RAFT
     from raft.utils.utils import InputPadder
     import torch
-except: # RAFT not installed
+except:  # pylint: disable=broad-except,bare-except
     pass
+
+
+class AttrDict(dict):
+    """
+    Lets us access dict keys with <dict>.key
+    """
+    # pylint: disable=super-with-arguments
+    def __init__(self, *args, **kwargs):
+        super(AttrDict, self).__init__(*args, **kwargs)
+        self.__dict__ = self
 
 
 def resize_image_with_aspect_ratio(image, target_shortest_side=16):
@@ -52,10 +62,13 @@ def resize_image_with_aspect_ratio(image, target_shortest_side=16):
 
     return resized_image, scaling_factor
 
+
 class RAFTDetector:
-    def __init__(
-        self, args, downsample_size=None
-    ):
+    """
+    Optical flow detection using RAFT
+    """
+
+    def __init__(self, args, downsample_size=None):
 
         self.device = args.get("device", "cuda")
         self.downsample_size = downsample_size
@@ -70,6 +83,29 @@ class RAFTDetector:
         self.model = model
 
     def preprocess(self, frame1, frame2):
+        """
+        Preprocesses a pair of input frames for use with the RAFT optical flow detector.
+        This function takes in two input frames, resizes them while maintaining the aspect
+        ratio (if downsample_size is set), converts the frames to uint8 data type,
+        creates torch tensors from the frames, permutes the axes, and pads the frames
+        to the same size using the InputPadder.
+
+        Args:
+            frame1 (np.ndarray): The first input frame as a NumPy array with shape (height, width, 3).
+            frame2 (np.ndarray): The second input frame as a NumPy array with shape (height, width, 3).
+
+        Returns:
+            tuple: A tuple containing three elements:
+                - frame1 (torch.Tensor): The preprocessed first input frame as
+                a torch tensor with shape (1, 3, height, width).
+
+                - frame2 (torch.Tensor): The preprocessed second input frame as a
+                torch tensor with shape (1, 3, height, width).
+
+                - scaling_factor (float): The scaling factor used to resize the input
+                frames while maintaining the aspect ratio. If no resizing is performed,
+                the scaling factor is 1.
+        """
         scaling_factor = 1
         if self.downsample_size:
             frame1, scaling_factor = resize_image_with_aspect_ratio(frame1, self.downsample_size)
@@ -82,56 +118,17 @@ class RAFTDetector:
         frame2 = frame2.astype(np.uint8)
         frame2 = torch.from_numpy(frame2).permute(2, 0, 1).float()
         frame2 = frame2[None].to(self.device)
-        
+
         padder = InputPadder(frame1.shape)
+
         frame1, frame2 = padder.pad(frame1, frame2)
         return frame1, frame2, scaling_factor
 
     def __call__(self, frame1, frame2):
         frame1, frame2, scaling_factor = self.preprocess(frame1, frame2)
         with torch.no_grad():
-            flow_low, flow_up = self.model(frame1, frame2, iters=20, test_mode=True)
+            _, flow_up = self.model(frame1, frame2, iters=20, test_mode=True)
         return flow_up[0].permute(1, 2, 0).cpu().numpy() * scaling_factor
-
-def resize_image_with_aspect_ratio(image, target_shortest_side=16):
-    """
-    Resize an input image while maintaining its aspect ratio.
-
-    This function takes an image and resizes it so that its shortest side
-    matches the specified target length. The other side is scaled accordingly
-    to maintain the original aspect ratio of the image. The function returns
-    the resized image and the scaling factor used for resizing.
-
-    Parameters
-    ----------
-    image : numpy.ndarray
-        The input image represented as a NumPy array with shape (height, width, channels).
-    target_shortest_side : int, optional
-        The desired length for the shortest side of the resized image (default is 16).
-
-    Returns
-    -------
-    resized_image : numpy.ndarray
-        The resized image with the same number of channels as the input image.
-    scaling_factor : float
-        The scaling factor used to resize the image.
-    """
-    # Get the original dimensions of the image
-    height, width = image.shape[:2]
-
-    # Calculate the new dimensions while maintaining the aspect ratio
-    if height < width:
-        new_height = target_shortest_side
-        new_width = int(width * (target_shortest_side / height))
-        scaling_factor = height / new_height
-    else:
-        new_width = target_shortest_side
-        new_height = int(height * (target_shortest_side / width))
-        scaling_factor = width / new_width
-    # Resize the image using the calculated dimensions
-    resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
-
-    return resized_image, scaling_factor
 
 
 class Cv2Detector:
@@ -210,7 +207,7 @@ class OpticalFlowSubsampler:
 
     def __init__(self, detector="cv2", fps=-1, args=None, downsample_size=None, dtype=np.float16):
         if detector == "cv2":
-            if params:
+            if args:
                 pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags = args
                 self.detector = Cv2Detector(
                     pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags, downsample_size=downsample_size
@@ -219,6 +216,8 @@ class OpticalFlowSubsampler:
                 self.detector = Cv2Detector(downsample_size=downsample_size)
         elif detector == "raft":
             assert args is not None
+            if not isinstance(args, AttrDict):
+                args = AttrDict(args)
             self.detector = RAFTDetector(args, downsample_size=downsample_size)
         else:
             raise NotImplementedError()

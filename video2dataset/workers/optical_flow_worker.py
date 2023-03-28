@@ -114,7 +114,7 @@ class OpticalFlowWorker:
         number_sample_per_shard,
         oom_shard_count,
         encode_formats,
-        optical_flow_params
+        optical_flow_params,
     ) -> None:
         self.sample_writer_class = sample_writer_class
         self.output_folder = output_folder
@@ -130,7 +130,11 @@ class OpticalFlowWorker:
         self.detector_args = optical_flow_params.get("detector_args", None)
 
         self.optical_flow_subsampler = OpticalFlowSubsampler(
-            detector=self.detector, args=self.detector_args, fps=self.fps, downsample_size=self.downsample_size, dtype=self.dtype
+            detector=self.detector,
+            args=self.detector_args,
+            fps=self.fps,
+            downsample_size=self.downsample_size,
+            dtype=self.dtype,
         )
 
     def __call__(

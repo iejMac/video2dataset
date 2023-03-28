@@ -21,7 +21,7 @@ from .output_sharder import OutputSharder
 from .distributor import multiprocessing_distributor, pyspark_distributor
 from .workers import DownloadWorker, SubsetWorker, OpticalFlowWorker
 
-
+# pylint: disable=dangerous-default-value
 def video2dataset(
     url_list: str,
     output_folder: str = "videos",
@@ -58,9 +58,9 @@ def video2dataset(
     optical_flow_params: dict = {
         "detector": "cv2",
         "detector_args": None,
-        "fps": -1, 
-        "downsample_size": None, 
-        "dtype": np.float16
+        "fps": -1,
+        "downsample_size": None,
+        "dtype": np.float16,
     },
 ):
     """
@@ -200,7 +200,7 @@ def video2dataset(
             number_sample_per_shard=number_sample_per_shard,
             oom_shard_count=oom_shard_count,
             encode_formats=encode_formats,
-            optical_flow_params=optical_flow_params
+            optical_flow_params=optical_flow_params,
         )
     else:
         raise ValueError(f"Invalid stage: {stage}")
