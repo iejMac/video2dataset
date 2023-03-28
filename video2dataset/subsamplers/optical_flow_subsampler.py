@@ -54,18 +54,20 @@ def resize_image_with_aspect_ratio(image, target_shortest_side=16):
 
 class RAFTDetector:
     def __init__(
-        self, args, downsample_size=None, device='cuda'
+        self, args, downsample_size=None
     ):
+
+        self.device = args.get("device", "cuda")
+        self.downsample_size = downsample_size
+
         model = torch.nn.DataParallel(RAFT(args))
         model.load_state_dict(torch.load(args.model))
 
         model = model.module
-        model.to(device)
-        model.eval()
 
+        model.to(self.device)
+        model.eval()
         self.model = model
-        self.device = device
-        self.downsample_size = downsample_size
 
     def preprocess(self, frame1, frame2):
         scaling_factor = 1
@@ -165,19 +167,18 @@ class OpticalFlowSubsampler:
         fps (int): The target frames per second. Defaults to -1 (original FPS).
     """
 
-    def __init__(self, detector="cv2", fps=-1, params=None, downsample_size=None, dtype=np.float16):
+    def __init__(self, detector="cv2", fps=-1, args=None, downsample_size=None, dtype=np.float16):
         if detector == "cv2":
             if params:
-                pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags = params
+                pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags = args
                 self.detector = Cv2Detector(
                     pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags, downsample_size=downsample_size
                 )
             else:
                 self.detector = Cv2Detector(downsample_size=downsample_size)
         elif detector == "raft":
-            assert params is not None
-            args, device = params
-            self.detector = RAFTDetector(args, downsample_size=downsample_size, device=device)
+            assert args is not None
+            self.detector = RAFTDetector(args, downsample_size=downsample_size)
         else:
             raise NotImplementedError()
 

@@ -55,11 +55,13 @@ def video2dataset(
     cuts_are_clips: bool = False,
     encode_formats: dict = None,
     stage: str = "download",
-    optical_flow_detector: str = "cv2",
-    optical_flow_params: tuple = None,
-    optical_flow_fps: int = -1,
-    optical_flow_downsample_size: int = None,
-    optical_flow_dtype: type = np.float16,
+    optical_flow_params: dict = {
+        "detector": "cv2",
+        "detector_args": None,
+        "fps": -1, 
+        "downsample_size": None, 
+        "dtype": np.float16
+    },
 ):
     """
     create video dataset from video links
@@ -198,11 +200,7 @@ def video2dataset(
             number_sample_per_shard=number_sample_per_shard,
             oom_shard_count=oom_shard_count,
             encode_formats=encode_formats,
-            detector=optical_flow_detector,
-            detector_params=optical_flow_params,
-            fps=optical_flow_fps,
-            downsample_size=optical_flow_downsample_size,
-            dtype=optical_flow_dtype,
+            optical_flow_params=optical_flow_params
         )
     else:
         raise ValueError(f"Invalid stage: {stage}")
