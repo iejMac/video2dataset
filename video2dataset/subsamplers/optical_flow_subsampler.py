@@ -16,6 +16,7 @@ class AttrDict(dict):
     """
     Lets us access dict keys with <dict>.key
     """
+
     # pylint: disable=super-with-arguments
     def __init__(self, *args, **kwargs):
         super(AttrDict, self).__init__(*args, **kwargs)
