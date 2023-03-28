@@ -65,7 +65,19 @@ def resize_image_with_aspect_ratio(image, target_shortest_side=16):
 
 class RAFTDetector:
     """
-    Optical flow detection using RAFT
+    Optical flow detection using RAFT. Steps to setup RAFT:
+
+    1. clone this repo fork: https://github.com/danielmend/RAFT
+    2. in the root directory of the repo, run `pip install -e .` to install RAFT locally
+    3. download optical flow models using the `download.sh` script in the repo, i.e. run `bash download.sh`
+    4. when passing in args to the video2dataset call, be sure to include optical flow params as follows:
+    args = {
+        'model': '/path/to/optical/flow.pth',
+        'path': None,
+        'small': False,
+        'mixed_precision': True,
+        'alternate_corr': False,
+    }
     """
 
     def __init__(self, args, downsample_size=None):
