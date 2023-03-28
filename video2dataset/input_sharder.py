@@ -119,6 +119,7 @@ class InputSharder:
         ]
 
         shards_to_write = self.shard_sampler(shards_to_write)
+        print(f'shards to write {shards_to_write}', flush=True)
 
         if len(shards_to_write) == 0:
             return [], number_shards

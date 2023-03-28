@@ -9,7 +9,7 @@ import numpy as np
 
 from typing import List, Optional
 
-from .logger import LoggerProcess, NullLogger
+from .logger import LoggerProcess
 from .data_writer import (
     WebDatasetSampleWriter,
     FilesSampleWriter,
@@ -20,9 +20,12 @@ from .data_writer import (
 from .input_sharder import InputSharder
 from .output_sharder import OutputSharder
 from .distributor import multiprocessing_distributor, pyspark_distributor
-from slurm_executor import SlurmDistributor
+from .slurm_executor import SlurmDistributor
 from .workers import DownloadWorker, SubsetWorker, OpticalFlowWorker
 
+
+def identity(x):
+    return x
 
 
 def video2dataset(
@@ -61,8 +64,8 @@ def video2dataset(
     optical_flow_detector: str = "cv2",
     optical_flow_fps: int = -1,
     optical_flow_downsample_size: int = None,
-    optical_flow_dtype: type = np.float16,
-    sampler = lambda x: x,
+    optical_flow_dtype: str = "np.float16",
+    sampler = None,
     slurm_cpus_per_task: int=1,
     slurm_job_name:str='video2dataset',
     slurm_partition:str=None,
@@ -75,12 +78,21 @@ def video2dataset(
     slurm_cache_path:str=None,
     slurm_timeout:int=None,
     slurm_verbose_wait:bool=False,
-    enable_logger:bool=True
 ):
     """
     create video dataset from video links
     """
     local_args = dict(locals())
+    try:
+        optical_flow_dtype = eval(optical_flow_dtype)
+    except Exception as e:
+        print(f'Invalid optical_flow_dtype specified: {optical_flow_dtype}. Please use valid one')
+        exit(1)
+
+    assert isinstance(optical_flow_dtype, type), f'Invalid optical_flow_dtype specified: {optical_flow_dtype}. Please use valid one.'
+
+    if sampler is None:
+        sampler = identity
 
     # TODO: find better location for this code
     # TODO: figure out minimum yt_meta_args for subtitles to be added to metadata
@@ -104,8 +116,7 @@ def video2dataset(
     output_folder = make_path_absolute(output_folder)
     url_list = make_path_absolute(url_list)
 
-    logger_process = LoggerProcess(output_folder, enable_wandb, wandb_project, config_parameters) if enable_logger else NullLogger()
-
+    logger_process = LoggerProcess(output_folder, enable_wandb, wandb_project, config_parameters)
     tmp_path = output_folder + "/_tmp"
     fs, tmp_dir = fsspec.core.url_to_fs(tmp_path)
     if not fs.exists(tmp_dir):
@@ -246,7 +257,8 @@ def video2dataset(
         max_shard_retry,
     )
     logger_process.join()
-    fs.rm(tmp_dir, recursive=True)
+    if distributor != 'slurm' or ("GLOBAL_RANK" in os.environ and os.environ['GLOBAL_RANK'] == "0"):
+        fs.rm(tmp_dir, recursive=True)
 
 
 def main():

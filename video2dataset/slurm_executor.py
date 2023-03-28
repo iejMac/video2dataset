@@ -11,7 +11,6 @@ import fire
 class SlurmDistributor:
     """Parallelism via slurm"""
     def __init__(self,
-                 *,
                  worker_args,
                  cpus_per_task,
                  job_name,
@@ -53,18 +52,17 @@ class SlurmDistributor:
 
 
         # save worker args to file (this is written by the slurm_executor)
-        self.worker_args_as_file = os.path.join(self.cache_path + f'{self.timestamp}_worker_args.yaml')
+        self.worker_args_as_file = os.path.join(self.cache_path, f'{self.timestamp}_worker_args.yaml')
         with self.fs.open(self.worker_args_as_file, 'w', encoding="utf-8") as f:
-            yaml.dump(worker_args, f)
+            yaml.dump(worker_args, f, default_flow_style=False)
 
         self.launcher_path = os.path.join(self.cache_path, self.timestamp + f'_launcher.sh')
         with self.fs.open(self.launcher_path, 'w', encoding="utf-8") as launcher_file:
             launcher_file.write(self._make_launch_cpu())
 
         self.sbatch_path = os.path.join(self.cache_path, self.timestamp + f'_sbatch.sh')
-        with self.fs.open(self.launcher_path, 'w', encoding="utf-8") as sbatch_file:
+        with self.fs.open(self.sbatch_path, 'w', encoding="utf-8") as sbatch_file:
             sbatch_file.write(self._make_sbatch())
-
 
         print(f'Wrote launcher to {self.launcher_path}')
         print(f'Wrote sbatch to {self.sbatch_path}')
@@ -89,7 +87,7 @@ class SlurmDistributor:
 {account}
 #SBATCH --open-mode append
 
-srun --account {account} bash {self.launcher_path}
+srun --account {self.account} bash {self.launcher_path}
 
 """
 
@@ -98,7 +96,8 @@ srun --account {account} bash {self.launcher_path}
     def _make_launch_cpu(self,):
 
         venv = os.environ['VIRTUAL_ENV']
-        cdir = os.path.abspath(__file__)
+        path2self = os.path.abspath(__file__)
+        cdir = '/'.join(path2self.split('/')[:-1])
         project_root = os.path.abspath(os.path.join(cdir, '..'))
         return f"""#!/bin/bash
 # mpi version for node rank
@@ -114,7 +113,7 @@ export XDG_CACHE_HOME="{self.cache_path}"
 cd {project_root}
 source {venv}/bin/activate
 
-python {os.path.join(cdir,'slurm_executor.py')} --worker_args {self.worker_args_as_file} --node_id {{$SLURM_NODEID}} --n_nodes {{$SLURM_JOB_NUM_NODES}} --num_tasks_per_node {{$SLURM_NTASKS_PER_NODE}} --subjob_id {{$SLURM_LOCAL_ID}}
+python {path2self} --worker_args {self.worker_args_as_file} --node_id $SLURM_NODEID --n_nodes $SLURM_JOB_NUM_NODES --num_tasks_per_node $SLURM_NTASKS_PER_NODE --subtask_id $SLURM_LOCALID
 """
 
     def __call__(self,*args,**kwargs):
@@ -196,35 +195,50 @@ python {os.path.join(cdir,'slurm_executor.py')} --worker_args {self.worker_args_
         return status == "slurm_load_jobs error: Invalid job id specified" or len(status.split("\n")) == 2
 
 
-def shard_sampler(global_task_id, num_tasks):
+class ShardSampler:
     """
-    Should return a callable which selects samples based on the node_id
-    :param global_task_id: The global task id for the current task
-    :param num_tasks: The overall number of tasks
-    :return:
+        Should be callable to select samples based on the node_id
+        :param global_task_id: The global task id for the current task
+        :param num_tasks: The overall number of tasks
+        :return:
     """
-    def sample_shards(shardfile_list):
-        # TODO name misleading as only correct for input_sharder. functionality should be working also for output_sharder though
-        shardlist = [(full_shard_id, shard_id) for full_shard_id, shard_id in shardfile_list if shard_id % num_tasks == global_task_id]
+    def __init__(self, global_task_id,num_tasks):
+        self.task_id = global_task_id
+        self.num_tasks = num_tasks
+
+    def __call__(self,shardfile_list):
+        shardlist = [(full_shard_id, shard_id) for full_shard_id, shard_id in shardfile_list if shard_id % self.num_tasks == self.task_id]
         return shardlist
-    return sample_shards
+
 
 def executor(worker_args, node_id, n_nodes, num_tasks_per_node, subtask_id):
     from video2dataset import video2dataset
 
+    print('#' * 100)
+    print("args:")
+    print(worker_args)
+    print('node id', node_id)
+    print('n_nodes', n_nodes)
+    print('num_tasks_per_node', num_tasks_per_node)
+    print('subtask_id', subtask_id)
+    print('#' * 100)
+
     global_task_id = node_id * num_tasks_per_node + subtask_id
     assert global_task_id < n_nodes * num_tasks_per_node, f'global_task_id is {global_task_id} but must be less than num_nodes*num_tasks_per_node={n_nodes * num_tasks_per_node}'
 
-
     print(f'Starting task with id {global_task_id}')
+    os.environ['GLOBAL_RANK'] = str(global_task_id)
+
 
     # Read the worker args from the file
     with open(worker_args, "r", encoding="utf-8") as worker_args_file:
         worker_args = yaml.load(worker_args_file,Loader=yaml.SafeLoader)
-    sampler = shard_sampler(global_task_id,num_tasks=num_tasks_per_node)
+    sampler = ShardSampler(global_task_id=global_task_id,
+                           num_tasks=num_tasks_per_node)
 
-    # call script from every subprocess
-    video2dataset(sampler=sampler, enable_logger=False, enable_wandb=False,
+    worker_args.pop('sampler', None)
+    # call main script from every subprocess
+    video2dataset(sampler=sampler,
                   **worker_args)
 
 if __name__ == '__main__':
