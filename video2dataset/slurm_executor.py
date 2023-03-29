@@ -214,6 +214,7 @@ class ShardSampler:
 def executor(worker_args, node_id, n_nodes, num_tasks_per_node, subtask_id):
     from video2dataset import video2dataset
 
+    num_tasks = n_nodes * num_tasks_per_node
     print('#' * 100)
     print("args:")
     print(worker_args)
@@ -221,10 +222,11 @@ def executor(worker_args, node_id, n_nodes, num_tasks_per_node, subtask_id):
     print('n_nodes', n_nodes)
     print('num_tasks_per_node', num_tasks_per_node)
     print('subtask_id', subtask_id)
+    print('num_tasks', num_tasks)
     print('#' * 100)
 
     global_task_id = node_id * num_tasks_per_node + subtask_id
-    assert global_task_id < n_nodes * num_tasks_per_node, f'global_task_id is {global_task_id} but must be less than num_nodes*num_tasks_per_node={n_nodes * num_tasks_per_node}'
+    assert global_task_id < num_tasks, f'global_task_id is {global_task_id} but must be less than num_nodes*num_tasks_per_node={n_nodes * num_tasks_per_node}'
 
     print(f'Starting task with id {global_task_id}')
     os.environ['GLOBAL_RANK'] = str(global_task_id)
@@ -234,7 +236,7 @@ def executor(worker_args, node_id, n_nodes, num_tasks_per_node, subtask_id):
     with open(worker_args, "r", encoding="utf-8") as worker_args_file:
         worker_args = yaml.load(worker_args_file,Loader=yaml.SafeLoader)
     sampler = ShardSampler(global_task_id=global_task_id,
-                           num_tasks=num_tasks_per_node)
+                           num_tasks=num_tasks)
 
     worker_args.pop('sampler', None)
     # call main script from every subprocess

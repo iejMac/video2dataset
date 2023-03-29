@@ -257,8 +257,10 @@ def video2dataset(
         max_shard_retry,
     )
     logger_process.join()
-    if distributor != 'slurm' or ("GLOBAL_RANK" in os.environ and os.environ['GLOBAL_RANK'] == "0"):
-        fs.rm(tmp_dir, recursive=True)
+    # if distributor != 'slurm' or ("GLOBAL_RANK" in os.environ and os.environ['GLOBAL_RANK'] == "0"):
+    # TODO delete after all nodes have finished
+    print('Not removing tmp_dir',flush=True)
+    # fs.rm(tmp_dir, recursive=True)
 
 
 def main():
