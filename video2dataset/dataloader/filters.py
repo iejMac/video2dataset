@@ -31,8 +31,10 @@ class LanguageFilter:
 class KeyFilter:
     """Filters the dataset based on the key"""
 
-    def __init__(self, enforce_keys=["mp4", "txt"]):
+    def __init__(self, enforce_keys=None):
         self.enforce_keys = enforce_keys
+        if enforce_keys is None:
+            self.enforce_keys = ["mp4", "txt"]
 
     def __call__(self, sample):
         try:
