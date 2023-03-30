@@ -55,13 +55,7 @@ def video2dataset(
     cuts_are_clips: bool = False,
     encode_formats: dict = None,
     stage: str = "download",
-    optical_flow_params: dict = {
-        "detector": "cv2",
-        "detector_args": None,
-        "fps": -1,
-        "downsample_size": None,
-        "dtype": np.float16,
-    },
+    optical_flow_params: dict = None,
 ):
     """
     create video dataset from video links
@@ -193,6 +187,14 @@ def video2dataset(
             input_format,
             done_shards,
         )
+        if optical_flow_params is None:
+            optical_flow_params = {
+                "detector": "cv2",
+                "detector_args": None,
+                "fps": -1,
+                "downsample_size": None,
+                "dtype": np.float16,
+            }
         worker = OpticalFlowWorker(  # type: ignore
             sample_writer_class=sample_writer_class,
             output_folder=output_folder,

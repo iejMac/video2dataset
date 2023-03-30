@@ -87,9 +87,11 @@ class RAFTDetector:
         self.downsample_size = downsample_size
 
         model = RAFT(args)
-        model.load_state_dict(torch.load(args.model))
 
-        model = model.module
+        state_dict = torch.load(args.model)
+        real_state_dict = {k.split("module.")[-1]: v for k, v in state_dict.items()}
+
+        model.load_state_dict(real_state_dict)
 
         model.to(self.device)
         model.eval()
