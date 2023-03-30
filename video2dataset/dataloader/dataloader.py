@@ -103,7 +103,7 @@ def get_video_dataset(
 
     # TODO: organize this such that you don't always need video.
     # should work with audio-text, just text or whatever you might want
-    enforce_keys= [video_key] + enforce_additional_keys
+    enforce_keys = [video_key] + enforce_additional_keys
     key_filter = KeyFilter(enforce_keys)
     dset = dset.select(key_filter)
 

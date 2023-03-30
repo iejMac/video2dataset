@@ -37,7 +37,8 @@ class KeyFilter:
     def __call__(self, sample):
         try:
             for key in self.enforce_keys:
-                return key not in sample
+                if key not in sample:
+                    return False
             return True
         except Exception as _:  # pylint: disable=broad-except
             return False
