@@ -21,6 +21,7 @@ from .output_sharder import OutputSharder
 from .distributor import multiprocessing_distributor, pyspark_distributor
 from .workers import DownloadWorker, SubsetWorker, OpticalFlowWorker
 
+
 def video2dataset(
     url_list: str,
     output_folder: str = "videos",
