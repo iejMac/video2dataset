@@ -27,6 +27,19 @@ from .workers import DownloadWorker, SubsetWorker, OpticalFlowWorker
 def identity(x):
     return x
 
+def make_tmp_dir(output_folder):
+    tmp_path = output_folder + "/_tmp"
+    fs, tmp_dir = fsspec.core.url_to_fs(tmp_path)
+    if not fs.exists(tmp_dir):
+        fs.mkdir(tmp_dir)
+
+    return fs, tmp_dir, tmp_path
+
+def make_path_absolute(path):
+    fs, p = fsspec.core.url_to_fs(path)
+    if fs.protocol == "file":
+        return os.path.abspath(p)
+    return path
 
 def video2dataset(
     url_list: str,
@@ -107,20 +120,11 @@ def video2dataset(
     if encode_formats is None:
         encode_formats = {"video": "mp4"}
 
-    def make_path_absolute(path):
-        fs, p = fsspec.core.url_to_fs(path)
-        if fs.protocol == "file":
-            return os.path.abspath(p)
-        return path
-
     output_folder = make_path_absolute(output_folder)
     url_list = make_path_absolute(url_list)
 
     logger_process = LoggerProcess(output_folder, enable_wandb, wandb_project, config_parameters)
-    tmp_path = output_folder + "/_tmp"
-    fs, tmp_dir = fsspec.core.url_to_fs(tmp_path)
-    if not fs.exists(tmp_dir):
-        fs.mkdir(tmp_dir)
+    fs, tmp_dir, tmp_path = make_tmp_dir(output_folder)
 
     def signal_handler(signal_arg, frame):  # pylint: disable=unused-argument
         try:
@@ -257,10 +261,8 @@ def video2dataset(
         max_shard_retry,
     )
     logger_process.join()
-    # if distributor != 'slurm' or ("GLOBAL_RANK" in os.environ and os.environ['GLOBAL_RANK'] == "0"):
-    # TODO delete after all nodes have finished
-    print('Not removing tmp_dir',flush=True)
-    # fs.rm(tmp_dir, recursive=True)
+    if distributor != 'slurm' and 'GLOBAL_RANK' not in os.environ:
+        fs.rm(tmp_dir, recursive=True)
 
 
 def main():

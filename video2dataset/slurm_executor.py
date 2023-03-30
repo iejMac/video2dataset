@@ -25,6 +25,7 @@ class SlurmDistributor:
                  timeout=None,
                  verbose_wait=False
                  ):
+        from .main import make_tmp_dir, make_path_absolute
         self.cpus_per_task = cpus_per_task
         self.job_name = job_name
         self.partition = partition
@@ -48,6 +49,10 @@ class SlurmDistributor:
 
         # change distributor type for the subprocesses
         worker_args['distributor'] = 'multiprocessing'
+
+        output_folder = worker_args.get('output_folder', 'video')
+        output_folder = make_path_absolute(output_folder)
+        self.fs, self.tmp_path, _ = make_tmp_dir(output_folder)
 
 
 
@@ -169,12 +174,15 @@ python {path2self} --worker_args {self.worker_args_as_file} --node_id $SLURM_NOD
                 subprocess.check_output(["scancel", job_id]).decode("utf8")
                 status = self._wait_for_job_to_finish(job_id)
                 print("job cancelled")
+                self.fs.rm(self.tmp_path, recursive=True)
                 return "failed"
             else:
+                self.fs.rm(self.tmp_path, recursive=True)
                 print("job succeeded")
                 return "success"
         except Exception as e:  # pylint: disable=broad-except
             print(e)
+            self.fs.rm(self.tmp_path, recursive=True)
             return "exception occurred"
 
     def _wait_for_job_to_finish(self, job_id, timeout=30):
