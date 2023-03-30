@@ -2,10 +2,8 @@
 import os
 import sys
 import signal
-import functools
 import fire
 import fsspec
-import numpy as np
 
 from typing import List, Optional
 
@@ -27,20 +25,9 @@ from .workers import DownloadWorker, SubsetWorker, OpticalFlowWorker
 def identity(x):
     return x
 
-def make_tmp_dir(output_folder):
-    tmp_path = output_folder + "/_tmp"
-    fs, tmp_dir = fsspec.core.url_to_fs(tmp_path)
-    if not fs.exists(tmp_dir):
-        fs.mkdir(tmp_dir)
 
-    return fs, tmp_dir, tmp_path
 
-def make_path_absolute(path):
-    fs, p = fsspec.core.url_to_fs(path)
-    if fs.protocol == "file":
-        return os.path.abspath(p)
-    return path
-
+# pylint: disable=unused-argument
 def video2dataset(
     url_list: str,
     output_folder: str = "videos",
@@ -120,11 +107,20 @@ def video2dataset(
     if encode_formats is None:
         encode_formats = {"video": "mp4"}
 
+    def make_path_absolute(path):
+        fs, p = fsspec.core.url_to_fs(path)
+        if fs.protocol == "file":
+            return os.path.abspath(p)
+        return path
+
     output_folder = make_path_absolute(output_folder)
     url_list = make_path_absolute(url_list)
 
     logger_process = LoggerProcess(output_folder, enable_wandb, wandb_project, config_parameters)
-    fs, tmp_dir, tmp_path = make_tmp_dir(output_folder)
+    tmp_path = output_folder + "/_tmp"
+    fs, tmp_dir = fsspec.core.url_to_fs(tmp_path)
+    if not fs.exists(tmp_dir):
+        fs.mkdir(tmp_dir)
 
     def signal_handler(signal_arg, frame):  # pylint: disable=unused-argument
         try:
