@@ -21,7 +21,6 @@ from .output_sharder import OutputSharder
 from .distributor import multiprocessing_distributor, pyspark_distributor
 from .workers import DownloadWorker, SubsetWorker, OpticalFlowWorker
 
-# pylint: disable=dangerous-default-value
 def video2dataset(
     url_list: str,
     output_folder: str = "videos",
