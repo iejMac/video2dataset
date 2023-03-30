@@ -16,7 +16,8 @@ from video2dataset.subsamplers import (
     NoOpSubsampler,
     ResolutionSubsampler,
     AudioRateSubsampler,
-) 
+)
+
 
 class SubsetWorker:
     """The loader class reads the shards, then the selected data is chosen and writen by the writer"""
@@ -70,7 +71,6 @@ class SubsetWorker:
 
         self.subsamplers = {"video": video_subsamplers, "audio": audio_subsamplers}
 
-
     def __call__(
         self,
         row,
@@ -112,13 +112,13 @@ class SubsetWorker:
             urls=[shard],
             batch_size=1,
             decoder_kwargs={},
+            enforce_additional_keys=[],
         )
         for sample in dataloader:
             # Gather subset of dataset
             key = sample["__key__"]
             caption = sample.get("txt", b"").decode("utf-8")
             meta = json.loads(sample.get("json", b"{}").decode("utf-8"))
-
             streams = {}
             for mod, fmt in self.encode_formats.items():
                 streams[mod] = sample[fmt]
@@ -142,12 +142,11 @@ class SubsetWorker:
                 else self.noop_subsampler
             )
             subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
-
             for modality in subsampled_streams:
                 for modality_subsampler in self.subsamplers[modality]:
                     subsampled_modality, error_message = modality_subsampler(subsampled_streams[modality])
                     subsampled_streams[modality] = subsampled_modality
-            
+
             if error_message is not None:
                 failed_to_subsample += 1
                 status = "failed_to_subsample"
@@ -166,9 +165,16 @@ class SubsetWorker:
             successes += 1
             status = "success"
             status_dict.increment(status)
-            subsampled_streams_list = [
-                dict(zip(subsampled_streams, s)) for s in zip(*subsampled_streams.values())
-            ]
+            subsampled_streams_list = [dict(zip(subsampled_streams, s)) for s in zip(*subsampled_streams.values())]
+            if len(subsampled_streams_list) == 0:  # no video or audio data, still want to write meta
+                sample_writer.write(
+                    {},
+                    key,
+                    caption,
+                    meta,
+                )
+                continue
+
             for subsampled_streams, meta in zip(subsampled_streams_list, metas):
                 meta["status"] = status
 
