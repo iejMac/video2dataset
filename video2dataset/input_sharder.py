@@ -36,7 +36,7 @@ class InputSharder:
         number_sample_per_shard,
         done_shards,
         tmp_path,
-        sampler = lambda x: x
+        sampler=lambda x: x,
     ) -> None:
         self.input_format = input_format
         self.url_col = url_col
@@ -57,8 +57,6 @@ class InputSharder:
                 raise Exception(f"No file found at path {url_path} with extension {input_format}")
         else:
             self.input_files = [url_path]
-
-
 
         if self.input_format == "txt":
             self.column_list = ["url"]
