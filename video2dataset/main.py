@@ -6,6 +6,7 @@ import fire
 import fsspec
 
 from typing import List, Optional
+import numpy as np  # pylint: disable=unused-import
 
 from .logger import LoggerProcess
 from .data_writer import (
@@ -87,8 +88,7 @@ def video2dataset(
         optical_flow_dtype = eval(optical_flow_dtype)
     except Exception as e:
         print(f"Invalid optical_flow_dtype specified: {optical_flow_dtype}. Please use valid one")
-        print(f"{e.__class__.__name__}: {e}")
-        sys.exit(1)
+        raise e
 
     assert isinstance(
         optical_flow_dtype, type
