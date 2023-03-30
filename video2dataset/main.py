@@ -263,7 +263,7 @@ def video2dataset(
         max_shard_retry,
     )
     logger_process.join()
-    if called_from_slurm:
+    if not called_from_slurm:
         fs.rm(tmp_dir, recursive=True)
 
 
