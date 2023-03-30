@@ -4,7 +4,8 @@ import subprocess
 import pytest
 import ffmpeg
 import tempfile
-
+import numpy as np
+import cv2
 
 from video2dataset.subsamplers import (
     ClippingSubsampler,
@@ -13,6 +14,7 @@ from video2dataset.subsamplers import (
     FrameSubsampler,
     AudioRateSubsampler,
     CutDetectionSubsampler,
+    OpticalFlowSubsampler,
 )
 
 
@@ -169,3 +171,42 @@ def test_cut_detection_subsampler(cut_detection_mode, framerates):
 
         if len(framerates) > 0:
             assert cuts["cuts_15"][-1] == [3016, 3677]
+
+
+@pytest.mark.parametrize(
+    "detector,fps,params", [("cv2", 1, None), ("cv2", 2, None), ("cv2", 1, (0.25, 2, 10, 3, 5, 1, 0))]
+)
+def test_optical_flow_subsampler(detector, fps, params):
+    current_folder = os.path.dirname(__file__)
+    video = os.path.join(current_folder, "test_files/test_video.mp4")
+
+    cap = cv2.VideoCapture(video)
+    native_fps = cap.get(cv2.CAP_PROP_FPS)
+    frames = []
+    for _ in range(100):
+        ret, frame = cap.read()
+        if not ret:
+            break
+        frames.append(frame)
+    cap.release()
+
+    raw_frames = np.array(frames)
+
+    subsampler = OpticalFlowSubsampler(detector, fps, params)
+
+    optical_flow, metrics, error_message = subsampler(raw_frames, native_fps)
+    mean_magnitude, _ = metrics
+    assert error_message is None
+
+    first_frame = optical_flow[0]
+    assert first_frame.shape == (1080, 1920, 2)
+
+    if fps == 1:
+        if params is None:
+            assert np.isclose(mean_magnitude, 0.00225532218919966, rtol=1e-3)  # verified independently on colab
+        elif params is not None:
+            assert np.isclose(
+                mean_magnitude, 0.0034578320931094217, rtol=1e-3
+            )  # np.isclose due to potential numerical precision issues
+    elif fps == 2:  # fps = 2, params = None
+        assert np.isclose(mean_magnitude, 0.0011257734728123598, rtol=1e-3)

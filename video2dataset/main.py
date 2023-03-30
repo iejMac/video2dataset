@@ -1,8 +1,12 @@
 """Create dataset from video links and metadata."""
-
+import os
+import sys
+import signal
+import fire
+import fsspec
+import numpy as np
 
 from typing import List, Optional
-import fire
 
 from .logger import LoggerProcess
 from .data_writer import (
@@ -13,12 +17,9 @@ from .data_writer import (
     DummySampleWriter,
 )
 from .input_sharder import InputSharder
+from .output_sharder import OutputSharder
 from .distributor import multiprocessing_distributor, pyspark_distributor
-import fsspec
-import sys
-import signal
-import os
-from .worker import Worker
+from .workers import DownloadWorker, SubsetWorker, OpticalFlowWorker
 
 
 def video2dataset(
@@ -56,6 +57,11 @@ def video2dataset(
     feature_params: dict = None,
     lk_params: dict = None,
     encode_formats: dict = None,
+    stage: str = "download",
+    optical_flow_detector: str = "cv2",
+    optical_flow_fps: int = -1,
+    optical_flow_downsample_size: int = None,
+    optical_flow_dtype: type = np.float16,
 ):
     """
     create video dataset from video links
@@ -120,18 +126,6 @@ def video2dataset(
     logger_process.done_shards = done_shards
     logger_process.start()
 
-    input_sharder = InputSharder(
-        url_list,
-        input_format,
-        url_col,
-        caption_col,
-        clip_col,
-        save_additional_columns,
-        number_sample_per_shard,
-        done_shards,
-        tmp_path,
-    )
-
     if output_format == "webdataset":
         sample_writer_class = WebDatasetSampleWriter
     elif output_format == "parquet":
@@ -145,31 +139,74 @@ def video2dataset(
     else:
         raise ValueError(f"Invalid output format {output_format}")
 
-    worker = Worker(
-        sample_writer_class=sample_writer_class,
-        save_caption=save_caption,
-        output_folder=output_folder,
-        column_list=input_sharder.column_list,
-        thread_count=thread_count,
-        timeout=timeout,
-        number_sample_per_shard=number_sample_per_shard,
-        oom_shard_count=oom_shard_count,
-        video_size=video_size,
-        resize_mode=resize_mode,
-        video_fps=video_fps,
-        audio_rate=audio_rate,
-        tmp_dir=tmp_dir,
-        yt_metadata_args=yt_metadata_args,
-        captions_are_subtitles=captions_are_subtitles,
-        encode_formats=encode_formats,
-        detect_cuts=detect_cuts,
-        cut_detection_mode=cut_detection_mode,
-        cut_framerates=cut_framerates,
-        cuts_are_clips=cuts_are_clips,
-        detect_optical_flow=detect_optical_flow,
-        feature_params=feature_params,
-        lk_params=lk_params
-    )
+    if stage == "download":
+        shard_iterator = InputSharder(
+            url_list,
+            input_format,
+            url_col,
+            caption_col,
+            clip_col,
+            save_additional_columns,
+            number_sample_per_shard,
+            done_shards,
+            tmp_path,
+        )
+        worker = DownloadWorker(
+            sample_writer_class=sample_writer_class,
+            save_caption=save_caption,
+            output_folder=output_folder,
+            column_list=shard_iterator.column_list,
+            thread_count=thread_count,
+            timeout=timeout,
+            number_sample_per_shard=number_sample_per_shard,
+            oom_shard_count=oom_shard_count,
+            video_size=video_size,
+            resize_mode=resize_mode,
+            video_fps=video_fps,
+            audio_rate=audio_rate,
+            tmp_dir=tmp_dir,
+            yt_metadata_args=yt_metadata_args,
+            captions_are_subtitles=captions_are_subtitles,
+            encode_formats=encode_formats,
+            detect_cuts=detect_cuts,
+            cut_detection_mode=cut_detection_mode,
+            cut_framerates=cut_framerates,
+            cuts_are_clips=cuts_are_clips,
+        )
+    elif stage == "subset":
+        shard_iterator = OutputSharder(  # type: ignore
+            url_list,
+            input_format,
+            done_shards,
+        )
+        worker = SubsetWorker(  # type: ignore
+            sample_writer_class=sample_writer_class,
+            output_folder=output_folder,
+            thread_count=thread_count,
+            number_sample_per_shard=number_sample_per_shard,
+            oom_shard_count=oom_shard_count,
+            encode_formats=encode_formats,
+        )
+    elif stage == "optical_flow":
+        shard_iterator = OutputSharder(  # type: ignore
+            url_list,
+            input_format,
+            done_shards,
+        )
+        worker = OpticalFlowWorker(  # type: ignore
+            sample_writer_class=sample_writer_class,
+            output_folder=output_folder,
+            thread_count=thread_count,
+            number_sample_per_shard=number_sample_per_shard,
+            oom_shard_count=oom_shard_count,
+            encode_formats=encode_formats,
+            detector=optical_flow_detector,
+            fps=optical_flow_fps,
+            downsample_size=optical_flow_downsample_size,
+            dtype=optical_flow_dtype,
+        )
+    else:
+        raise ValueError(f"Invalid stage: {stage}")
 
     print("Starting the downloading of this file")
     if distributor == "multiprocessing":
@@ -182,7 +219,7 @@ def video2dataset(
     distributor_fn(
         processes_count,
         worker,
-        input_sharder,
+        shard_iterator,
         subjob_size,
         max_shard_retry,
     )
