@@ -86,7 +86,7 @@ class RAFTDetector:
         self.device = args.get("device", "cuda")
         self.downsample_size = downsample_size
 
-        model = torch.nn.DataParallel(RAFT(args))
+        model = RAFT(args)
         model.load_state_dict(torch.load(args.model))
 
         model = model.module
