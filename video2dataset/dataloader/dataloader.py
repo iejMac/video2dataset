@@ -50,7 +50,7 @@ def get_video_dataset(
     random_crop=False,
     original_height_key="original_height",
     original_width_key="original_width",
-    enforce_additional_keys=["txt"],
+    enforce_additional_keys=None,
 ):
 
     """
@@ -74,6 +74,7 @@ def get_video_dataset(
         random_crop (bool, optional): Whether to apply random cropping. Default is False.
         original_height_key (str, optional): The key for the original video height. Default is 'original_height'.
         original_width_key (str, optional): The key for the original video width. Default is 'original_width'.
+        enforce_additional_keys (list, optional): Which keys must be in each sample
 
     Returns:
         WebDataset: The processed webdataset.
@@ -81,6 +82,8 @@ def get_video_dataset(
 
     if decoder_kwargs is None:
         decoder_kwargs = {}
+    if enforce_additional_keys is None:
+        enforce_additional_keys = ["txt"]
 
     additional_decoder_kwargs = {}
     if cuts_key:
