@@ -242,8 +242,10 @@ def video2dataset(
         raise ValueError(f"Invalid stage: {stage}")
 
     print("Starting the downloading of this file")
+    called_from_slurm = False
     if distributor == "multiprocessing":
         distributor_fn = multiprocessing_distributor
+        called_from_slurm = 'GLOBAL_RANK' in os.environ
     elif distributor == "pyspark":
         distributor_fn = pyspark_distributor
     elif distributor == "slurm":
@@ -261,7 +263,7 @@ def video2dataset(
         max_shard_retry,
     )
     logger_process.join()
-    if distributor != 'slurm' and 'GLOBAL_RANK' not in os.environ:
+    if called_from_slurm:
         fs.rm(tmp_dir, recursive=True)
 
 

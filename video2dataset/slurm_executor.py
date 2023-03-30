@@ -174,15 +174,12 @@ python {path2self} --worker_args {self.worker_args_as_file} --node_id $SLURM_NOD
                 subprocess.check_output(["scancel", job_id]).decode("utf8")
                 status = self._wait_for_job_to_finish(job_id)
                 print("job cancelled")
-                self.fs.rm(self.tmp_path, recursive=True)
                 return "failed"
             else:
-                self.fs.rm(self.tmp_path, recursive=True)
                 print("job succeeded")
                 return "success"
         except Exception as e:  # pylint: disable=broad-except
             print(e)
-            self.fs.rm(self.tmp_path, recursive=True)
             return "exception occurred"
 
     def _wait_for_job_to_finish(self, job_id, timeout=30):
