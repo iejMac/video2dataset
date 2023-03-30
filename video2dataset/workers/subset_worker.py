@@ -5,10 +5,18 @@ import pyarrow as pa
 import traceback
 
 import fsspec
+import numpy as np
 
 from video2dataset.dataloader import get_video_dataset
 from video2dataset.logger import CappedCounter, write_stats
-
+from video2dataset.subsamplers import (
+    ClippingSubsampler,
+    CutDetectionSubsampler,
+    FrameSubsampler,
+    NoOpSubsampler,
+    ResolutionSubsampler,
+    AudioRateSubsampler,
+) 
 
 class SubsetWorker:
     """The loader class reads the shards, then the selected data is chosen and writen by the writer"""
@@ -21,6 +29,16 @@ class SubsetWorker:
         number_sample_per_shard,
         oom_shard_count,
         encode_formats,
+        video_size,
+        resize_mode,
+        video_fps,
+        audio_rate,
+        captions_are_subtitles,
+        detect_cuts,
+        cut_detection_mode,
+        cuts_are_clips,
+        cut_framerates,
+        oom_clip_count=5,
     ) -> None:
         self.sample_writer_class = sample_writer_class
         self.output_folder = output_folder
@@ -29,6 +47,29 @@ class SubsetWorker:
         self.thread_count = thread_count
         self.encode_formats = encode_formats
         self.save_caption = True
+
+        self.captions_are_subtitles = captions_are_subtitles
+        self.clipping_subsampler = ClippingSubsampler(oom_clip_count, encode_formats)
+        self.cut_detection_mode = cut_detection_mode
+        self.cut_framerates = cut_framerates
+        self.detect_cuts = detect_cuts
+        if detect_cuts:
+            self.cut_detector = CutDetectionSubsampler(cut_detection_mode=cut_detection_mode, framerates=cut_framerates)
+        self.cuts_are_clips = cuts_are_clips
+        self.noop_subsampler = NoOpSubsampler()
+
+        video_subsamplers: List[Any] = []
+        if resize_mode is not None:
+            video_subsamplers.append(ResolutionSubsampler(video_size, resize_mode))
+        if video_fps > 0:
+            video_subsamplers.append(FrameSubsampler(video_fps))
+
+        audio_subsamplers: List[Any] = []
+        if audio_rate > 0:
+            audio_subsamplers.append(AudioRateSubsampler(audio_rate, encode_formats))
+
+        self.subsamplers = {"video": video_subsamplers, "audio": audio_subsamplers}
+
 
     def __call__(
         self,
@@ -82,16 +123,42 @@ class SubsetWorker:
             for mod, fmt in self.encode_formats.items():
                 streams[mod] = sample[fmt]
 
+            if self.captions_are_subtitles:  # create clips
+                subtitles = meta["yt_meta_dict"]["subtitles"]
+                meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
+                meta["lines"] = [" ".join(line_dict["lines"]) for line_dict in subtitles]
+
+            elif self.detect_cuts:  # apply cut detection to get clips
+                meta["cuts"] = self.cut_detector(streams)
+
+            if self.cuts_are_clips:
+                cuts = (np.array(meta["cuts"]["cuts_original_fps"]) / meta["cuts"]["original_fps"]).tolist()
+                meta["clips"] = cuts
+
+            # 1 video -> many videos (either clipping or noop which does identity broadcasting)
+            broadcast_subsampler = (
+                self.clipping_subsampler
+                if (self.captions_are_subtitles or self.cuts_are_clips)
+                else self.noop_subsampler
+            )
+            subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
+
+            for modality in subsampled_streams:
+                for modality_subsampler in self.subsamplers[modality]:
+                    subsampled_modality, error_message = modality_subsampler(subsampled_streams[modality])
+                    subsampled_streams[modality] = subsampled_modality
+            
             if error_message is not None:
-                failed_to_transform += 1
+                failed_to_subsample += 1
                 status = "failed_to_subsample"
                 status_dict.increment(error_message)
                 meta["status"] = status
                 meta["error_message"] = error_message
+
                 sample_writer.write(
                     {},
-                    str_key,
-                    sample_data[caption_indice] if caption_indice is not None else None,
+                    key,
+                    caption,
                     meta,
                 )
                 continue
@@ -99,14 +166,22 @@ class SubsetWorker:
             successes += 1
             status = "success"
             status_dict.increment(status)
-            meta["status"] = status
+            subsampled_streams_list = [
+                dict(zip(subsampled_streams, s)) for s in zip(*subsampled_streams.values())
+            ]
+            for subsampled_streams, meta in zip(subsampled_streams_list, metas):
+                meta["status"] = status
 
-            sample_writer.write(
-                streams,
-                key,
-                caption,
-                meta,
-            )
+                text_caption = caption
+                if self.captions_are_subtitles:
+                    text_caption = meta["yt_meta_dict"].pop("subtitles")
+
+                sample_writer.write(
+                    subsampled_streams,
+                    meta["key"],
+                    text_caption,
+                    meta,
+                )
 
         sample_writer.close()
         end_time = time.time()

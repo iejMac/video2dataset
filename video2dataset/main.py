@@ -183,6 +183,15 @@ def video2dataset(
             number_sample_per_shard=number_sample_per_shard,
             oom_shard_count=oom_shard_count,
             encode_formats=encode_formats,
+            captions_are_subtitles=captions_are_subtitles,
+            video_size=video_size,
+            resize_mode=resize_mode,
+            video_fps=video_fps,
+            audio_rate=audio_rate,
+            detect_cuts=detect_cuts,
+            cut_detection_mode=cut_detection_mode,
+            cut_framerates=cut_framerates,
+            cuts_are_clips=cuts_are_clips,
         )
     elif stage == "optical_flow":
         shard_iterator = OutputSharder(  # type: ignore
