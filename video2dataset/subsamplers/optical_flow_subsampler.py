@@ -8,19 +8,16 @@ import numpy as np
 def resize_image_with_aspect_ratio(image, target_shortest_side=16):
     """
     Resize an input image while maintaining its aspect ratio.
-
     This function takes an image and resizes it so that its shortest side
     matches the specified target length. The other side is scaled accordingly
     to maintain the original aspect ratio of the image. The function returns
     the resized image and the scaling factor used for resizing.
-
     Parameters
     ----------
     image : numpy.ndarray
         The input image represented as a NumPy array with shape (height, width, channels).
     target_shortest_side : int, optional
         The desired length for the shortest side of the resized image (default is 16).
-
     Returns
     -------
     resized_image : numpy.ndarray
@@ -49,7 +46,6 @@ def resize_image_with_aspect_ratio(image, target_shortest_side=16):
 class Cv2Detector:
     """
     A class to perform optical flow detection using OpenCV's Farneback method.
-
     Attributes:
         pyr_scale (float): The pyramid scale. Defaults to 0.5.
         levels (int): The number of pyramid layers. Defaults to 3.
@@ -83,11 +79,9 @@ class Cv2Detector:
     def __call__(self, frame1, frame2):
         """
         Calculate optical flow between two frames using Farneback method.
-
         Args:
             frame1 (numpy.ndarray): The first frame (grayscale).
             frame2 (numpy.ndarray): The second frame (grayscale).
-
         Returns:
             numpy.ndarray: The computed optical flow.
         """
@@ -114,7 +108,6 @@ class Cv2Detector:
 class OpticalFlowSubsampler:
     """
     A class to detect optical flow in video frames.
-
     Attributes:
         detector (Cv2Detector or RAFTDetector): The optical flow detector.
         fps (int): The target frames per second. Defaults to -1 (original FPS).

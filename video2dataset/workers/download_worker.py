@@ -18,7 +18,6 @@ from video2dataset.logger import write_stats
 from video2dataset.subsamplers import (
     ClippingSubsampler,
     CutDetectionSubsampler,
-    OpticalFlowSubsampler,
     FrameSubsampler,
     NoOpSubsampler,
     ResolutionSubsampler,
@@ -60,9 +59,6 @@ class DownloadWorker:
         cuts_are_clips,
         encode_formats,
         cut_framerates,
-        detect_optical_flow,
-        feature_params,
-        lk_params,
         oom_clip_count=5,
     ) -> None:
         self.sample_writer_class = sample_writer_class
@@ -85,9 +81,6 @@ class DownloadWorker:
         if detect_cuts:
             self.cut_detector = CutDetectionSubsampler(cut_detection_mode=cut_detection_mode, framerates=cut_framerates)
         self.cuts_are_clips = cuts_are_clips
-        self.detect_optical_flow = detect_optical_flow
-        if detect_optical_flow:
-            self.optical_flow_detector = OpticalFlowSubsampler(feature_params=feature_params, lk_params=lk_params)
         self.noop_subsampler = NoOpSubsampler()
 
         video_subsamplers: List[Any] = []
@@ -213,10 +206,6 @@ class DownloadWorker:
                             cuts = (np.array(meta["cuts"]["cuts_original_fps"]) / meta["cuts"]["original_fps"]).tolist()
                             meta["clips"] = cuts
 
-                    if self.detect_optical_flow: # TODO: not sure where to put optical flow detection
-                        optical_flow = self.optical_flow_detector(streams)
-                        meta["optical_flow"] = optical_flow
-
                     # 1 video -> many videos (either clipping or noop which does identity broadcasting)
                     broadcast_subsampler = (
                         self.clipping_subsampler
@@ -225,7 +214,6 @@ class DownloadWorker:
                     )
                     subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
 
-                    
                     for modality in subsampled_streams:
                         for modality_subsampler in self.subsamplers[modality]:
                             subsampled_modality, error_message = modality_subsampler(subsampled_streams[modality])
