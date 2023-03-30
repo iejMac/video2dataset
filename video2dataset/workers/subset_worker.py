@@ -59,13 +59,13 @@ class SubsetWorker:
         self.cuts_are_clips = cuts_are_clips
         self.noop_subsampler = NoOpSubsampler()
 
-        video_subsamplers: List[Any] = []
+        video_subsamplers = []
         if resize_mode is not None:
             video_subsamplers.append(ResolutionSubsampler(video_size, resize_mode))
         if video_fps > 0:
             video_subsamplers.append(FrameSubsampler(video_fps))
 
-        audio_subsamplers: List[Any] = []
+        audio_subsamplers = []
         if audio_rate > 0:
             audio_subsamplers.append(AudioRateSubsampler(audio_rate, encode_formats))
 
