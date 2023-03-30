@@ -1,5 +1,5 @@
 # [HDVILA-100M](https://github.com/microsoft/XPretrain/tree/main/hd-vila-100m)
-HDVILA 100M is a dataset of 100M videos from YouTube.
+HDVILA 100M is a dataset of 100M high-resolution videos from YouTube.
 
 ## Download the metdata
 First, run `wget -O hdvila100m.zip https://hdvila.blob.core.windows.net/dataset/hdvila100m.zip?sp=r&st=2022-06-28T03:33:11Z&se=2026-01-01T11:33:11Z&spr=https&sv=2021-06-08&sr=b&sig=VaqQkLFDqKinfkaPNs1jJ1EQIYCB%2FUPYiqFqmjWye6Y%3D` to download the HD VILA 100M metadata. Next, just run `unzip hdvilla100m.zip` in order to unzip the metadata. You should now have an `hdvila100m/` directory.
