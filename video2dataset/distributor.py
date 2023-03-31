@@ -2,7 +2,7 @@
 import os
 import time
 import subprocess
-import datetime
+from datetime import datetime
 import yaml
 from contextlib import contextmanager
 from multiprocessing import get_context

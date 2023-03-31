@@ -25,7 +25,6 @@ from .workers import DownloadWorker, SubsetWorker, OpticalFlowWorker
 def identity(x):
     return x
 
-
 # pylint: disable=unused-argument
 # pylint: disable=eval-used
 # pylint: disable=broad-except
@@ -81,17 +80,6 @@ def video2dataset(
     create video dataset from video links
     """
     local_args = dict(locals())
-    optical_flow_dtype = None if optical_flow_params is None else optical_flow_params.get("dtype", None)
-    if optical_flow_dtype:
-        try:
-            optical_flow_dtype = eval(optical_flow_dtype)
-        except Exception as e:
-            print(f"Invalid optical_flow_dtype specified: {optical_flow_dtype}. Please use valid one")
-            raise e
-
-        assert isinstance(
-            optical_flow_dtype, type
-        ), f"Invalid optical_flow_dtype specified: {optical_flow_dtype}. Please use valid one."
 
     if sampler is None:
         sampler = identity
@@ -217,6 +205,7 @@ def video2dataset(
             url_list,
             input_format,
             done_shards,
+            sampler=sampler
         )
         if optical_flow_params is None:
             optical_flow_params = {
@@ -224,8 +213,16 @@ def video2dataset(
                 "detector_args": None,
                 "fps": -1,
                 "downsample_size": None,
-                "dtype": np.float16,
+                "dtype": "fp16",
             }
+        else:
+            optical_flow_dtype = optical_flow_params.get("dtype", None)
+            if optical_flow_dtype:
+                assert optical_flow_dtype in ["fp16", "fp32"], "please select either fp16 or fp32 for optical flow dtype"
+            else:
+                optical_flow_params["dtype"] = "fp16"
+
+        is_slurm_task = "GLOBAL_RANK" in os.environ and distributor == "multiprocessing"
         worker = OpticalFlowWorker(  # type: ignore
             sample_writer_class=sample_writer_class,
             output_folder=output_folder,
@@ -234,6 +231,7 @@ def video2dataset(
             oom_shard_count=oom_shard_count,
             encode_formats=encode_formats,
             optical_flow_params=optical_flow_params,
+            is_slurm_task=is_slurm_task
         )
     else:
         raise ValueError(f"Invalid stage: {stage}")

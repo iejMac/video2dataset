@@ -15,7 +15,6 @@ from video2dataset.logger import CappedCounter, write_stats
 from video2dataset.subsamplers import OpticalFlowSubsampler
 from video2dataset.dataloader import get_video_dataset
 
-
 def numpy_npz_dumps(numpy_dict):
     """
     Dump a dictionary of numpy arrays into a bytestring using numpy npz format.
@@ -115,6 +114,7 @@ class OpticalFlowWorker:
         oom_shard_count,
         encode_formats,
         optical_flow_params,
+        is_slurm_task,
     ) -> None:
         self.sample_writer_class = sample_writer_class
         self.output_folder = output_folder
@@ -135,6 +135,7 @@ class OpticalFlowWorker:
             fps=self.fps,
             downsample_size=self.downsample_size,
             dtype=self.dtype,
+            is_slurm_task=is_slurm_task
         )
 
     def __call__(
@@ -181,6 +182,9 @@ class OpticalFlowWorker:
         failed_to_subsample = 0
 
         decoder_kwargs = {"n_frames": None, "fps": None, "num_threads": 4, "return_bytes": True}
+
+        local_rank = os.environ.get("LOCAL_RANK", 0)
+        print(shard, local_rank, flush=True)
 
         dset = get_video_dataset(
             urls=shard,

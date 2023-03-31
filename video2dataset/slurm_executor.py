@@ -4,7 +4,7 @@ import os
 import yaml
 import fire
 
-from . import video2dataset
+from video2dataset import video2dataset
 
 
 class ShardSampler:
@@ -20,10 +20,11 @@ class ShardSampler:
         self.num_tasks = num_tasks
 
     def __call__(self, shardfile_list):
+        print(shardfile_list, flush=True)
         shardlist = [
             (full_shard_id, shard_id)
             for full_shard_id, shard_id in shardfile_list
-            if shard_id % self.num_tasks == self.task_id
+            if int(full_shard_id) % self.num_tasks == self.task_id
         ]
         return shardlist
 
@@ -58,6 +59,7 @@ def executor(worker_args, node_id, n_nodes, num_tasks_per_node, subtask_id):
 
     print(f"Starting task with id {global_task_id}")
     os.environ["GLOBAL_RANK"] = str(global_task_id)
+    os.environ["LOCAL_RANK"] = str(subtask_id)
 
     # Read the worker args from the file
     with open(worker_args, "r", encoding="utf-8") as worker_args_file:
