@@ -4,9 +4,9 @@ import sys
 import signal
 import fire
 import fsspec
-import numpy as np
 
 from typing import List, Optional
+import numpy as np  # pylint: disable=unused-import
 
 from .logger import LoggerProcess
 from .data_writer import (
@@ -18,10 +18,17 @@ from .data_writer import (
 )
 from .input_sharder import InputSharder
 from .output_sharder import OutputSharder
-from .distributor import multiprocessing_distributor, pyspark_distributor
+from .distributor import multiprocessing_distributor, pyspark_distributor, SlurmDistributor
 from .workers import DownloadWorker, SubsetWorker, OpticalFlowWorker
 
 
+def identity(x):
+    return x
+
+
+# pylint: disable=unused-argument
+# pylint: disable=eval-used
+# pylint: disable=broad-except
 def video2dataset(
     url_list: str,
     output_folder: str = "videos",
@@ -58,11 +65,37 @@ def video2dataset(
     optical_flow_detector: str = "cv2",
     optical_flow_fps: int = -1,
     optical_flow_downsample_size: int = None,
-    optical_flow_dtype: type = np.float16,
+    optical_flow_dtype: str = "np.float16",
+    sampler=None,
+    slurm_cpus_per_task: int = 1,
+    slurm_job_name: str = "video2dataset",
+    slurm_partition: str = None,
+    slurm_n_nodes: int = 1,
+    slurm_gpus_per_node: int = 8,
+    slurm_account: str = None,
+    slurm_tasks_per_node: int = 1,
+    slurm_nodelist: str = None,
+    slurm_exclude: str = None,
+    slurm_cache_path: str = None,
+    slurm_timeout: int = None,
+    slurm_verbose_wait: bool = False,
 ):
     """
     create video dataset from video links
     """
+    local_args = dict(locals())
+    try:
+        optical_flow_dtype = eval(optical_flow_dtype)
+    except Exception as e:
+        print(f"Invalid optical_flow_dtype specified: {optical_flow_dtype}. Please use valid one")
+        raise e
+
+    assert isinstance(
+        optical_flow_dtype, type
+    ), f"Invalid optical_flow_dtype specified: {optical_flow_dtype}. Please use valid one."
+
+    if sampler is None:
+        sampler = identity
 
     # TODO: find better location for this code
     # TODO: figure out minimum yt_meta_args for subtitles to be added to metadata
@@ -87,7 +120,6 @@ def video2dataset(
     url_list = make_path_absolute(url_list)
 
     logger_process = LoggerProcess(output_folder, enable_wandb, wandb_project, config_parameters)
-
     tmp_path = output_folder + "/_tmp"
     fs, tmp_dir = fsspec.core.url_to_fs(tmp_path)
     if not fs.exists(tmp_dir):
@@ -147,6 +179,7 @@ def video2dataset(
             number_sample_per_shard,
             done_shards,
             tmp_path,
+            sampler,
         )
         worker = DownloadWorker(
             sample_writer_class=sample_writer_class,
@@ -171,11 +204,7 @@ def video2dataset(
             cuts_are_clips=cuts_are_clips,
         )
     elif stage == "subset":
-        shard_iterator = OutputSharder(  # type: ignore
-            url_list,
-            input_format,
-            done_shards,
-        )
+        shard_iterator = OutputSharder(url_list, input_format, done_shards, sampler=sampler)  # type: ignore
         worker = SubsetWorker(  # type: ignore
             sample_writer_class=sample_writer_class,
             output_folder=output_folder,
@@ -194,11 +223,7 @@ def video2dataset(
             cuts_are_clips=cuts_are_clips,
         )
     elif stage == "optical_flow":
-        shard_iterator = OutputSharder(  # type: ignore
-            url_list,
-            input_format,
-            done_shards,
-        )
+        shard_iterator = OutputSharder(url_list, input_format, done_shards, sampler=sampler)  # type: ignore
         worker = OpticalFlowWorker(  # type: ignore
             sample_writer_class=sample_writer_class,
             output_folder=output_folder,
@@ -215,10 +240,16 @@ def video2dataset(
         raise ValueError(f"Invalid stage: {stage}")
 
     print("Starting the downloading of this file")
+    called_from_slurm = False
     if distributor == "multiprocessing":
         distributor_fn = multiprocessing_distributor
+        called_from_slurm = "GLOBAL_RANK" in os.environ
     elif distributor == "pyspark":
         distributor_fn = pyspark_distributor
+    elif distributor == "slurm":
+        slurm_args = {"_".join(key.split("_")[1:]): local_args[key] for key in local_args if key.startswith("slurm")}
+        worker_args = {key: local_args[key] for key in local_args if not key.startswith("slurm")}
+        distributor_fn = SlurmDistributor(worker_args=worker_args, **slurm_args)
     else:
         raise ValueError(f"Distributor {distributor} not supported")
 
@@ -230,7 +261,8 @@ def video2dataset(
         max_shard_retry,
     )
     logger_process.join()
-    fs.rm(tmp_dir, recursive=True)
+    if not called_from_slurm:
+        fs.rm(tmp_dir, recursive=True)
 
 
 def main():
