@@ -9,3 +9,4 @@ webvtt-py
 tensorflow
 tensorflow_io
 torch
+types-pyyaml
