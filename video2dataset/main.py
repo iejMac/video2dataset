@@ -81,7 +81,7 @@ def video2dataset(
     create video dataset from video links
     """
     local_args = dict(locals())
-    optical_flow_dtype = optical_flow_params.get("dtype", None)
+    optical_flow_dtype = None if optical_flow_params is None else optical_flow_params.get("dtype", None)
     if optical_flow_dtype:
         try:
             optical_flow_dtype = eval(optical_flow_dtype)
