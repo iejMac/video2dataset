@@ -4,7 +4,7 @@ import os
 import yaml
 import fire
 
-from . import video2dataset
+from video2dataset import video2dataset
 
 
 class ShardSampler:
