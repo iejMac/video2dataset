@@ -221,7 +221,7 @@ class OpticalFlowSubsampler:
         fps (int): The target frames per second. Defaults to -1 (original FPS).
     """
 
-    def __init__(self, detector="cv2", fps=-1, args=None, downsample_size=None, dtype=np.float16, is_slurm_task=False):
+    def __init__(self, detector="cv2", fps=-1, args=None, downsample_size=None, dtype="fp16", is_slurm_task=False):
         if detector == "cv2":
             if args:
                 pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags = args

@@ -127,7 +127,7 @@ class OpticalFlowWorker:
         self.detector = optical_flow_params.get("detector", "cv2")
         self.fps = optical_flow_params.get("fps", -1)
         self.downsample_size = optical_flow_params.get("downsample_size", None)
-        self.dtype = optical_flow_params.get("dtype", np.float16)
+        self.dtype = optical_flow_params.get("dtype", "fp16")
         self.detector_args = optical_flow_params.get("detector_args", None)
 
         self.optical_flow_subsampler = OpticalFlowSubsampler(
