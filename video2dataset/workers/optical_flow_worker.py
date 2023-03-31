@@ -15,6 +15,7 @@ from video2dataset.logger import CappedCounter, write_stats
 from video2dataset.subsamplers import OpticalFlowSubsampler
 from video2dataset.dataloader import get_video_dataset
 
+
 def numpy_npz_dumps(numpy_dict):
     """
     Dump a dictionary of numpy arrays into a bytestring using numpy npz format.
@@ -135,7 +136,7 @@ class OpticalFlowWorker:
             fps=self.fps,
             downsample_size=self.downsample_size,
             dtype=self.dtype,
-            is_slurm_task=is_slurm_task
+            is_slurm_task=is_slurm_task,
         )
 
     def __call__(

@@ -12,24 +12,6 @@ try:
 except:  # pylint: disable=broad-except,bare-except
     pass
 
-def world_info_from_env():
-    local_rank = 0
-    for v in ('LOCAL_RANK', 'MPI_LOCALRANKID', 'SLURM_LOCALID', 'OMPI_COMM_WORLD_LOCAL_RANK'):
-        if v in os.environ:
-            local_rank = int(os.environ[v])
-            break
-    global_rank = 0
-    for v in ('RANK', 'PMI_RANK', 'SLURM_PROCID', 'OMPI_COMM_WORLD_RANK'):
-        if v in os.environ:
-            global_rank = int(os.environ[v])
-            break
-    world_size = 1
-    for v in ('WORLD_SIZE', 'PMI_SIZE', 'SLURM_NTASKS', 'OMPI_COMM_WORLD_SIZE'):
-        if v in os.environ:
-            world_size = int(os.environ[v])
-            break
-
-    return local_rank, global_rank, world_size
 
 class AttrDict(dict):
     """
@@ -81,6 +63,7 @@ def resize_image_with_aspect_ratio(image, target_shortest_side=16):
     resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
 
     return resized_image, scaling_factor
+
 
 class RAFTDetector:
     """
@@ -238,7 +221,7 @@ class OpticalFlowSubsampler:
         fps (int): The target frames per second. Defaults to -1 (original FPS).
     """
 
-    def __init__(self, detector="cv2", fps=-1, args=None, downsample_size=None, dtype=np.float16, rank=0, is_slurm_task=False):
+    def __init__(self, detector="cv2", fps=-1, args=None, downsample_size=None, dtype=np.float16, is_slurm_task=False):
         if detector == "cv2":
             if args:
                 pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags = args
@@ -251,7 +234,7 @@ class OpticalFlowSubsampler:
             assert args is not None
             if is_slurm_task:
                 local_rank = os.environ["LOCAL_RANK"]
-                device = f'cuda:{local_rank}'
+                device = f"cuda:{local_rank}"
                 args["device"] = device
             print(args, flush=True)
             if not isinstance(args, AttrDict):
@@ -260,14 +243,11 @@ class OpticalFlowSubsampler:
         else:
             raise NotImplementedError()
 
-        DTYPES = {
-            'fp16': np.float16,
-            'fp32': np.float32
-        }
+        dtypes = {"fp16": np.float16, "fp32": np.float32}
 
         self.fps = fps
         self.downsample_size = downsample_size
-        self.dtype = DTYPES[dtype]
+        self.dtype = dtypes[dtype]
 
     def __call__(self, frames, original_fps):
         optical_flow = []

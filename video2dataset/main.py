@@ -25,6 +25,7 @@ from .workers import DownloadWorker, SubsetWorker, OpticalFlowWorker
 def identity(x):
     return x
 
+
 # pylint: disable=unused-argument
 # pylint: disable=eval-used
 # pylint: disable=broad-except
@@ -201,12 +202,7 @@ def video2dataset(
             encode_formats=encode_formats,
         )
     elif stage == "optical_flow":
-        shard_iterator = OutputSharder(  # type: ignore
-            url_list,
-            input_format,
-            done_shards,
-            sampler=sampler
-        )
+        shard_iterator = OutputSharder(url_list, input_format, done_shards, sampler=sampler)  # type: ignore
         if optical_flow_params is None:
             optical_flow_params = {
                 "detector": "cv2",
@@ -218,7 +214,10 @@ def video2dataset(
         else:
             optical_flow_dtype = optical_flow_params.get("dtype", None)
             if optical_flow_dtype:
-                assert optical_flow_dtype in ["fp16", "fp32"], "please select either fp16 or fp32 for optical flow dtype"
+                assert optical_flow_dtype in [
+                    "fp16",
+                    "fp32",
+                ], "please select either fp16 or fp32 for optical flow dtype"
             else:
                 optical_flow_params["dtype"] = "fp16"
 
@@ -231,7 +230,7 @@ def video2dataset(
             oom_shard_count=oom_shard_count,
             encode_formats=encode_formats,
             optical_flow_params=optical_flow_params,
-            is_slurm_task=is_slurm_task
+            is_slurm_task=is_slurm_task,
         )
     else:
         raise ValueError(f"Invalid stage: {stage}")
