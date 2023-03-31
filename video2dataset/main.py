@@ -81,15 +81,17 @@ def video2dataset(
     create video dataset from video links
     """
     local_args = dict(locals())
-    try:
-        optical_flow_dtype = eval(optical_flow_dtype)
-    except Exception as e:
-        print(f"Invalid optical_flow_dtype specified: {optical_flow_dtype}. Please use valid one")
-        raise e
+    optical_flow_dtype = optical_flow_params.get("dtype", None)
+    if optical_flow_dtype:
+        try:
+            optical_flow_dtype = eval(optical_flow_dtype)
+        except Exception as e:
+            print(f"Invalid optical_flow_dtype specified: {optical_flow_dtype}. Please use valid one")
+            raise e
 
-    assert isinstance(
-        optical_flow_dtype, type
-    ), f"Invalid optical_flow_dtype specified: {optical_flow_dtype}. Please use valid one."
+        assert isinstance(
+            optical_flow_dtype, type
+        ), f"Invalid optical_flow_dtype specified: {optical_flow_dtype}. Please use valid one."
 
     if sampler is None:
         sampler = identity
