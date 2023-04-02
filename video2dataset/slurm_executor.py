@@ -20,7 +20,6 @@ class ShardSampler:
         self.num_tasks = num_tasks
 
     def __call__(self, shardfile_list):
-        print(shardfile_list, flush=True)
         shardlist = [
             (full_shard_id, shard_id)
             for full_shard_id, shard_id in shardfile_list
