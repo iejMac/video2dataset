@@ -121,13 +121,13 @@ def video2dataset(
 
     logger_process = LoggerProcess(output_folder, enable_wandb, wandb_project, config_parameters)
     tmp_path = output_folder + "/_tmp"
-    fs, tmp_dir = fsspec.core.url_to_fs(tmp_path)
-    if not fs.exists(tmp_dir):
-        fs.mkdir(tmp_dir)
+    fs, run_tmp_dir = fsspec.core.url_to_fs(tmp_path)
+    if not fs.exists(run_tmp_dir):
+        fs.mkdir(run_tmp_dir)
 
     def signal_handler(signal_arg, frame):  # pylint: disable=unused-argument
         try:
-            fs.rm(tmp_dir, recursive=True)
+            fs.rm(run_tmp_dir, recursive=True)
         except Exception as _:  # pylint: disable=broad-except
             pass
         logger_process.terminate()
@@ -253,7 +253,7 @@ def video2dataset(
     )
     logger_process.join()
     if not called_from_slurm:
-        fs.rm(tmp_dir, recursive=True)
+        fs.rm(run_tmp_dir, recursive=True)
 
 
 def main():
