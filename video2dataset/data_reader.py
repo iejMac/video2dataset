@@ -179,7 +179,7 @@ class YtDlpDownloader:
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     ydl.download(url)
-            except Exception as e:
+            except Exception as e:  # pylint: disable=(broad-except)
                 err = str(e)
                 os.remove(audio_path_m4a)
 
@@ -202,7 +202,7 @@ class YtDlpDownloader:
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     ydl.download(url)
-            except Exception as e:
+            except Exception as e:  # pylint: disable=(broad-except)
                 err = str(e)
                 os.remove(video_path)
 
@@ -215,7 +215,7 @@ class YtDlpDownloader:
                 yt_meta_dict = get_yt_meta(url, self.metadata_args)
             else:
                 yt_meta_dict = {}
-        except Exception as e:
+        except Exception as e:  # pylint: disable=(broad-except)
             err = str(e)
             yt_meta_dict = {}
 
