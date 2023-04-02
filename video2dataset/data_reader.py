@@ -175,14 +175,15 @@ class YtDlpDownloader:
                 "quiet": True,
             }
 
-            e = None
+            err = None
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     ydl.download(url)
             except Exception as e:
+                err = str(e)
                 os.remove(audio_path_m4a)
 
-            if e is None:
+            if err is None:
                 # TODO: look into this, don't think we can just do this
                 # TODO: just figure out a way to download the preferred extension using yt-dlp
                 # audio_path = audio_path_m4a.replace(".m4a", f".{self.encode_formats['audio']}")
@@ -197,23 +198,25 @@ class YtDlpDownloader:
                 "quiet": True,
             }
 
-            e = None
+            err = None
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     ydl.download(url)
             except Exception as e:
+                err = str(e)
                 os.remove(video_path)
 
-            if e is None:
+            if err is None:
                 modality_paths["video"] = video_path
 
+        err = None
         try:
             if self.metadata_args:
                 yt_meta_dict = get_yt_meta(url, self.metadata_args)
             else:
                 yt_meta_dict = {}
         except Exception as e:
-            print(str(e))
+            err = str(e)
             yt_meta_dict = {}
 
         return modality_paths, yt_meta_dict, None
