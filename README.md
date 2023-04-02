@@ -109,11 +109,7 @@ This module exposes a single function `download` which takes the same arguments 
 * **cut_framerates** a list of additional framerates to detect jump cuts at. If None, jump cuts will only be detected at the original framerate of the video (default *None*)
 * **cuts_are_clips** whether or not to turn each contiguous section of each input video into a distinct ouput video (default *False*)
 * **stage** which stage of processing to execute in betweeen downloading + cheap subsampling and costly subsampling (default *"download"*)
-* **optical_flow_detector** Which optical flow detector to use (default *"cv2"*)
-* **optical_flow_fps** what farmerate to compute optical flow at. -1 for native FPS (default: *-1*),
-* **optical_flow_downsample_size** Dimensions to downsample optical flow to. The shortest side of each frame in a video gets downsized to this length while maintaining the aspect ratio before calculating optical flow.  If None, this will perform no downsampling (default *None*)    
-* **optical_flow_dtype** datatype to store optical flow in (*default: np.flaot16*)
-
+* **optical_flow_params** Dict containing parameters for optical flow detection. Keys can include *detector* ("cv2" or "raft", default "cv2"), *fps* (-1 or target fps, default *-1*), *detector_args* (additional args to pass to optical flow detector, default *None*), *downsample_size* (size to downsample shortest side of video to when detecting optical flow, default *None*), and *dtype* (datatype to store optical flow data in, default *np.float16*). Optional keys: *device* (only when using RAFT detector, lets you specify the device for the RAFT detector).
 ## Downloading YouTube Metadata
 
 If we want to download a large amount of YouTube videos with video2dataset we can specify some parameters and also extract useful metadata as well. For directions on how to do so please see this [example](https://github.com/iejMac/video2dataset/blob/main/examples/yt_metadata.md).
