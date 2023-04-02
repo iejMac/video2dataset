@@ -174,34 +174,38 @@ class YtDlpDownloader:
                 "format": audio_fmt_string,
                 "quiet": True,
             }
+
+            e = None
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     ydl.download(url)
             except Exception as e:
                 os.remove(audio_path_m4a)
-                break
 
-            # TODO: look into this, don't think we can just do this
-            # TODO: just figure out a way to download the preferred extension using yt-dlp
-            # audio_path = audio_path_m4a.replace(".m4a", f".{self.encode_formats['audio']}")
-            audio_path = audio_path_m4a
-            modality_paths["audio"] = audio_path
+            if e is None:
+                # TODO: look into this, don't think we can just do this
+                # TODO: just figure out a way to download the preferred extension using yt-dlp
+                # audio_path = audio_path_m4a.replace(".m4a", f".{self.encode_formats['audio']}")
+                audio_path = audio_path_m4a
+                modality_paths["audio"] = audio_path
 
         if self.encode_formats.get("video", None):
             video_path = f"{self.tmp_dir}/{str(uuid.uuid4())}.mp4"
-            modality_paths["video"] = video_path
             ydl_opts = {
                 "outtmpl": video_path,
                 "format": video_format_string,
                 "quiet": True,
             }
 
+            e = None
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     ydl.download(url)
             except Exception as e:
-                os.remove(audio_path_m4a)
-                break
+                os.remove(video_path)
+
+            if e is None:
+                modality_paths["video"] = video_path
 
         try:
             if self.metadata_args:
@@ -238,13 +242,9 @@ class VideoDataReader:
             modality_paths, error_message = {}, "Warning: Unsupported URL type"
 
         streams = {}
-        print(modality_paths)
         for modality, modality_path in modality_paths.items():
             with open(modality_path, "rb") as modality_file:
                 streams[modality] = modality_file.read()
             os.remove(modality_path)
-            # TODO: REMOVE
-            if modality == "video":
-                print(f"REMOVED: {modality_path}")
 
         return key, streams, meta_dict, error_message
