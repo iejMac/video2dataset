@@ -24,7 +24,7 @@ def quantize_endpoints(frame_intervals, native_fps, detected_fps):
     factor = native_fps // detected_fps - 2
 
     for start, end in frame_intervals:
-        quantized_start = max(0, start + factor)
+        quantized_start = start + factor
         quantized_end = end - factor
         quantized_intervals.append([quantized_start, quantized_end])
 

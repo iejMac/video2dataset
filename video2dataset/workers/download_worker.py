@@ -57,6 +57,7 @@ class DownloadWorker:
         detect_cuts,
         cut_detection_mode,
         cuts_are_clips,
+        clipping_mode,
         encode_formats,
         cut_framerates,
         oom_clip_count=5,
@@ -82,6 +83,7 @@ class DownloadWorker:
             self.cut_detector = CutDetectionSubsampler(cut_detection_mode=cut_detection_mode, framerates=cut_framerates)
         self.cuts_are_clips = cuts_are_clips
         self.noop_subsampler = NoOpSubsampler()
+        self.clipping_mode = clipping_mode
 
         video_subsamplers: List[Any] = []
         if resize_mode is not None:
@@ -202,9 +204,23 @@ class DownloadWorker:
                     elif self.detect_cuts:  # apply cut detection to get clips
                         meta["cuts"] = self.cut_detector(streams)
 
-                        if self.cuts_are_clips:
-                            cuts = (np.array(meta["cuts"]["cuts_original_fps"]) / meta["cuts"]["original_fps"]).tolist()
-                            meta["clips"] = cuts
+                    if self.cuts_are_clips:
+                        cuts = meta["cuts"]
+                        native_fps = cuts["original_fps"]
+                        if self.clipping_mode == "default":
+                            cuts = (np.array(cuts["cuts_original_fps"]) / native_fps).tolist()
+                        elif self.clipping_mode == "quantize":
+                            quantized_cuts = []
+                            for k in meta["cuts"]:
+                                if "cuts" in k and k != "cuts_original_fps":
+                                    cut_fps = int(k.split('_')[-1])
+                                    quantized = quantize_endpoints(cuts[k], native_fps, cut_fps)
+                                    quantized_cuts.append(quantized)
+                            all_intervals = quantized_cuts + [cuts["cuts_original_fps"]]
+                            cuts = combine_multiple_intervals(all_intervals)
+                        if len(cuts) == 0:
+                            cuts = [[0, 0]]
+                        meta["clips"] = (np.array(cuts)/native_fps).tolist()
 
                     # 1 video -> many videos (either clipping or noop which does identity broadcasting)
                     broadcast_subsampler = (
@@ -261,7 +277,23 @@ class DownloadWorker:
 
             sample_writer.close()
             thread_pool.terminate()
-            thread_pool.join()
+            thread_pool.join()if self.cuts_are_clips:
+                cuts = meta["cuts"]
+                native_fps = cuts["original_fps"]
+                if self.clipping_mode == "default":
+                    cuts = (np.array(cuts["cuts_original_fps"]) / native_fps).tolist()
+                elif self.clipping_mode == "quantize":
+                    quantized_cuts = []
+                    for k in meta["cuts"]:
+                        if "cuts" in k and k != "cuts_original_fps":
+                            cut_fps = int(k.split('_')[-1])
+                            quantized = quantize_endpoints(cuts[k], native_fps, cut_fps)
+                            quantized_cuts.append(quantized)
+                    all_intervals = quantized_cuts + [cuts["cuts_original_fps"]]
+                    cuts = combine_multiple_intervals(all_intervals)
+                if len(cuts) == 0:
+                    cuts = [[0, 0]]
+                meta["clips"] = (np.array(cuts)/native_fps).tolist()
             del thread_pool
 
         end_time = time.time()

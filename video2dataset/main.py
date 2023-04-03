@@ -203,6 +203,7 @@ def video2dataset(
             cut_detection_mode=cut_detection_mode,
             cut_framerates=cut_framerates,
             cuts_are_clips=cuts_are_clips,
+            clipping_mode=cut_clipping_mode,
         )
     elif stage == "subset":
         shard_iterator = OutputSharder(url_list, input_format, done_shards, sampler=sampler)  # type: ignore
