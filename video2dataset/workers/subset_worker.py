@@ -206,6 +206,8 @@ class SubsetWorker:
                             quantized_cuts.append(quantized)
                     all_intervals = quantized_cuts + [cuts["cuts_original_fps"]]
                     cuts = combine_multiple_intervals(all_intervals)
+                else:
+                    raise NotImplementedError()
                 if len(cuts) == 0:
                     cuts = [[0, 0]]
                 meta["clips"] = (np.array(cuts)/native_fps).tolist()

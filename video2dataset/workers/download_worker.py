@@ -277,23 +277,7 @@ class DownloadWorker:
 
             sample_writer.close()
             thread_pool.terminate()
-            thread_pool.join()if self.cuts_are_clips:
-                cuts = meta["cuts"]
-                native_fps = cuts["original_fps"]
-                if self.clipping_mode == "default":
-                    cuts = (np.array(cuts["cuts_original_fps"]) / native_fps).tolist()
-                elif self.clipping_mode == "quantize":
-                    quantized_cuts = []
-                    for k in meta["cuts"]:
-                        if "cuts" in k and k != "cuts_original_fps":
-                            cut_fps = int(k.split('_')[-1])
-                            quantized = quantize_endpoints(cuts[k], native_fps, cut_fps)
-                            quantized_cuts.append(quantized)
-                    all_intervals = quantized_cuts + [cuts["cuts_original_fps"]]
-                    cuts = combine_multiple_intervals(all_intervals)
-                if len(cuts) == 0:
-                    cuts = [[0, 0]]
-                meta["clips"] = (np.array(cuts)/native_fps).tolist()
+            thread_pool.join()
             del thread_pool
 
         end_time = time.time()
