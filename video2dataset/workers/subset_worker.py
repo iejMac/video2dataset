@@ -167,9 +167,11 @@ class SubsetWorker:
             decoder_kwargs={},
             enforce_additional_keys=[],
         )
+        count = 0
         for sample in dataloader:
             # Gather subset of dataset
             key = sample["__key__"]
+            count += 1
             caption = sample.get("txt", b"").decode("utf-8")
             meta = json.loads(sample.get("json", b"{}").decode("utf-8"))
             streams = {}
@@ -262,7 +264,7 @@ class SubsetWorker:
         write_stats(
             self.output_folder,
             shard_id,
-            1,  # count
+            count,
             successes,
             0,  # failed to download
             failed_to_subsample,
