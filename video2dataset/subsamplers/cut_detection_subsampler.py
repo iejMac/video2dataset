@@ -5,7 +5,7 @@ import numpy as np
 from scenedetect import AdaptiveDetector, SceneManager, open_video
 import os
 import tempfile
-
+import cv2
 
 def get_scenes_from_scene_manager(scene_manager, cut_detection_mode):
     """
@@ -44,7 +44,7 @@ class CutDetectionSubsampler:
             video_path = os.path.join(tmpdir, "input.mp4")
             with open(video_path, "wb") as f:
                 f.write(video_bytes)
-
+            cap = cv2.VideoCapture(video_path)
             video = open_video(video_path)
 
             detector = AdaptiveDetector()
@@ -52,7 +52,7 @@ class CutDetectionSubsampler:
             scene_manager.add_detector(detector)
 
             cuts = {}
-            original_fps = video.frame_rate
+            original_fps = cap.get(cv2.CAP_PROP_FPS)
             cuts["original_fps"] = original_fps
 
             scene_manager.detect_scenes(video=video)

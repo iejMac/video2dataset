@@ -60,6 +60,7 @@ def video2dataset(
     cut_detection_mode: str = "longest",
     cut_framerates: list = None,
     cuts_are_clips: bool = False,
+    cut_clipping_mode: str = "default",
     encode_formats: dict = None,
     stage: str = "download",
     optical_flow_detector: str = "cv2",
@@ -221,6 +222,7 @@ def video2dataset(
             cut_detection_mode=cut_detection_mode,
             cut_framerates=cut_framerates,
             cuts_are_clips=cuts_are_clips,
+            clipping_mode=cut_clipping_mode,
         )
     elif stage == "optical_flow":
         shard_iterator = OutputSharder(url_list, input_format, done_shards, sampler=sampler)  # type: ignore
