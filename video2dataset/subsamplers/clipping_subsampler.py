@@ -40,9 +40,9 @@ class ClippingSubsampler:
         if isinstance(clips[0], float):  # make sure clips looks like [[start, end]] and not [start, end]
             clips = [clips]
 
-        ind = 2
-        # we assume there's always one clip which we want to take
+        print(clips)
 
+        ind = 2
         s_p, e_p = clips[0]
         s_p, e_p = get_seconds(s_p), get_seconds(e_p)
         splits = [s_p, e_p]
@@ -63,10 +63,10 @@ class ClippingSubsampler:
             ind += 1 if s - e_p <= 1.0 else 2
             e_p = e
 
-        splits = splits[1:]
         segment_times = ",".join([str(spl) for spl in splits])
         print(splits)
         print(take_inds)
+        print(segment_times)
 
         streams_clips = {}
 
@@ -82,6 +82,7 @@ class ClippingSubsampler:
                 with open(os.path.join(tmpdir, f"input.{encode_format}"), "wb") as f:
                     f.write(stream_bytes)
                 try:
+                    '''
                     _ = (
                         ffmpeg.input(f"{tmpdir}/input.{encode_format}")
                         .output(
@@ -94,22 +95,33 @@ class ClippingSubsampler:
                         )
                         .run(capture_stdout=True, quiet=True)
                     )
-
+                    '''
+                    _ = (
+                        ffmpeg.input(f"{tmpdir}/input.{encode_format}")
+                        .output(
+                            f"{tmpdir}/clip_%d.{encode_format}",
+                            # c="libx264",
+                            g=10,
+                            map=0,
+                            f="segment",
+                            segment_times=segment_times,
+                            reset_timestamps=1,
+                        )
+                        .run(capture_stdout=True, quiet=True)
+                    )
                 except Exception as err:  # pylint: disable=broad-except
                     return [], [], str(err)
 
                 stream_clips = glob.glob(f"{tmpdir}/clip*.{encode_format}")
                 stream_clips.sort(key=lambda x: int(x.split('_')[-1].split('.')[0]))
-                correct_clips = [(i, clips[clip_id], clip_path) for clip_id, (i, clip_path) in enumerate(zip(take_inds, stream_clips))]
+                print(stream_clips)
 
-                print(correct_clips)
-                '''
-                stream_clips.sort()
                 correct_clips = []
                 for clip_id, (clip, ind) in enumerate(zip(clips, take_inds)):
                     if ind < len(stream_clips):
                         correct_clips.append((clip_id, clip, stream_clips[ind]))
-                '''
+
+                print(correct_clips)
                 # clips_lost = len(take_inds) - len(correct_clips) # TODO report this somehow
 
                 stream_clips, metadata_clips = [], []
