@@ -48,7 +48,7 @@ class ClippingSubsampler:
 
         # things like [0.0, 5.0], [5.5, 10.0] turn into [0.0, 5.0], [5.0, 10.0]
         # don't wnat to do this if we want precise clips
-        self.min_between_clip_dist = 1.0 * self.precise
+        self.min_between_clip_dist = 1.0 * (not precise)
 
     def __call__(self, streams, metadata):
         clips = metadata.pop("clips")
@@ -63,7 +63,7 @@ class ClippingSubsampler:
         # usually this is true but like I found that if you force_key_frames sometimes you're good
         ind = 2
         s_p, e_p = clips[0]
-        s_p, e_p = get_seconds(s_p), get_seconds(s_p)
+        s_p, e_p = get_seconds(s_p), get_seconds(e_p)
         splits = [s_p, e_p]
         # list of indicies of clips to take, used to discard non-contiguous sections
         take_inds = [1]
