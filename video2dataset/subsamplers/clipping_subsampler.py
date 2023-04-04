@@ -24,14 +24,17 @@ class ClippingSubsampler:
     """
     Cuts videos up into segments according to the 'clips' metadata
 
+    Parameters:
+
     expects:
     - clips to be sorted in increasing order and non-overlapping
     - time to be in the format "%H:%M:%S.%f", or a number representing the second of the timestamp
     """
 
-    def __init__(self, oom_clip_count, encode_formats):
+    def __init__(self, oom_clip_count, encode_formats, precise=False):
         self.oom_clip_count = oom_clip_count
         self.encode_formats = encode_formats
+        self.precise = precise
 
     def __call__(self, streams, metadata):
         clips = metadata.pop("clips")
@@ -40,7 +43,7 @@ class ClippingSubsampler:
         if isinstance(clips[0], float):  # make sure clips looks like [[start, end]] and not [start, end]
             clips = [clips]
 
-        print(clips)
+        print("CLIPS: ", clips)
 
         ind = 2
         s_p, e_p = clips[0]
@@ -53,7 +56,7 @@ class ClippingSubsampler:
         for s, e in clips[1:]:
             s, e = get_seconds(s), get_seconds(e)
 
-            if s - e_p <= 1.0:  # no one needs 1.0 second clips + creates less files
+            if s - e_p <= 1.0:
                 splits += [e]
                 take_inds.append(ind)
             else:
@@ -64,8 +67,8 @@ class ClippingSubsampler:
             e_p = e
 
         segment_times = ",".join([str(spl) for spl in splits])
-        print(splits)
-        print(take_inds)
+        print("SPLITS: ", splits)
+        print("TAKE INDS: ", take_inds)
         print(segment_times)
 
         streams_clips = {}
@@ -82,6 +85,8 @@ class ClippingSubsampler:
                 with open(os.path.join(tmpdir, f"input.{encode_format}"), "wb") as f:
                     f.write(stream_bytes)
                 try:
+
+                    # If not precise do this
                     '''
                     _ = (
                         ffmpeg.input(f"{tmpdir}/input.{encode_format}")
@@ -96,11 +101,11 @@ class ClippingSubsampler:
                         .run(capture_stdout=True, quiet=True)
                     )
                     '''
+                    # Otherwise
                     _ = (
                         ffmpeg.input(f"{tmpdir}/input.{encode_format}")
                         .output(
                             f"{tmpdir}/clip_%d.{encode_format}",
-                            # c="libx264",
                             g=10,
                             map=0,
                             f="segment",
