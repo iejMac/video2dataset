@@ -62,7 +62,11 @@ class ClippingSubsampler:
 
             ind += 1 if s - e_p <= 1.0 else 2
             e_p = e
+
+        splits = splits[1:]
         segment_times = ",".join([str(spl) for spl in splits])
+        print(splits)
+        print(take_inds)
 
         streams_clips = {}
 
@@ -95,15 +99,23 @@ class ClippingSubsampler:
                     return [], [], str(err)
 
                 stream_clips = glob.glob(f"{tmpdir}/clip*.{encode_format}")
+                stream_clips.sort(key=lambda x: int(x.split('_')[-1].split('.')[0]))
+                correct_clips = [(i, clips[clip_id], clip_path) for clip_id, (i, clip_path) in enumerate(zip(take_inds, stream_clips))]
+
+                print(correct_clips)
+                '''
                 stream_clips.sort()
                 correct_clips = []
                 for clip_id, (clip, ind) in enumerate(zip(clips, take_inds)):
                     if ind < len(stream_clips):
                         correct_clips.append((clip_id, clip, stream_clips[ind]))
+                '''
                 # clips_lost = len(take_inds) - len(correct_clips) # TODO report this somehow
 
                 stream_clips, metadata_clips = [], []
                 for i, (clip_id, clip_span, clip_pth) in enumerate(correct_clips):
+                    print(clip_id, clip_span, clip_pth)
+
                     with open(clip_pth, "rb") as vid_f:
                         clip_bytes = vid_f.read()
                     stream_clips.append(clip_bytes)
