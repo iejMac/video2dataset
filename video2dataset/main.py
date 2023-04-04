@@ -60,6 +60,8 @@ def video2dataset(
     cut_detection_mode: str = "longest",
     cut_framerates: list = None,
     cuts_are_clips: bool = False,
+    cut_detector_threshold: int = 27,
+    cut_detector_min_scene_len: int = 15,
     encode_formats: dict = None,
     stage: str = "download",
     optical_flow_params: dict = None,
@@ -190,6 +192,8 @@ def video2dataset(
             cut_detection_mode=cut_detection_mode,
             cut_framerates=cut_framerates,
             cuts_are_clips=cuts_are_clips,
+            cut_detector_threshold=cut_detector_threshold,
+            cut_detector_min_scene_len=cut_detector_min_scene_len,
         )
     elif stage == "subset":
         shard_iterator = OutputSharder(url_list, input_format, done_shards, sampler=sampler)  # type: ignore
@@ -200,6 +204,17 @@ def video2dataset(
             number_sample_per_shard=number_sample_per_shard,
             oom_shard_count=oom_shard_count,
             encode_formats=encode_formats,
+            captions_are_subtitles=captions_are_subtitles,
+            video_size=video_size,
+            resize_mode=resize_mode,
+            video_fps=video_fps,
+            audio_rate=audio_rate,
+            detect_cuts=detect_cuts,
+            cut_detection_mode=cut_detection_mode,
+            cut_framerates=cut_framerates,
+            cuts_are_clips=cuts_are_clips,
+            cut_detector_threshold=cut_detector_threshold,
+            cut_detector_min_scene_len=cut_detector_min_scene_len,
         )
     elif stage == "optical_flow":
         shard_iterator = OutputSharder(url_list, input_format, done_shards, sampler=sampler)  # type: ignore

@@ -59,6 +59,8 @@ class DownloadWorker:
         cuts_are_clips,
         encode_formats,
         cut_framerates,
+        cut_detector_threshold,
+        cut_detector_min_scene_len,
         oom_clip_count=5,
     ) -> None:
         self.sample_writer_class = sample_writer_class
@@ -78,8 +80,15 @@ class DownloadWorker:
         self.cut_detection_mode = cut_detection_mode
         self.cut_framerates = cut_framerates
         self.detect_cuts = detect_cuts
+        self.cut_detector_threshold = cut_detector_threshold
+        self.cut_detector_min_scene_len = cut_detector_min_scene_len
         if detect_cuts:
-            self.cut_detector = CutDetectionSubsampler(cut_detection_mode=cut_detection_mode, framerates=cut_framerates)
+            self.cut_detector = CutDetectionSubsampler(
+                cut_detection_mode=cut_detection_mode,
+                framerates=cut_framerates,
+                threshold=cut_detector_threshold,
+                min_scene_len=cut_detector_min_scene_len,
+            )
         self.cuts_are_clips = cuts_are_clips
         self.noop_subsampler = NoOpSubsampler()
 
@@ -202,14 +211,15 @@ class DownloadWorker:
                     elif self.detect_cuts:  # apply cut detection to get clips
                         meta["cuts"] = self.cut_detector(streams)
 
-                        if self.cuts_are_clips:
-                            cuts = (np.array(meta["cuts"]["cuts_original_fps"]) / meta["cuts"]["original_fps"]).tolist()
-                            meta["clips"] = cuts
+                    if self.cuts_are_clips:
+                        cuts = meta["cuts"]
+                        native_fps = cuts["original_fps"]
+                        meta["clips"] = (np.array(cuts) / native_fps).tolist()
 
                     # 1 video -> many videos (either clipping or noop which does identity broadcasting)
                     broadcast_subsampler = (
                         self.clipping_subsampler
-                        if ("clips" in self.column_list or self.captions_are_subtitles)
+                        if ("clips" in self.column_list or self.captions_are_subtitles or self.cuts_are_clips)
                         else self.noop_subsampler
                     )
                     subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
