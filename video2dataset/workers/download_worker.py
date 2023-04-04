@@ -61,6 +61,8 @@ class DownloadWorker:
         cut_framerates,
         cut_detector_threshold,
         cut_detector_min_scene_len,
+        min_clip_length,
+        precise_clipping,
         oom_clip_count=5,
     ) -> None:
         self.sample_writer_class = sample_writer_class
@@ -76,7 +78,7 @@ class DownloadWorker:
 
         self.data_reader = VideoDataReader(video_size, audio_rate, timeout, tmp_dir, yt_metadata_args, encode_formats)
 
-        self.clipping_subsampler = ClippingSubsampler(oom_clip_count, encode_formats)
+        self.clipping_subsampler = ClippingSubsampler(oom_clip_count, encode_formats, min_length=min_clip_length, precise=precise_clipping)
         self.cut_detection_mode = cut_detection_mode
         self.cut_framerates = cut_framerates
         self.detect_cuts = detect_cuts
