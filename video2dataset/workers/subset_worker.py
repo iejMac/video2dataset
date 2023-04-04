@@ -45,14 +45,15 @@ class SubsetWorker:
         oom_clip_count=5,
     ) -> None:
         self.sample_writer_class = sample_writer_class
+        self.save_caption = True
         self.output_folder = output_folder
         self.number_sample_per_shard = number_sample_per_shard
         self.oom_shard_count = oom_shard_count
         self.thread_count = thread_count
-        self.encode_formats = encode_formats
-        self.save_caption = True
-
         self.captions_are_subtitles = captions_are_subtitles
+
+        self.encode_formats = encode_formats
+
         self.clipping_subsampler = ClippingSubsampler(oom_clip_count, encode_formats)
         self.cut_detection_mode = cut_detection_mode
         self.cut_framerates = cut_framerates
@@ -144,8 +145,7 @@ class SubsetWorker:
                 meta["lines"] = [" ".join(line_dict["lines"]) for line_dict in subtitles]
 
             elif self.detect_cuts:  # apply cut detection to get clips
-                detected_cuts = self.cut_detector(streams)
-                meta["cuts"] = detected_cuts
+                meta["cuts"] = self.cut_detector(streams)
 
             if self.cuts_are_clips:
                 cuts = meta["cuts"]
