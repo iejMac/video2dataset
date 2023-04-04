@@ -29,6 +29,8 @@ class ClippingSubsampler:
         The number of orders of magnitude for clip count, used for formatting clip keys.
     encode_formats: dict
         A dictionary mapping stream keys to their corresponding file extensions, e.g., {"video": "mp4", "audio": "mp3"}.
+    min_length: float optional (default=0.0)
+        Minimum length in seconds of a clip. Below this the subsampler will reject the clips
     precise: bool, optional (default=False)
         If True, provides more precise clipping at the expense of processing speed.
         If False, prioritizes speed over precision.
