@@ -19,6 +19,7 @@ from video2dataset.subsamplers import (
     AudioRateSubsampler,
 )
 
+
 class SubsetWorker:
     """The loader class reads the shards, then the selected data is chosen and writen by the writer"""
 
@@ -60,10 +61,10 @@ class SubsetWorker:
         self.cut_detector_min_scene_len = cut_detector_min_scene_len
         if detect_cuts:
             self.cut_detector = CutDetectionSubsampler(
-                cut_detection_mode=cut_detection_mode, 
+                cut_detection_mode=cut_detection_mode,
                 framerates=cut_framerates,
                 threshold=cut_detector_threshold,
-                min_scene_len=cut_detector_min_scene_len
+                min_scene_len=cut_detector_min_scene_len,
             )
         self.cuts_are_clips = cuts_are_clips
         self.noop_subsampler = NoOpSubsampler()
@@ -117,8 +118,8 @@ class SubsetWorker:
         failed_to_subsample = 0
         error_message = None
 
-        if 's3' in shard:
-            shard = f'pipe:aws s3 cp {shard} -'
+        if "s3" in shard:
+            shard = f"pipe:aws s3 cp {shard} -"
 
         dataloader = get_video_dataset(
             urls=[shard],
@@ -181,17 +182,15 @@ class SubsetWorker:
             successes += 1
             status = "success"
             status_dict.increment(status)
-            subsampled_streams_list = [
-                dict(zip(subsampled_streams, s)) for s in zip(*subsampled_streams.values())
-            ]
-            if len(subsampled_streams_list) == 0: # no audio or video, just write meta
+            subsampled_streams_list = [dict(zip(subsampled_streams, s)) for s in zip(*subsampled_streams.values())]
+            if len(subsampled_streams_list) == 0:  # no audio or video, just write meta
                 meta["status"] = status
                 sample_writer.write(
-                        {},
-                        key,
-                        caption,
-                        meta,
-                    )
+                    {},
+                    key,
+                    caption,
+                    meta,
+                )
                 continue
 
             for subsampled_streams, meta in zip(subsampled_streams_list, metas):

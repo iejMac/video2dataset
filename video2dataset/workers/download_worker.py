@@ -84,11 +84,11 @@ class DownloadWorker:
         self.cut_detector_min_scene_len = cut_detector_min_scene_len
         if detect_cuts:
             self.cut_detector = CutDetectionSubsampler(
-                cut_detection_mode=cut_detection_mode, 
+                cut_detection_mode=cut_detection_mode,
                 framerates=cut_framerates,
                 threshold=cut_detector_threshold,
-                min_scene_len=cut_detector_min_scene_len     
-        )
+                min_scene_len=cut_detector_min_scene_len,
+            )
         self.cuts_are_clips = cuts_are_clips
         self.noop_subsampler = NoOpSubsampler()
 
@@ -214,7 +214,7 @@ class DownloadWorker:
                     if self.cuts_are_clips:
                         cuts = meta["cuts"]
                         native_fps = cuts["original_fps"]
-                        meta["clips"] = (np.array(cuts)/native_fps).tolist()
+                        meta["clips"] = (np.array(cuts) / native_fps).tolist()
 
                     # 1 video -> many videos (either clipping or noop which does identity broadcasting)
                     broadcast_subsampler = (
