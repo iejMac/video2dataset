@@ -43,8 +43,8 @@ class ClippingSubsampler:
         if isinstance(clips[0], float):  # make sure clips looks like [[start, end]] and not [start, end]
             clips = [clips]
 
-        print("CLIPS: ", clips)
-
+        # TODO: look into this, this is only good when you 100% want to discard the first clip
+        # usually this is true but like I found that if you force_key_frames sometimes you're good
         ind = 2
         s_p, e_p = clips[0]
         s_p, e_p = get_seconds(s_p), get_seconds(e_p)
@@ -67,10 +67,6 @@ class ClippingSubsampler:
             e_p = e
 
         segment_times = ",".join([str(spl) for spl in splits])
-        print("SPLITS: ", splits)
-        print("TAKE INDS: ", take_inds)
-        print(segment_times)
-
         streams_clips = {}
 
         for k in streams.keys():
@@ -85,54 +81,47 @@ class ClippingSubsampler:
                 with open(os.path.join(tmpdir, f"input.{encode_format}"), "wb") as f:
                     f.write(stream_bytes)
                 try:
+                    kwargs = {
+                        "map":0,
+                        "f":"segment",
+                        "segment_times":segment_times,
+                        "reset_timestamps":1,
+                    }
 
-                    # If not precise do this
-                    '''
+                    # Precision things, tradeoff for speed
+                    if not self.precise:
+                        kwargs["c"] = "copy"
+                    else:
+                        # TODO: this is weird, need more time to make this work
+                        # might be better for longer videos to only insert keyframes where you need em
+                        # kwargs["force_key_frames"] = segment_times
+
+                        # Constant GOP might not be great if framerate varies a ton, tbd
+                        kwargs["g"] = 10  # add a keyframe every 10 frames
+
                     _ = (
                         ffmpeg.input(f"{tmpdir}/input.{encode_format}")
                         .output(
                             f"{tmpdir}/clip_%d.{encode_format}",
-                            c="copy",
-                            map=0,
-                            f="segment",
-                            segment_times=segment_times,
-                            reset_timestamps=1,
+                            **kwargs
                         )
                         .run(capture_stdout=True, quiet=True)
                     )
-                    '''
-                    # Otherwise
-                    _ = (
-                        ffmpeg.input(f"{tmpdir}/input.{encode_format}")
-                        .output(
-                            f"{tmpdir}/clip_%d.{encode_format}",
-                            g=10,
-                            map=0,
-                            f="segment",
-                            segment_times=segment_times,
-                            reset_timestamps=1,
-                        )
-                        .run(capture_stdout=True, quiet=True)
-                    )
+
                 except Exception as err:  # pylint: disable=broad-except
-                    return [], [], str(err)
+                    return {}, [], str(err)
 
                 stream_clips = glob.glob(f"{tmpdir}/clip*.{encode_format}")
                 stream_clips.sort(key=lambda x: int(x.split('_')[-1].split('.')[0]))
-                print(stream_clips)
 
                 correct_clips = []
                 for clip_id, (clip, ind) in enumerate(zip(clips, take_inds)):
                     if ind < len(stream_clips):
                         correct_clips.append((clip_id, clip, stream_clips[ind]))
-
-                print(correct_clips)
                 # clips_lost = len(take_inds) - len(correct_clips) # TODO report this somehow
 
                 stream_clips, metadata_clips = [], []
                 for i, (clip_id, clip_span, clip_pth) in enumerate(correct_clips):
-                    print(clip_id, clip_span, clip_pth)
-
                     with open(clip_pth, "rb") as vid_f:
                         clip_bytes = vid_f.read()
                     stream_clips.append(clip_bytes)
