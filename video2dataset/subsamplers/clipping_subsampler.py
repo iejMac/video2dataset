@@ -57,18 +57,21 @@ class ClippingSubsampler:
         if isinstance(clips[0], float):  # make sure clips looks like [[start, end]] and not [start, end]
             clips = [clips]
 
-        clips = [(get_seconds(s), get_seconds(e)) for s, e in clips if get_seconds(e) - get_seconds(s) >= self.min_length]
+        clips = [(s, e) for s, e in clips if get_seconds(e) - get_seconds(s) >= self.min_length]
 
         # TODO: look into this, this is only good when you 100% want to discard the first clip
         # usually this is true but like I found that if you force_key_frames sometimes you're good
         ind = 2
         s_p, e_p = clips[0]
+        s_p, e_p = get_seconds(s_p), get_seconds(s_p) 
         splits = [s_p, e_p]
         # list of indicies of clips to take, used to discard non-contiguous sections
         take_inds = [1]
 
         # TODO: make nicer
         for s, e in clips[1:]:
+            s, e = get_seconds(s), get_seconds(e)
+
             if s - e_p <= self.min_between_clip_dist:
                 splits += [e]
                 take_inds.append(ind)
