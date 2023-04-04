@@ -56,7 +56,9 @@ class SubsetWorker:
 
         self.encode_formats = encode_formats
 
-        self.clipping_subsampler = ClippingSubsampler(oom_clip_count, encode_formats, min_length=min_clip_length, precise=precise_clipping)
+        self.clipping_subsampler = ClippingSubsampler(
+            oom_clip_count, encode_formats, min_length=min_clip_length, precise=precise_clipping
+        )
         self.cut_detection_mode = cut_detection_mode
         self.cut_framerates = cut_framerates
         self.detect_cuts = detect_cuts
