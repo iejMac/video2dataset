@@ -24,14 +24,24 @@ class ClippingSubsampler:
     """
     Cuts videos up into segments according to the 'clips' metadata
 
+    Parameters:
+    oom_clip_count: int
+        The number of orders of magnitude for clip count, used for formatting clip keys.
+    encode_formats: dict
+        A dictionary mapping stream keys to their corresponding file extensions, e.g., {"video": "mp4", "audio": "mp3"}.
+    precise: bool, optional (default=False)
+        If True, provides more precise clipping at the expense of processing speed.
+        If False, prioritizes speed over precision.
+
     expects:
     - clips to be sorted in increasing order and non-overlapping
     - time to be in the format "%H:%M:%S.%f", or a number representing the second of the timestamp
     """
 
-    def __init__(self, oom_clip_count, encode_formats):
+    def __init__(self, oom_clip_count, encode_formats, precise=False):
         self.oom_clip_count = oom_clip_count
         self.encode_formats = encode_formats
+        self.precise = precise
 
     def __call__(self, streams, metadata):
         clips = metadata.pop("clips")
@@ -40,9 +50,9 @@ class ClippingSubsampler:
         if isinstance(clips[0], float):  # make sure clips looks like [[start, end]] and not [start, end]
             clips = [clips]
 
+        # TODO: look into this, this is only good when you 100% want to discard the first clip
+        # usually this is true but like I found that if you force_key_frames sometimes you're good
         ind = 2
-        # we assume there's always one clip which we want to take
-
         s_p, e_p = clips[0]
         s_p, e_p = get_seconds(s_p), get_seconds(e_p)
         splits = [s_p, e_p]
@@ -53,7 +63,7 @@ class ClippingSubsampler:
         for s, e in clips[1:]:
             s, e = get_seconds(s), get_seconds(e)
 
-            if s - e_p <= 1.0:  # no one needs 1.0 second clips + creates less files
+            if s - e_p <= 1.0:
                 splits += [e]
                 take_inds.append(ind)
             else:
@@ -62,8 +72,8 @@ class ClippingSubsampler:
 
             ind += 1 if s - e_p <= 1.0 else 2
             e_p = e
-        segment_times = ",".join([str(spl) for spl in splits])
 
+        segment_times = ",".join([str(spl) for spl in splits])
         streams_clips = {}
 
         for k in streams.keys():
@@ -78,24 +88,36 @@ class ClippingSubsampler:
                 with open(os.path.join(tmpdir, f"input.{encode_format}"), "wb") as f:
                     f.write(stream_bytes)
                 try:
+                    kwargs = {
+                        "map": 0,
+                        "f": "segment",
+                        "segment_times": segment_times,
+                        "reset_timestamps": 1,
+                    }
+
+                    # Precision things, tradeoff for speed
+                    if not self.precise:
+                        kwargs["c"] = "copy"
+                    else:
+                        # TODO: this is weird, need more time to make this work
+                        # might be better for longer videos to only insert keyframes where you need em
+                        # kwargs["force_key_frames"] = segment_times
+
+                        # Constant GOP might not be great if framerate varies a ton, tbd
+                        kwargs["g"] = 10  # add a keyframe every 10 frames
+
                     _ = (
                         ffmpeg.input(f"{tmpdir}/input.{encode_format}")
-                        .output(
-                            f"{tmpdir}/clip_%d.{encode_format}",
-                            c="copy",
-                            map=0,
-                            f="segment",
-                            segment_times=segment_times,
-                            reset_timestamps=1,
-                        )
+                        .output(f"{tmpdir}/clip_%d.{encode_format}", **kwargs)
                         .run(capture_stdout=True, quiet=True)
                     )
 
                 except Exception as err:  # pylint: disable=broad-except
-                    return [], [], str(err)
+                    return {}, [], str(err)
 
                 stream_clips = glob.glob(f"{tmpdir}/clip*.{encode_format}")
-                stream_clips.sort()
+                stream_clips.sort(key=lambda x: int(x.split("_")[-1].split(".")[0]))
+
                 correct_clips = []
                 for clip_id, (clip, ind) in enumerate(zip(clips, take_inds)):
                     if ind < len(stream_clips):
