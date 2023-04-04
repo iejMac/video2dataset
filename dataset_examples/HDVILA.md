@@ -50,33 +50,46 @@ df.to_parquet("hd_vila.parquet")
 
 Once you run this, you should have a file `hd_vila.parquet` with all the relevant metadata.
 
-## Download the videos with video2dataset
+## Stage 1 (Downloading + Cut Detection)
 
-This command runs video2dataset on the input parquet and saves the video clips along with the metadata in the webdataset format.
+This command runs video2dataset on the input parquet and saves the videos along with the metadata in the webdataset format.
 
 ```python
+from video2dataset import video2dataset
 
-# args specify we want to get all metadata from the video and save to the json component of the sample
-# this includes the title and description of the video
-yt_metadata_args = {
-    "get_info": True,  # whether to save a video meta data into the output JSON file
-}
+if __name__ == '__main__':
 
-video2dataset(
-    url_list="/path/to/my/hd_vila.parquet",
-    output_folder="/path/to/my/output",
-    output_format="webdataset",
-    input_format="parquet",
-    url_col="url",
-    clip_col="clips",
-    save_additional_columns=None,
-    enable_wandb=True,
-    video_size=360,
-    number_sample_per_shard=2000,
-    subjob_size=10000,
-    processes_count=96,
-    thread_count=48,
-    distributor="multiprocessing",
-    yt_metadata_args=yt_metadata_args
-)
+    yt_metadata_args = {
+        'writesubtitles': True, # whether to write subtitles to a file
+        'subtitleslangs': ['en'], # languages of subtitles (right now support only one language)
+        'writeautomaticsub': True, # whether to write automatic subtitles
+        'get_info': True # whether to save a video meta data into the output JSON file
+    }
+
+    video2dataset(
+        url_list='/fsx/proj-stablediffusion/datasets/hd-vila/hd_vila.parquet',
+        input_format='parquet',
+        output_format='webdataset',
+        output_folder='s3://stability-west/hd-vila/base_dataset',
+        url_col="url",
+        enable_wandb=True,
+        number_sample_per_shard=100,
+        subjob_size=10000,
+        processes_count=32,
+        thread_count=32,
+        detect_cuts=True,
+        cut_detection_mode="all",
+        yt_metadata_args=yt_metadata_args,
+        encode_formats={"video": "mp4", "audio": "m4a"},
+        slurm_partition="cpu64",
+        slurm_gpus_per_node=0,
+        slurm_n_nodes=16,
+        slurm_account="laion",
+        slurm_cache_path="/fsx/home-iejmac/.slurm_cache",
+        distributor="slurm",
+    )
 ```
+
+## Stage 1 Performance
+
+Over the course of downloading we ran into some bugs (which are now resolved) which required restarts, here's the WandB report for [one of the restarts](https://api.wandb.ai/links/iejmac/nn9hcaol). The downloading was performed on a cluster of 16 c6i cpu64 aws nodes (64 cpu cores) and the total downloading time can be deduced from the videos/s in the report (~28 hours). We were not just downlading the videos but also the audio and the youtube metadata and performing cut detection on the videos which is placed in the metadata of the samples.
