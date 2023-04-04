@@ -77,9 +77,6 @@ class ClippingSubsampler:
             ind += 1 if s - e_p <= 1.0 else 2
             e_p = e
 
-        print("SPLITS: ", splits)
-        print("TAKE INDS: ", take_inds)
-
         segment_times = ",".join([str(spl) for spl in splits])
         streams_clips = {}
 
