@@ -145,7 +145,7 @@ def test_audio_rate_subsampler(sample_rate):
 
 
 @pytest.mark.parametrize(
-    "cut_detection_mode,framerates", [("longest", []), ("longest", [15]), ("all", []), ("all", [15])]
+    "cut_detection_mode,framerates", [("longest", []), ("longest", [1]), ("all", []), ("all", [1])]
 )
 def test_cut_detection_subsampler(cut_detection_mode, framerates):
     current_folder = os.path.dirname(__file__)
@@ -154,23 +154,22 @@ def test_cut_detection_subsampler(cut_detection_mode, framerates):
         video_bytes = vid_f.read()
     streams = {"video": video_bytes}
 
-    subsampler = CutDetectionSubsampler(cut_detection_mode, framerates)
+    subsampler = CutDetectionSubsampler(cut_detection_mode, framerates, threshold=5)
 
     cuts = subsampler(streams)
-
     if cut_detection_mode == "longest":
         assert len(cuts["cuts_original_fps"]) == 1
-        assert cuts["cuts_original_fps"] == [[0, 2096]]
+        assert cuts["cuts_original_fps"][0] == [0, 2096]
 
         if len(framerates) > 0:
-            assert cuts["cuts_15"] == [[0, 2096]]
+            assert cuts["cuts_1"][0] == [0, 2100]
 
     if cut_detection_mode == "all":
         assert len(cuts["cuts_original_fps"]) > 1
-        assert cuts["cuts_original_fps"][-1] == [3015, 3677]
+        assert cuts["cuts_original_fps"][-1] == [3411, 3677]
 
         if len(framerates) > 0:
-            assert cuts["cuts_15"][-1] == [3016, 3677]
+            assert cuts["cuts_1"][-1] == [3420, 3677]
 
 
 @pytest.mark.parametrize(
