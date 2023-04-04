@@ -2,7 +2,7 @@
 cut detection subsampler detects cuts in a video
 """
 import numpy as np
-from scenedetect import AdaptiveDetector, ContentDetector, SceneManager, open_video
+from scenedetect import AdaptiveDetector, ContentDetector, ThresholdDetector, SceneManager, open_video
 import os
 import tempfile
 
@@ -33,9 +33,11 @@ class CutDetectionSubsampler:
     - framerates to be None (for original fps only) or a list of target framerates to detect cuts in
     """
 
-    def __init__(self, cut_detection_mode="all", framerates=None):
+    def __init__(self, cut_detection_mode="all", framerates=None, threshold=27, min_scene_len=15):
         self.framerates = framerates
         self.cut_detection_mode = cut_detection_mode
+        self.threshold = threshold
+        self.min_scene_len = min_scene_len
 
     def __call__(self, streams):
         video_bytes = streams["video"]
@@ -47,7 +49,7 @@ class CutDetectionSubsampler:
 
             video = open_video(video_path)
 
-            detector = ContentDetector(threshold=12)
+            detector = ContentDetector(threshold=self.threshold, min_scene_len=self.min_scene_len)
             scene_manager = SceneManager()
             scene_manager.add_detector(detector)
 
@@ -61,8 +63,8 @@ class CutDetectionSubsampler:
                 for target_fps in self.framerates:
                     video.reset()
 
+                    detector = ContentDetector(threshold=self.threshold, min_scene_len=self.min_scene_len)
                     scene_manager = SceneManager()
-                    detector = AdaptiveDetector()
                     scene_manager.add_detector(detector)
                     frame_skip = max(
                         int(original_fps // target_fps) - 1, 0

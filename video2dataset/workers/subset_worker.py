@@ -19,54 +19,6 @@ from video2dataset.subsamplers import (
     AudioRateSubsampler,
 )
 
-def quantize_endpoints(frame_intervals, native_fps, detected_fps):
-    quantized_intervals = []
-    factor = native_fps // detected_fps - 2
-
-    for start, end in frame_intervals:
-        quantized_start = start + factor
-        quantized_end = end - factor
-        quantized_intervals.append([quantized_start, quantized_end])
-
-    return quantized_intervals
-
-def interval_intersection(interval1, interval2):
-    start1, end1 = interval1
-    start2, end2 = interval2
-    start_max = max(start1, start2)
-    end_min = min(end1, end2)
-
-    if start_max <= end_min:
-        return [start_max, end_min]
-    else:
-        return None
-
-def combine_two_intervals(list1, list2):
-    combined_list = []
-
-    i, j = 0, 0
-    while i < len(list1) and j < len(list2):
-        intersection = interval_intersection(list1[i], list2[j])
-        if intersection is not None:
-            combined_list.append(intersection)
-
-        if list1[i][1] < list2[j][1]:
-            i += 1
-        else:
-            j += 1
-
-    return combined_list
-
-def combine_multiple_intervals(lists_of_intervals):
-    if not lists_of_intervals:
-        return []
-
-    combined_list = lists_of_intervals[0]
-    for i in range(1, len(lists_of_intervals)):
-        combined_list = combine_two_intervals(combined_list, lists_of_intervals[i])
-
-    return combined_list
-
 class SubsetWorker:
     """The loader class reads the shards, then the selected data is chosen and writen by the writer"""
 
@@ -86,8 +38,9 @@ class SubsetWorker:
         detect_cuts,
         cut_detection_mode,
         cuts_are_clips,
-        clipping_mode,
         cut_framerates,
+        cut_detector_threshold,
+        cut_detector_min_scene_len,
         oom_clip_count=5,
     ) -> None:
         self.sample_writer_class = sample_writer_class
@@ -103,10 +56,16 @@ class SubsetWorker:
         self.cut_detection_mode = cut_detection_mode
         self.cut_framerates = cut_framerates
         self.detect_cuts = detect_cuts
+        self.cut_detector_threshold = cut_detector_threshold
+        self.cut_detector_min_scene_len = cut_detector_min_scene_len
         if detect_cuts:
-            self.cut_detector = CutDetectionSubsampler(cut_detection_mode=cut_detection_mode, framerates=cut_framerates)
+            self.cut_detector = CutDetectionSubsampler(
+                cut_detection_mode=cut_detection_mode, 
+                framerates=cut_framerates,
+                threshold=cut_detector_threshold,
+                min_scene_len=cut_detector_min_scene_len
+            )
         self.cuts_are_clips = cuts_are_clips
-        self.clipping_mode = clipping_mode
         self.noop_subsampler = NoOpSubsampler()
 
         video_subsamplers: List[Any] = []
@@ -185,33 +144,12 @@ class SubsetWorker:
 
             elif self.detect_cuts:  # apply cut detection to get clips
                 detected_cuts = self.cut_detector(streams)
-                if "cuts" not in meta:
-                    meta["cuts"] = detected_cuts
-                else:
-                    for k in detected_cuts:
-                        if k not in meta["cuts"]:
-                            meta["cuts"][k] = detected_cuts[k]
+                meta["cuts"] = detected_cuts
 
             if self.cuts_are_clips:
                 cuts = meta["cuts"]
                 native_fps = cuts["original_fps"]
-                if self.clipping_mode == "default":
-                    cuts = (np.array(cuts["cuts_original_fps"]) / native_fps).tolist()
-                elif self.clipping_mode == "quantize":
-                    quantized_cuts = []
-                    for k in meta["cuts"]:
-                        if "cuts" in k and k != "cuts_original_fps":
-                            cut_fps = int(k.split('_')[-1])
-                            quantized = quantize_endpoints(cuts[k], native_fps, cut_fps)
-                            quantized_cuts.append(quantized)
-                    all_intervals = quantized_cuts + [cuts["cuts_original_fps"]]
-                    cuts = combine_multiple_intervals(all_intervals)
-                else:
-                    raise NotImplementedError()
-                if len(cuts) == 0:
-                    cuts = [[0, 0]]
-                meta["clips"] = (np.array(cuts)/native_fps).tolist()
-
+                meta["clips"] = (np.array(cuts["cuts_original_fps"]) / native_fps).tolist()
 
             # 1 video -> many videos (either clipping or noop which does identity broadcasting)
             broadcast_subsampler = (

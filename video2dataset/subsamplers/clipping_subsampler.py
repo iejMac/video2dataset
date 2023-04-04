@@ -8,15 +8,9 @@ import copy
 import glob
 import ffmpeg
 import tempfile
-import re
 
 from datetime import datetime
 
-def extract_clip_id(filepath):
-    match = re.search(r'clip_(\d+)\.mp4', filepath)
-    if match:
-        return int(match.group(1))
-    return 0
 
 def get_seconds(t):
     if not isinstance(t, str):
@@ -29,7 +23,7 @@ def get_seconds(t):
 class ClippingSubsampler:
     """
     Cuts videos up into segments according to the 'clips' metadata
-    
+
     expects:
     - clips to be sorted in increasing order and non-overlapping
     - time to be in the format "%H:%M:%S.%f", or a number representing the second of the timestamp
@@ -101,7 +95,7 @@ class ClippingSubsampler:
                     return [], [], str(err)
 
                 stream_clips = glob.glob(f"{tmpdir}/clip*.{encode_format}")
-                stream_clips.sort(key=extract_clip_id)
+                stream_clips.sort()
                 correct_clips = []
                 for clip_id, (clip, ind) in enumerate(zip(clips, take_inds)):
                     if ind < len(stream_clips):
