@@ -112,6 +112,8 @@ This module exposes a single function `download` which takes the same arguments 
 * **cut_detector_min_scene_len** minimum scene length for the cut detector (in frames). If the detector detects a jump cut and the distance from the previous cut is less than *cut_detector_min_scene_len* then the jump cut will not be annotated. (default *15*)
 * **stage** which stage of processing to execute in betweeen downloading + cheap subsampling and costly subsampling (default *"download"*)
 * **optical_flow_params** Dict containing parameters for optical flow detection. Keys can include *detector* ("cv2" or "raft", default "cv2"), *fps* (-1 or target fps, default *-1*), *detector_args* (additional args to pass to optical flow detector, default *None*), *downsample_size* (size to downsample shortest side of video to when detecting optical flow, default *None*), and *dtype* (datatype to store optical flow data in, default *np.float16*). Optional keys: *device* (only when using RAFT detector, lets you specify the device for the RAFT detector).
+* **min_clip_length** Minimum length in seconds of a clip. Below this the subsampler will reject the clips (default *0.0*)
+* **precise_clipping** If True, provides more precise clipping at the expense of processing speed (default *False*)
 ## Downloading YouTube Metadata
 
 If we want to download a large amount of YouTube videos with video2dataset we can specify some parameters and also extract useful metadata as well. For directions on how to do so please see this [example](https://github.com/iejMac/video2dataset/blob/main/examples/yt_metadata.md).

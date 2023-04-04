@@ -29,6 +29,8 @@ class ClippingSubsampler:
         The number of orders of magnitude for clip count, used for formatting clip keys.
     encode_formats: dict
         A dictionary mapping stream keys to their corresponding file extensions, e.g., {"video": "mp4", "audio": "mp3"}.
+    min_length: float optional (default=0.0)
+        Minimum length in seconds of a clip. Below this the subsampler will reject the clips
     precise: bool, optional (default=False)
         If True, provides more precise clipping at the expense of processing speed.
         If False, prioritizes speed over precision.
@@ -46,7 +48,7 @@ class ClippingSubsampler:
 
         # things like [0.0, 5.0], [5.5, 10.0] turn into [0.0, 5.0], [5.0, 10.0]
         # don't wnat to do this if we want precise clips
-        self.min_between_clip_dist = 1.0 * self.precise
+        self.min_between_clip_dist = 1.0 * (not precise)
 
     def __call__(self, streams, metadata):
         clips = metadata.pop("clips")
@@ -55,18 +57,21 @@ class ClippingSubsampler:
         if isinstance(clips[0], float):  # make sure clips looks like [[start, end]] and not [start, end]
             clips = [clips]
 
-        clips = [(get_seconds(s), get_seconds(e)) for s, e in clips if get_seconds(e) - get_seconds(s) >= self.min_length]
+        clips = [(s, e) for s, e in clips if get_seconds(e) - get_seconds(s) >= self.min_length]
 
         # TODO: look into this, this is only good when you 100% want to discard the first clip
         # usually this is true but like I found that if you force_key_frames sometimes you're good
         ind = 2
         s_p, e_p = clips[0]
+        s_p, e_p = get_seconds(s_p), get_seconds(e_p)
         splits = [s_p, e_p]
         # list of indicies of clips to take, used to discard non-contiguous sections
         take_inds = [1]
 
         # TODO: make nicer
         for s, e in clips[1:]:
+            s, e = get_seconds(s), get_seconds(e)
+
             if s - e_p <= self.min_between_clip_dist:
                 splits += [e]
                 take_inds.append(ind)
@@ -76,9 +81,6 @@ class ClippingSubsampler:
 
             ind += 1 if s - e_p <= 1.0 else 2
             e_p = e
-
-        print("SPLITS: ", splits)
-        print("TAKE INDS: ", take_inds)
 
         segment_times = ",".join([str(spl) for spl in splits])
         streams_clips = {}

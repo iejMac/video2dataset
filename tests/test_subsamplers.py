@@ -39,7 +39,8 @@ def test_clipping_subsampler(clips):
     with open(audio, "rb") as aud_f:
         audio_bytes = aud_f.read()
 
-    subsampler = ClippingSubsampler(3, {"video": "mp4", "audio": "mp3"})
+    min_length = 5.0 if clips == MULTI else 0.0
+    subsampler = ClippingSubsampler(3, {"video": "mp4", "audio": "mp3"}, min_length=min_length, precise=False)
 
     metadata = {
         "key": "000",
@@ -51,7 +52,8 @@ def test_clipping_subsampler(clips):
     video_fragments = stream_fragments["video"]
     audio_fragments = stream_fragments["audio"]
     assert error_message is None
-    assert len(audio_fragments) == len(video_fragments) == len(meta_fragments) == len(clips)
+    # first one is only 4.5s
+    assert len(audio_fragments) == len(video_fragments) == len(meta_fragments) == len(clips) - bool(min_length)
 
     for vid_frag, meta_frag in zip(video_fragments, meta_fragments):
         with tempfile.NamedTemporaryFile() as tmp:
@@ -60,7 +62,10 @@ def test_clipping_subsampler(clips):
             key_ind = int(meta_frag["key"].split("_")[-1])
             s, e = meta_frag["clips"][0]
 
+            key_ind += bool(min_length)  # threshold 5.0 omits only the first clip
+
             assert clips[key_ind] == [s, e]  # correct order
+            assert get_seconds(e) - get_seconds(s) >= min_length
 
             s_s, e_s = get_seconds(s), get_seconds(e)
             probe = ffmpeg.probe(tmp.name)
