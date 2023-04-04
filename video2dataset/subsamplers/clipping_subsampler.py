@@ -30,7 +30,8 @@ class ClippingSubsampler:
     encode_formats: dict
         A dictionary mapping stream keys to their corresponding file extensions, e.g., {"video": "mp4", "audio": "mp3"}.
     precise: bool, optional (default=False)
-        If True, provides more precise clipping at the expense of processing speed. If False, prioritizes speed over precision.
+        If True, provides more precise clipping at the expense of processing speed.
+        If False, prioritizes speed over precision.
 
     expects:
     - clips to be sorted in increasing order and non-overlapping
