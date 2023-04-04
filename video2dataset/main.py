@@ -65,6 +65,8 @@ def video2dataset(
     encode_formats: dict = None,
     stage: str = "download",
     optical_flow_params: dict = None,
+    min_clip_length: float = 0.0,
+    precise_clipping: bool = False,
     sampler=None,
     slurm_cpus_per_task: int = 1,
     slurm_job_name: str = "video2dataset",
@@ -194,6 +196,8 @@ def video2dataset(
             cuts_are_clips=cuts_are_clips,
             cut_detector_threshold=cut_detector_threshold,
             cut_detector_min_scene_len=cut_detector_min_scene_len,
+            min_clip_length=min_clip_length,
+            precise_clipping=precise_clipping,
         )
     elif stage == "subset":
         shard_iterator = OutputSharder(url_list, input_format, done_shards, sampler=sampler)  # type: ignore
@@ -215,6 +219,8 @@ def video2dataset(
             cuts_are_clips=cuts_are_clips,
             cut_detector_threshold=cut_detector_threshold,
             cut_detector_min_scene_len=cut_detector_min_scene_len,
+            min_clip_length=min_clip_length,
+            precise_clipping=precise_clipping,
         )
     elif stage == "optical_flow":
         shard_iterator = OutputSharder(url_list, input_format, done_shards, sampler=sampler)  # type: ignore
