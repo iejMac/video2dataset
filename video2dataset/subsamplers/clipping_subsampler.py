@@ -82,10 +82,10 @@ class ClippingSubsampler:
                     f.write(stream_bytes)
                 try:
                     kwargs = {
-                        "map":0,
-                        "f":"segment",
-                        "segment_times":segment_times,
-                        "reset_timestamps":1,
+                        "map": 0,
+                        "f": "segment",
+                        "segment_times": segment_times,
+                        "reset_timestamps": 1,
                     }
 
                     # Precision things, tradeoff for speed
@@ -101,10 +101,7 @@ class ClippingSubsampler:
 
                     _ = (
                         ffmpeg.input(f"{tmpdir}/input.{encode_format}")
-                        .output(
-                            f"{tmpdir}/clip_%d.{encode_format}",
-                            **kwargs
-                        )
+                        .output(f"{tmpdir}/clip_%d.{encode_format}", **kwargs)
                         .run(capture_stdout=True, quiet=True)
                     )
 
@@ -112,7 +109,7 @@ class ClippingSubsampler:
                     return {}, [], str(err)
 
                 stream_clips = glob.glob(f"{tmpdir}/clip*.{encode_format}")
-                stream_clips.sort(key=lambda x: int(x.split('_')[-1].split('.')[0]))
+                stream_clips.sort(key=lambda x: int(x.split("_")[-1].split(".")[0]))
 
                 correct_clips = []
                 for clip_id, (clip, ind) in enumerate(zip(clips, take_inds)):
