@@ -174,31 +174,51 @@ class YtDlpDownloader:
                 "format": audio_fmt_string,
                 "quiet": True,
             }
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download(url)
 
-            # TODO: look into this, don't think we can just do this
-            # TODO: just figure out a way to download the preferred extension using yt-dlp
-            # audio_path = audio_path_m4a.replace(".m4a", f".{self.encode_formats['audio']}")
-            audio_path = audio_path_m4a
-            modality_paths["audio"] = audio_path
+            err = None
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    ydl.download(url)
+            except Exception as e:  # pylint: disable=(broad-except)
+                err = str(e)
+                os.remove(audio_path_m4a)
+
+            if err is None:
+                # TODO: look into this, don't think we can just do this
+                # TODO: just figure out a way to download the preferred extension using yt-dlp
+                # audio_path = audio_path_m4a.replace(".m4a", f".{self.encode_formats['audio']}")
+                audio_path = audio_path_m4a
+                modality_paths["audio"] = audio_path
 
         if self.encode_formats.get("video", None):
             video_path = f"{self.tmp_dir}/{str(uuid.uuid4())}.mp4"
-            modality_paths["video"] = video_path
             ydl_opts = {
                 "outtmpl": video_path,
                 "format": video_format_string,
                 "quiet": True,
             }
 
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download(url)
+            err = None
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    ydl.download(url)
+            except Exception as e:  # pylint: disable=(broad-except)
+                err = str(e)
+                os.remove(video_path)
 
-        if self.metadata_args:
-            yt_meta_dict = get_yt_meta(url, self.metadata_args)
-        else:
+            if err is None:
+                modality_paths["video"] = video_path
+
+        err = None
+        try:
+            if self.metadata_args:
+                yt_meta_dict = get_yt_meta(url, self.metadata_args)
+            else:
+                yt_meta_dict = {}
+        except Exception as e:  # pylint: disable=(broad-except)
+            err = str(e)
             yt_meta_dict = {}
+
         return modality_paths, yt_meta_dict, None
 
 

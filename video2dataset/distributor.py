@@ -2,8 +2,8 @@
 import os
 import time
 import subprocess
-import datetime
 import yaml
+from datetime import datetime
 from contextlib import contextmanager
 from multiprocessing import get_context
 from itertools import islice, chain
