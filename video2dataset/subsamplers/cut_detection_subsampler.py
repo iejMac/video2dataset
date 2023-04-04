@@ -2,7 +2,7 @@
 cut detection subsampler detects cuts in a video
 """
 import numpy as np
-from scenedetect import AdaptiveDetector, ContentDetector, ThresholdDetector, SceneManager, open_video
+from scenedetect import ContentDetector, SceneManager, open_video
 import os
 import tempfile
 

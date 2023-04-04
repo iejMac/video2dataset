@@ -184,6 +184,16 @@ class SubsetWorker:
             subsampled_streams_list = [
                 dict(zip(subsampled_streams, s)) for s in zip(*subsampled_streams.values())
             ]
+            if len(subsampled_streams_list) == 0: # no audio or video, just write meta
+                meta["status"] = status
+                sample_writer.write(
+                        {},
+                        key,
+                        caption,
+                        meta,
+                    )
+                continue
+
             for subsampled_streams, meta in zip(subsampled_streams_list, metas):
                 meta["status"] = status
 
