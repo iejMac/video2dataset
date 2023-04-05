@@ -146,6 +146,10 @@ class ClippingSubsampler:
                     # set the timeframe of this clip
                     meta_clip["clips"] = [clip_span]
                     meta_clip["key"] = f"{meta_clip['key']}_{clip_key}"
+
+                    # TODO: for subtitle clipping the idea is to check if there's intersection between
+                    # clip_span and all the subtitles and only take the lines where that is true
+
                     if lines is not None:
                         meta_clip["yt_meta_dict"]["subtitles"] = lines[i]
                     metadata_clips.append(meta_clip)
