@@ -210,8 +210,6 @@ class DownloadWorker:
                     if self.captions_are_subtitles:  # create clips
                         subtitles = meta["yt_meta_dict"]["subtitles"]
                         meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
-                        meta["lines"] = [" ".join(line_dict["lines"]) for line_dict in subtitles]
-
                     elif self.detect_cuts:  # apply cut detection to get clips
                         meta["cuts"] = self.cut_detector(streams)
 
