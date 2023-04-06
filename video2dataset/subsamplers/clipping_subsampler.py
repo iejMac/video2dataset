@@ -155,8 +155,8 @@ class ClippingSubsampler:
                                 clip_subtitles.append(line)
                             elif s > e_c:
                                 break
-
-                        meta_clip["yt_meta_dict"]["subtitles"] = clip_subtitles
+                        # full video subtitles might still be useful for context
+                        meta_clip["clip_subtitles"] = clip_subtitles
 
                     metadata_clips.append(meta_clip)
 
