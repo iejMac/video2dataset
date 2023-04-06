@@ -52,7 +52,6 @@ class ClippingSubsampler:
 
     def __call__(self, streams, metadata):
         clips = metadata.pop("clips")
-        lines = metadata.pop("lines") if "lines" in metadata else None
 
         if isinstance(clips[0], float):  # make sure clips looks like [[start, end]] and not [start, end]
             clips = [clips]
@@ -147,18 +146,16 @@ class ClippingSubsampler:
                     meta_clip["clips"] = [clip_span]
                     meta_clip["key"] = f"{meta_clip['key']}_{clip_key}"
 
-                    if lines is not None:
-                        meta_clip["yt_meta_dict"]["subtitles"] = lines[i]
-                    elif "subtitles" in meta_clip.get("yt_meta_dict", {}):
+                    if "subtitles" in meta_clip.get("yt_meta_dict", {}):
                         clip_subtitles = []
                         s_c, e_c = get_seconds(clip_span[0]), get_seconds(clip_span[1])
-                        # TODO: you can stop checking after fail -> success -> first fail since most likely sorted
-                        for line in meta_clip["yt_meta_dict"]["subtitles"]
+                        for line in meta_clip["yt_meta_dict"]["subtitles"]:
                             s, e = get_seconds(line["start"]), get_seconds(line["end"])
-                            # TODO: Make this nicer
-                            intersects = (s_c <= s <= e_c) or (s_c <= e <= e_c) or (s <= s_c <= e) or (s <= e_c <= e)
-                            if intersects:
+                            if max(s_c, s) < min(e_c, e):
                                 clip_subtitles.append(line)
+                            elif s > e_c:
+                                break
+
                         meta_clip["yt_meta_dict"]["subtitles"] = clip_subtitles
 
                     metadata_clips.append(meta_clip)
