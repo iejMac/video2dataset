@@ -235,7 +235,6 @@ class OpticalFlowSubsampler:
                 local_rank = os.environ["LOCAL_RANK"]
                 device = f"cuda:{local_rank}"
                 args["device"] = device
-            print(args, flush=True)
             if not isinstance(args, AttrDict):
                 args = AttrDict(args)
             self.detector = RAFTDetector(args, downsample_size=downsample_size)
@@ -275,12 +274,11 @@ class OpticalFlowSubsampler:
 
                 optical_flow.append(flow)
                 prvs = next_frame
+
+            opt_flow = np.array(optical_flow)
+            mean_magnitude_per_frame = np.linalg.norm(opt_flow, axis=-1).mean(axis=(1, 2))
+            mean_magnitude = float(mean_magnitude_per_frame.mean())
+            metrics = [mean_magnitude, mean_magnitude_per_frame.tolist()]
+            return opt_flow.astype(self.dtype), metrics, None
         except Exception as err:  # pylint: disable=broad-except
             return [], None, str(err)
-
-        opt_flow = np.array(optical_flow)
-        mean_magnitude_per_frame = np.linalg.norm(opt_flow, axis=-1).mean(axis=(1, 2))
-        mean_magnitude = float(mean_magnitude_per_frame.mean())
-
-        metrics = [mean_magnitude, mean_magnitude_per_frame.tolist()]
-        return opt_flow.astype(self.dtype), metrics, None
