@@ -166,8 +166,9 @@ class OpticalFlowWorker:
         """
         shard, shard_id = row
         start_time = time.time()
+
         fs, shard_path = fsspec.core.url_to_fs(shard[: -len(".tar")] + ".parquet")
-       
+
         with fs.open(shard_path, "rb") as f:
             df = pa.parquet.read_table(f)
             schema = df.schema
@@ -245,6 +246,7 @@ class OpticalFlowWorker:
             # input_frames = convert_frames_depth(frames[:, :, :, ::-1], target_depth=np.uint8)
             # mp4_bytes = frames_to_mp4_bytes(input_frames, fps=native_fps)
             streams["video"] = sample.get("video_bytes")[0]
+
             sample_writer.write(
                 streams,
                 key,
