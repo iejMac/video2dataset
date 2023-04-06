@@ -210,8 +210,6 @@ class DownloadWorker:
                     if self.captions_are_subtitles:  # create clips
                         subtitles = meta["yt_meta_dict"]["subtitles"]
                         meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
-                        meta["lines"] = [" ".join(line_dict["lines"]) for line_dict in subtitles]
-
                     elif self.detect_cuts:  # apply cut detection to get clips
                         meta["cuts"] = self.cut_detector(streams)
 
@@ -258,7 +256,7 @@ class DownloadWorker:
                     for subsampled_streams, meta in zip(subsampled_streams_list, metas):
                         meta["status"] = status
 
-                        text_caption = (sample_data[caption_indice] if caption_indice is not None else None,)
+                        text_caption = sample_data[caption_indice] if caption_indice is not None else None
                         if self.captions_are_subtitles:
                             text_caption = meta["yt_meta_dict"].pop("subtitles")
 
