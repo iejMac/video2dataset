@@ -256,7 +256,7 @@ class DownloadWorker:
                     for subsampled_streams, meta in zip(subsampled_streams_list, metas):
                         meta["status"] = status
 
-                        text_caption = (sample_data[caption_indice] if caption_indice is not None else None,)
+                        text_caption = sample_data[caption_indice] if caption_indice is not None else None
                         if self.captions_are_subtitles:
                             text_caption = meta["yt_meta_dict"].pop("subtitles")
 
