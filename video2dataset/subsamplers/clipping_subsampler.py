@@ -52,7 +52,6 @@ class ClippingSubsampler:
 
     def __call__(self, streams, metadata):
         clips = metadata.pop("clips")
-        lines = metadata.pop("lines") if "lines" in metadata else None
 
         if isinstance(clips[0], float):  # make sure clips looks like [[start, end]] and not [start, end]
             clips = [clips]
@@ -134,7 +133,7 @@ class ClippingSubsampler:
                 # clips_lost = len(take_inds) - len(correct_clips) # TODO report this somehow
 
                 stream_clips, metadata_clips = [], []
-                for i, (clip_id, clip_span, clip_pth) in enumerate(correct_clips):
+                for clip_id, clip_span, clip_pth in correct_clips:
                     with open(clip_pth, "rb") as vid_f:
                         clip_bytes = vid_f.read()
                     stream_clips.append(clip_bytes)
@@ -146,8 +145,19 @@ class ClippingSubsampler:
                     # set the timeframe of this clip
                     meta_clip["clips"] = [clip_span]
                     meta_clip["key"] = f"{meta_clip['key']}_{clip_key}"
-                    if lines is not None:
-                        meta_clip["yt_meta_dict"]["subtitles"] = lines[i]
+
+                    if "subtitles" in meta_clip.get("yt_meta_dict", {}):
+                        clip_subtitles = []
+                        s_c, e_c = get_seconds(clip_span[0]), get_seconds(clip_span[1])
+                        for line in meta_clip["yt_meta_dict"]["subtitles"]:
+                            s, e = get_seconds(line["start"]), get_seconds(line["end"])
+                            if max(s_c, s) < min(e_c, e):
+                                clip_subtitles.append(line)
+                            elif s > e_c:
+                                break
+                        # full video subtitles might still be useful for context
+                        meta_clip["clip_subtitles"] = clip_subtitles
+
                     metadata_clips.append(meta_clip)
 
                 streams_clips[k] = stream_clips
