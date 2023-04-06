@@ -60,7 +60,7 @@ class ClippingSubsampler:
         clips = [(s, e) for s, e in clips if get_seconds(e) - get_seconds(s) >= self.min_length]
         if len(clips) == 0:
             # return an error
-            return {}, [], "no viable clips"
+            return {}, [], f"Video had no clips longer than {self.min_length}"
         # TODO: look into this, this is only good when you 100% want to discard the first clip
         # usually this is true but like I found that if you force_key_frames sometimes you're good
         ind = 2
