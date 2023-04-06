@@ -133,7 +133,7 @@ class ClippingSubsampler:
                 # clips_lost = len(take_inds) - len(correct_clips) # TODO report this somehow
 
                 stream_clips, metadata_clips = [], []
-                for i, (clip_id, clip_span, clip_pth) in enumerate(correct_clips):
+                for clip_id, clip_span, clip_pth in correct_clips:
                     with open(clip_pth, "rb") as vid_f:
                         clip_bytes = vid_f.read()
                     stream_clips.append(clip_bytes)
