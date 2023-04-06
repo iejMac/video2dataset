@@ -283,4 +283,3 @@ class OpticalFlowSubsampler:
             return opt_flow.astype(self.dtype), metrics, None
         except Exception as err:  # pylint: disable=broad-except
             return [], None, str(err)
-
