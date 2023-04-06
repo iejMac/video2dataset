@@ -214,8 +214,8 @@ class DownloadWorker:
                         meta["cuts"] = self.cut_detector(streams)
 
                     if self.cuts_are_clips:
-                        cuts = meta["cuts"]
-                        native_fps = cuts["original_fps"]
+                        cuts = meta["cuts"]["cuts_original_fps"]
+                        native_fps = meta["cuts"]["original_fps"]
                         meta["clips"] = (np.array(cuts) / native_fps).tolist()
 
                     # 1 video -> many videos (either clipping or noop which does identity broadcasting)

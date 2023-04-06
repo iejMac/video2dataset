@@ -168,6 +168,7 @@ class OpticalFlowWorker:
         start_time = time.time()
 
         fs, shard_path = fsspec.core.url_to_fs(shard[: -len(".tar")] + ".parquet")
+
         with fs.open(shard_path, "rb") as f:
             df = pa.parquet.read_table(f)
             schema = df.schema
@@ -194,7 +195,6 @@ class OpticalFlowWorker:
             resize_size=None,
             crop_size=None,
         )
-
         for sample in dset:
             key = sample["__key__"][0]
             caption = sample.get("txt", b"")[0]
