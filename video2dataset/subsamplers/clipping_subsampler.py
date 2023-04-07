@@ -57,6 +57,8 @@ class ClippingSubsampler:
             clips = [clips]
 
         clips = [(s, e) for s, e in clips if get_seconds(e) - get_seconds(s) >= self.min_length]
+        print(clips)
+        print(len(clips))
 
         # TODO: look into this, this is only good when you 100% want to discard the first clip
         # usually this is true but like I found that if you force_key_frames sometimes you're good
@@ -71,15 +73,21 @@ class ClippingSubsampler:
         for s, e in clips[1:]:
             s, e = get_seconds(s), get_seconds(e)
 
-            if s - e_p <= self.min_between_clip_dist:
+            # if s - e_p <= self.min_between_clip_dist:
+            if s == e_p:  # situations like [0, 1], [1, 2], [2, 3] -> 1, 2
                 splits += [e]
                 take_inds.append(ind)
+                ind += 1
             else:
                 splits += [s, e]
                 take_inds.append(ind + 1)
+                ind += 2
+            print(take_inds)
 
-            ind += 1 if s - e_p <= 1.0 else 2
             e_p = e
+
+        print(splits)
+        print(take_inds)
 
         segment_times = ",".join([str(spl) for spl in splits])
         streams_clips = {}
@@ -131,6 +139,8 @@ class ClippingSubsampler:
                     if ind < len(stream_clips):
                         correct_clips.append((clip_id, clip, stream_clips[ind]))
                 # clips_lost = len(take_inds) - len(correct_clips) # TODO report this somehow
+
+                print(len(correct_clips))
 
                 stream_clips, metadata_clips = [], []
                 for clip_id, clip_span, clip_pth in correct_clips:
