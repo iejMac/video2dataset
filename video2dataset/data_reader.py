@@ -100,7 +100,7 @@ def get_yt_meta(url, yt_metadata_args: dict) -> dict:
         return yt_meta_dict
 
 
-def get_web_file_info(url):
+def get_file_info(url):
     """returns info about the url (currently extension and modality)"""
     # TODO: make this nicer
     video_extensions = ["mp4", "webm", "mov", "avi", "mkv"]
@@ -124,11 +124,19 @@ class WebFileDownloader:
 
     def __call__(self, url):
         modality_paths = {}
-        resp = requests.get(url, stream=True, timeout=self.timeout)
-        ext, modality = get_web_file_info(url)
+
+        ext, modality = get_file_info(url)
+        if not os.path.isfile(url):
+            resp = requests.get(url, stream=True, timeout=self.timeout)
+            byts = resp.content
+        else:  # local files (don't want to delete)
+            with open(url, "rb") as f:
+                byts = f.read()
+
         modality_path = f"{self.tmp_dir}/{str(uuid.uuid4())}.{ext}"
         with open(modality_path, "wb") as f:
-            f.write(resp.content)
+            f.write(byts)
+
         modality_paths[modality] = modality_path
 
         if modality == "video" and self.encode_formats.get("audio", None):
@@ -234,7 +242,7 @@ class VideoDataReader:
 
         meta_dict = None
         # TODO: make nice function to detect what type of link we're dealing with
-        if get_web_file_info(url):  # web file that can be directly downloaded
+        if get_file_info(url):  # web file that can be directly downloaded
             modality_paths, error_message = self.webfile_downloader(url)
         elif "youtube" in url:  # youtube link
             try:
