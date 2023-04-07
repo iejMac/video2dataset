@@ -127,8 +127,6 @@ class ClippingSubsampler:
                         correct_clips.append((clip_id, clip, stream_clips[ind]))
                 # clips_lost = len(take_inds) - len(correct_clips) # TODO report this somehow
 
-                print(len(correct_clips))
-
                 stream_clips, metadata_clips = [], []
                 for clip_id, clip_span, clip_pth in correct_clips:
                     with open(clip_pth, "rb") as vid_f:
