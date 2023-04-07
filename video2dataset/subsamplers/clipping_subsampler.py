@@ -46,10 +46,6 @@ class ClippingSubsampler:
         self.min_length = min_length
         self.precise = precise
 
-        # things like [0.0, 5.0], [5.5, 10.0] turn into [0.0, 5.0], [5.0, 10.0]
-        # don't wnat to do this if we want precise clips
-        self.min_between_clip_dist = 1.0 * (not precise)
-
     def __call__(self, streams, metadata):
         clips = metadata.pop("clips")
 
@@ -57,8 +53,6 @@ class ClippingSubsampler:
             clips = [clips]
 
         clips = [(s, e) for s, e in clips if get_seconds(e) - get_seconds(s) >= self.min_length]
-        print(clips)
-        print(len(clips))
 
         if len(clips) == 0:
             # return an error
@@ -77,7 +71,6 @@ class ClippingSubsampler:
         for s, e in clips[1:]:
             s, e = get_seconds(s), get_seconds(e)
 
-            # if s - e_p <= self.min_between_clip_dist:
             if s == e_p:  # situations like [0, 1], [1, 2], [2, 3] -> 1, 2
                 splits += [e]
                 take_inds.append(ind)
@@ -86,12 +79,7 @@ class ClippingSubsampler:
                 splits += [s, e]
                 take_inds.append(ind + 1)
                 ind += 2
-            print(take_inds)
-
             e_p = e
-
-        print(splits)
-        print(take_inds)
 
         segment_times = ",".join([str(spl) for spl in splits])
         streams_clips = {}
@@ -119,12 +107,7 @@ class ClippingSubsampler:
                     if not self.precise:
                         kwargs["c"] = "copy"
                     else:
-                        # TODO: this is weird, need more time to make this work
-                        # might be better for longer videos to only insert keyframes where you need em
-                        # kwargs["force_key_frames"] = segment_times
-
-                        # Constant GOP might not be great if framerate varies a ton, tbd
-                        kwargs["g"] = 10  # add a keyframe every 10 frames
+                        kwargs["force_key_frames"] = segment_times
 
                     _ = (
                         ffmpeg.input(f"{tmpdir}/input.{encode_format}")
