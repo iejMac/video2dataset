@@ -1,4 +1,4 @@
-# [MSR-VTT](https://www.google.com/search?client=safari&rls=en&q=MSRVTT+dataset&ie=UTF-8&oe=UTF-8)
+# [MSR-VTT](https://www.microsoft.com/en-us/research/publication/msr-vtt-a-large-video-description-dataset-for-bridging-video-and-language/)
 
 MSR-VTT is a benchmark dataset to test video-text understanding, it has 20 captions per video and can be used to evaluate the retrieval capabilities of models. It has multiple variants (which are subsets of the original 10k videos) described [here](https://github.com/albanie/collaborative-experts/tree/master/misc/datasets/msrvtt).
 
