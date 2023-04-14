@@ -190,17 +190,19 @@ class OpticalFlowWorker:
         successes = 0
         failed_to_subsample = 0
 
-        decoder_kwargs = {"n_frames": None, "fps": None, "num_threads": 4, "return_bytes": True}
+        decoder_kwargs = {"n_frames": None, "fps": None, "num_threads": 4, "return_bytes": True, "tmpdir": "/tmp/"}
 
         local_rank = os.environ.get("LOCAL_RANK", 0)
-        print(shard, local_rank, flush=True)
 
+        if shard.startswith("s3://"):
+            shard = f"pipe:aws s3 cp {shard} -"
         dset = get_video_dataset(
             urls=shard,
             batch_size=1,
             decoder_kwargs=decoder_kwargs,
             resize_size=None,
             crop_size=None,
+            enforce_additional_keys=[],
         )
         for sample in dset:
             key = sample["__key__"][0]
@@ -250,9 +252,10 @@ class OpticalFlowWorker:
             streams["numpy_metadata"]["optical_flow"] = optical_flow
             streams["numpy_metadata"] = numpy_npz_dumps(streams["numpy_metadata"])
 
-            # input_frames = convert_frames_depth(frames[:, :, :, ::-1], target_depth=np.uint8)
-            # mp4_bytes = frames_to_mp4_bytes(input_frames, fps=native_fps)
             streams["video"] = sample.get("video_bytes")[0]
+            for modality in streams:
+                if isinstance(streams[modality], list):
+                    streams[modality] = streams[modality][0]
 
             sample_writer.write(
                 streams,
