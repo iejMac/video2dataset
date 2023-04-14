@@ -6,7 +6,13 @@ from typing import List, Union
 from .custom_wds import WebDatasetWithChangedDecoder, dict_collation_fn
 from .transform import VideoResizer, CutsAdder, CustomTransforms
 from .video_decode import VideoDecorder, VideoDecorderWithCutDetection
-from .filters import KeyFilter, LanguageFilter, AestheticsFilter, UnsafeFilter , UnusedKeyRemover # pylint: disable=unused-import
+from .filters import (
+    KeyFilter,
+    LanguageFilter,
+    AestheticsFilter,
+    UnsafeFilter,
+    UnusedKeyRemover,
+)  # pylint: disable=unused-import
 
 
 def reassemble(x):
@@ -51,7 +57,7 @@ def get_video_dataset(
     random_crop=False,
     original_height_key="original_height",
     original_width_key="original_width",
-    keys_to_remove:Union[int, List[int]]=None
+    keys_to_remove: Union[int, List[int], None] = None,
 ):
 
     """
@@ -98,10 +104,9 @@ def get_video_dataset(
 
     dset = dataset_cls(urls, nodesplitter=wds.split_by_node, shardshuffle=shuffle, handler=wds.warn_and_continue)
 
-
     dset = dset.repeat(repeat).shuffle(shuffle)
-    unused_key_removal = UnusedKeyRemover(keys=unused_keys)
-    dset = dset.map(unused_key_removal,handler=wds.warn_and_continue)
+    unused_key_removal = UnusedKeyRemover(keys=keys_to_remove)
+    dset = dset.map(unused_key_removal, handler=wds.warn_and_continue)
 
     key_filter = KeyFilter(video_key=video_key)
     dset = dset.select(key_filter)
