@@ -186,7 +186,6 @@ class OpticalFlowWorker:
         decoder_kwargs = {"n_frames": None, "fps": None, "num_threads": 4, "return_bytes": True}
 
         local_rank = os.environ.get("LOCAL_RANK", 0)
-        print(shard, local_rank, flush=True)
 
         dset = get_video_dataset(
             urls=shard,
