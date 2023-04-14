@@ -1,5 +1,8 @@
 """WebDataset filters"""
+from typing import List, Union, Dict
+
 from langdetect import detect_langs, DetectorFactory  # pylint: disable=unused-import
+
 
 from webdataset.autodecode import decoders  # pylint: disable=unused-import
 
@@ -76,3 +79,19 @@ class UnsafeFilter:
                     raise
                 valid = False
         return valid
+
+class UnusedKeyRemover:
+    """Removes keys specified keys which are not used during loading and by that speeds up sampling"""
+    def __init__(self, keys:Union[int,List[int]]) -> None:
+        if isinstance(keys, int):
+            keys = [keys]
+
+        self.unused_keys = set(keys)
+
+    def __call__(self, x:Dict) -> Dict:
+        if not self.unused_keys:
+            return x
+        for key in self.unused_keys.intersection(x.keys()):
+            del x[key]
+
+        return x

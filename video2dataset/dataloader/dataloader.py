@@ -1,11 +1,12 @@
 """video dataset creation"""
 import webdataset as wds
 from functools import partial
+from typing import List, Union
 
 from .custom_wds import WebDatasetWithChangedDecoder, dict_collation_fn
 from .transform import VideoResizer, CutsAdder, CustomTransforms
 from .video_decode import VideoDecorder, VideoDecorderWithCutDetection
-from .filters import KeyFilter, LanguageFilter, AestheticsFilter, UnsafeFilter  # pylint: disable=unused-import
+from .filters import KeyFilter, LanguageFilter, AestheticsFilter, UnsafeFilter , UnusedKeyRemover # pylint: disable=unused-import
 
 
 def reassemble(x):
@@ -35,8 +36,8 @@ def reassemble(x):
 def get_video_dataset(
     urls,
     batch_size,
-    shuffle=False,
-    repeat=False,
+    shuffle=0,
+    repeat=1,
     drop_last=False,
     video_key="mp4",
     cuts_key=None,
@@ -50,6 +51,7 @@ def get_video_dataset(
     random_crop=False,
     original_height_key="original_height",
     original_width_key="original_width",
+    keys_to_remove:Union[int, List[int]]=None
 ):
 
     """
@@ -58,8 +60,8 @@ def get_video_dataset(
     Parameters:
         urls (str): The path to the dataset.
         batch_size (int): The number of samples per batch.
-        shuffle (bool, optional): Whether to shuffle the dataset. Default is False.
-        repeat (bool, optional): Whether to repeat the dataset. Default is False.
+        shuffle (int, optional): Shuffle buffer size. Default is 0 means no shuffling.
+        repeat (int, optional): Whether to repeat the dataset. Default is 1. -1 means repeating infinitely
         drop_last (bool, optional): Whether to drop the last incomplete batch. Default is False.
         video_key (str, optional): The key for video files. Default is 'mp4'.
         cuts_key (str, optional): The key for cut detection. Default is None.
@@ -73,6 +75,7 @@ def get_video_dataset(
         random_crop (bool, optional): Whether to apply random cropping. Default is False.
         original_height_key (str, optional): The key for the original video height. Default is 'original_height'.
         original_width_key (str, optional): The key for the original video width. Default is 'original_width'.
+        keys_to_remove ((list, int), optional): Keys which, for the sake of speed, will be removed before decoding. Default is None which means nothing will be removed.
 
     Returns:
         WebDataset: The processed webdataset.
@@ -95,10 +98,10 @@ def get_video_dataset(
 
     dset = dataset_cls(urls, nodesplitter=wds.split_by_node, shardshuffle=shuffle, handler=wds.warn_and_continue)
 
-    if repeat:
-        dset = dset.repeat()
-    if shuffle:
-        dset = dset.shuffle(shuffle)
+
+    dset = dset.repeat(repeat).shuffle(shuffle)
+    unused_key_removal = UnusedKeyRemover(keys=unused_keys)
+    dset = dset.map(unused_key_removal,handler=wds.warn_and_continue)
 
     key_filter = KeyFilter(video_key=video_key)
     dset = dset.select(key_filter)
