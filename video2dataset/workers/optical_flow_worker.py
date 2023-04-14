@@ -166,12 +166,19 @@ class OpticalFlowWorker:
         """
         shard, shard_id = row
         start_time = time.time()
+        try:
+            fs, shard_path = fsspec.core.url_to_fs(shard[: -len(".tar")] + ".parquet")
 
-        fs, shard_path = fsspec.core.url_to_fs(shard[: -len(".tar")] + ".parquet")
-
-        with fs.open(shard_path, "rb") as f:
-            df = pa.parquet.read_table(f)
-            schema = df.schema
+            with fs.open(shard_path, "rb") as f:
+                df = pa.parquet.read_table(f)
+                schema = df.schema
+        except Exception as e: # pylint: disable=broad-except
+            fields = [
+                pa.field('key', pa.string()),
+                pa.field('status', pa.string()),
+                pa.field('error_message', pa.string())
+            ]
+            schema = pa.schema(fields)
 
         status_dict = CappedCounter()
 
