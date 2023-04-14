@@ -134,7 +134,6 @@ class SubsetWorker:
         )
         count = 0
         for sample in dataloader:
-            try:
                 # Gather subset of dataset
                 key = sample["__key__"]
                 count += 1
@@ -210,9 +209,6 @@ class SubsetWorker:
                         text_caption,
                         meta,
                     )
-            except Exception as err:  # pylint: disable=broad-except
-                traceback.print_exc()
-                print(f"Sample {key} failed to download: {err}")
 
         sample_writer.close()
         end_time = time.time()
