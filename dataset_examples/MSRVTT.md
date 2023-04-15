@@ -1,3 +1,11 @@
+# [MSR-VTT](https://www.microsoft.com/en-us/research/publication/msr-vtt-a-large-video-description-dataset-for-bridging-video-and-language/)
+
+MSR-VTT is a benchmark dataset to test video-text understanding, it has 20 captions per video and can be used to evaluate the retrieval capabilities of models. It has multiple variants (which are subsets of the original 10k videos) described [here](https://github.com/albanie/collaborative-experts/tree/master/misc/datasets/msrvtt).
+
+## Download the videos and metadata
+
+MSR-VTT is small enough (10k samples) where the videos and metadata are hosted as a .zip file [here](https://www.mediafire.com/folder/h14iarbs62e7p/shared). Download the files and unzip them
+
 ## Preprocess into video2dataset input format
 
 Before you can create a video2dataset dataset you need to create the correct input format. Here's the script that does that for the test split:
