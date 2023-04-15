@@ -114,10 +114,8 @@ class OpticalFlowWorker:
         number_sample_per_shard,
         oom_shard_count,
         encode_formats,
-        detector,
-        fps,
-        downsample_size,
-        dtype,
+        optical_flow_params,
+        is_slurm_task,
     ) -> None:
         self.sample_writer_class = sample_writer_class
         self.output_folder = output_folder
@@ -126,13 +124,19 @@ class OpticalFlowWorker:
         self.thread_count = thread_count
         self.encode_formats = encode_formats
         self.save_caption = True
-        self.detector = detector
-        self.fps = fps
-        self.downsample_size = downsample_size
-        self.dtype = dtype
+        self.detector = optical_flow_params.get("detector", "cv2")
+        self.fps = optical_flow_params.get("fps", -1)
+        self.downsample_size = optical_flow_params.get("downsample_size", None)
+        self.dtype = optical_flow_params.get("dtype", "fp16")
+        self.detector_args = optical_flow_params.get("detector_args", None)
 
         self.optical_flow_subsampler = OpticalFlowSubsampler(
-            detector=detector, fps=fps, downsample_size=downsample_size, dtype=dtype
+            detector=self.detector,
+            args=self.detector_args,
+            fps=self.fps,
+            downsample_size=self.downsample_size,
+            dtype=self.dtype,
+            is_slurm_task=is_slurm_task,
         )
 
     def __call__(
@@ -164,6 +168,7 @@ class OpticalFlowWorker:
         start_time = time.time()
 
         fs, shard_path = fsspec.core.url_to_fs(shard[: -len(".tar")] + ".parquet")
+
         with fs.open(shard_path, "rb") as f:
             df = pa.parquet.read_table(f)
             schema = df.schema
@@ -180,6 +185,9 @@ class OpticalFlowWorker:
 
         decoder_kwargs = {"n_frames": None, "fps": None, "num_threads": 4, "return_bytes": True}
 
+        local_rank = os.environ.get("LOCAL_RANK", 0)
+        print(shard, local_rank, flush=True)
+
         dset = get_video_dataset(
             urls=shard,
             batch_size=1,
@@ -187,7 +195,6 @@ class OpticalFlowWorker:
             resize_size=None,
             crop_size=None,
         )
-
         for sample in dset:
             key = sample["__key__"][0]
             caption = sample.get("txt", b"")[0]

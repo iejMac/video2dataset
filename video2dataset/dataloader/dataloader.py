@@ -58,6 +58,7 @@ def get_video_dataset(
     original_height_key="original_height",
     original_width_key="original_width",
     keys_to_remove: Union[int, List[int], None] = None,
+    enforce_additional_keys=None,
 ):
 
     """
@@ -82,6 +83,7 @@ def get_video_dataset(
         original_height_key (str, optional): The key for the original video height. Default is 'original_height'.
         original_width_key (str, optional): The key for the original video width. Default is 'original_width'.
         keys_to_remove ((list, int), optional): Keys which, for the sake of speed, will be removed before decoding. Default is None which means nothing will be removed.
+        enforce_additional_keys (list, optional): Which keys must be in each sample
 
     Returns:
         WebDataset: The processed webdataset.
@@ -89,6 +91,8 @@ def get_video_dataset(
 
     if decoder_kwargs is None:
         decoder_kwargs = {}
+    if enforce_additional_keys is None:
+        enforce_additional_keys = ["txt"]
 
     additional_decoder_kwargs = {}
     if cuts_key:
@@ -108,7 +112,10 @@ def get_video_dataset(
     unused_key_removal = UnusedKeyRemover(keys=keys_to_remove)
     dset = dset.map(unused_key_removal, handler=wds.warn_and_continue)
 
-    key_filter = KeyFilter(video_key=video_key)
+    # TODO: organize this such that you don't always need video.
+    # should work with audio-text, just text or whatever you might want
+    enforce_keys = [video_key] + enforce_additional_keys
+    key_filter = KeyFilter(enforce_keys)
     dset = dset.select(key_filter)
 
     if cuts_key:

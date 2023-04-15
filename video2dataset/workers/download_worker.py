@@ -59,6 +59,10 @@ class DownloadWorker:
         cuts_are_clips,
         encode_formats,
         cut_framerates,
+        cut_detector_threshold,
+        cut_detector_min_scene_len,
+        min_clip_length,
+        precise_clipping,
         oom_clip_count=5,
     ) -> None:
         self.sample_writer_class = sample_writer_class
@@ -74,12 +78,21 @@ class DownloadWorker:
 
         self.data_reader = VideoDataReader(video_size, audio_rate, timeout, tmp_dir, yt_metadata_args, encode_formats)
 
-        self.clipping_subsampler = ClippingSubsampler(oom_clip_count, encode_formats)
+        self.clipping_subsampler = ClippingSubsampler(
+            oom_clip_count, encode_formats, min_length=min_clip_length, precise=precise_clipping
+        )
         self.cut_detection_mode = cut_detection_mode
         self.cut_framerates = cut_framerates
         self.detect_cuts = detect_cuts
+        self.cut_detector_threshold = cut_detector_threshold
+        self.cut_detector_min_scene_len = cut_detector_min_scene_len
         if detect_cuts:
-            self.cut_detector = CutDetectionSubsampler(cut_detection_mode=cut_detection_mode, framerates=cut_framerates)
+            self.cut_detector = CutDetectionSubsampler(
+                cut_detection_mode=cut_detection_mode,
+                framerates=cut_framerates,
+                threshold=cut_detector_threshold,
+                min_scene_len=cut_detector_min_scene_len,
+            )
         self.cuts_are_clips = cuts_are_clips
         self.noop_subsampler = NoOpSubsampler()
 
@@ -197,19 +210,18 @@ class DownloadWorker:
                     if self.captions_are_subtitles:  # create clips
                         subtitles = meta["yt_meta_dict"]["subtitles"]
                         meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
-                        meta["lines"] = [" ".join(line_dict["lines"]) for line_dict in subtitles]
-
                     elif self.detect_cuts:  # apply cut detection to get clips
                         meta["cuts"] = self.cut_detector(streams)
 
-                        if self.cuts_are_clips:
-                            cuts = (np.array(meta["cuts"]["cuts_original_fps"]) / meta["cuts"]["original_fps"]).tolist()
-                            meta["clips"] = cuts
+                    if self.cuts_are_clips:
+                        cuts = meta["cuts"]["cuts_original_fps"]
+                        native_fps = meta["cuts"]["original_fps"]
+                        meta["clips"] = (np.array(cuts) / native_fps).tolist()
 
                     # 1 video -> many videos (either clipping or noop which does identity broadcasting)
                     broadcast_subsampler = (
                         self.clipping_subsampler
-                        if ("clips" in self.column_list or self.captions_are_subtitles)
+                        if ("clips" in self.column_list or self.captions_are_subtitles or self.cuts_are_clips)
                         else self.noop_subsampler
                     )
                     subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
@@ -244,7 +256,7 @@ class DownloadWorker:
                     for subsampled_streams, meta in zip(subsampled_streams_list, metas):
                         meta["status"] = status
 
-                        text_caption = (sample_data[caption_indice] if caption_indice is not None else None,)
+                        text_caption = sample_data[caption_indice] if caption_indice is not None else None
                         if self.captions_are_subtitles:
                             text_caption = meta["yt_meta_dict"].pop("subtitles")
 
