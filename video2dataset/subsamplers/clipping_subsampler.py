@@ -24,25 +24,43 @@ class ClippingSubsampler:
     """
     Cuts videos up into segments according to the 'clips' metadata
 
+    Parameters:
+    oom_clip_count: int
+        The number of orders of magnitude for clip count, used for formatting clip keys.
+    encode_formats: dict
+        A dictionary mapping stream keys to their corresponding file extensions, e.g., {"video": "mp4", "audio": "mp3"}.
+    min_length: float optional (default=0.0)
+        Minimum length in seconds of a clip. Below this the subsampler will reject the clips
+    precise: bool, optional (default=False)
+        If True, provides more precise clipping at the expense of processing speed.
+        If False, prioritizes speed over precision.
+
     expects:
     - clips to be sorted in increasing order and non-overlapping
     - time to be in the format "%H:%M:%S.%f", or a number representing the second of the timestamp
     """
 
-    def __init__(self, oom_clip_count, encode_formats):
+    def __init__(self, oom_clip_count, encode_formats, min_length=0.0, precise=False):
         self.oom_clip_count = oom_clip_count
         self.encode_formats = encode_formats
+        self.min_length = min_length
+        self.precise = precise
 
     def __call__(self, streams, metadata):
         clips = metadata.pop("clips")
-        lines = metadata.pop("lines") if "lines" in metadata else None
 
         if isinstance(clips[0], float):  # make sure clips looks like [[start, end]] and not [start, end]
             clips = [clips]
 
-        ind = 2
-        # we assume there's always one clip which we want to take
+        clips = [(s, e) for s, e in clips if get_seconds(e) - get_seconds(s) >= self.min_length]
 
+        if len(clips) == 0:
+            # return an error
+            return {}, [], f"Video had no clips longer than {self.min_length}"
+
+        # TODO: look into this, this is only good when you 100% want to discard the first clip
+        # usually this is true but like I found that if you force_key_frames sometimes you're good
+        ind = 2
         s_p, e_p = clips[0]
         s_p, e_p = get_seconds(s_p), get_seconds(e_p)
         splits = [s_p, e_p]
@@ -53,17 +71,17 @@ class ClippingSubsampler:
         for s, e in clips[1:]:
             s, e = get_seconds(s), get_seconds(e)
 
-            if s - e_p <= 1.0:  # no one needs 1.0 second clips + creates less files
+            if s == e_p:  # situations like [0, 1], [1, 2], [2, 3] -> 1, 2
                 splits += [e]
                 take_inds.append(ind)
+                ind += 1
             else:
                 splits += [s, e]
                 take_inds.append(ind + 1)
-
-            ind += 1 if s - e_p <= 1.0 else 2
+                ind += 2
             e_p = e
-        segment_times = ",".join([str(spl) for spl in splits])
 
+        segment_times = ",".join([str(spl) for spl in splits])
         streams_clips = {}
 
         for k in streams.keys():
@@ -78,24 +96,31 @@ class ClippingSubsampler:
                 with open(os.path.join(tmpdir, f"input.{encode_format}"), "wb") as f:
                     f.write(stream_bytes)
                 try:
+                    kwargs = {
+                        "map": 0,
+                        "f": "segment",
+                        "segment_times": segment_times,
+                        "reset_timestamps": 1,
+                    }
+
+                    # Precision things, tradeoff for speed
+                    if not self.precise:
+                        kwargs["c"] = "copy"
+                    else:
+                        kwargs["force_key_frames"] = segment_times
+
                     _ = (
                         ffmpeg.input(f"{tmpdir}/input.{encode_format}")
-                        .output(
-                            f"{tmpdir}/clip_%d.{encode_format}",
-                            c="copy",
-                            map=0,
-                            f="segment",
-                            segment_times=segment_times,
-                            reset_timestamps=1,
-                        )
+                        .output(f"{tmpdir}/clip_%d.{encode_format}", **kwargs)
                         .run(capture_stdout=True, quiet=True)
                     )
 
                 except Exception as err:  # pylint: disable=broad-except
-                    return [], [], str(err)
+                    return {}, [], str(err)
 
                 stream_clips = glob.glob(f"{tmpdir}/clip*.{encode_format}")
-                stream_clips.sort()
+                stream_clips.sort(key=lambda x: int(x.split("_")[-1].split(".")[0]))
+
                 correct_clips = []
                 for clip_id, (clip, ind) in enumerate(zip(clips, take_inds)):
                     if ind < len(stream_clips):
@@ -103,7 +128,7 @@ class ClippingSubsampler:
                 # clips_lost = len(take_inds) - len(correct_clips) # TODO report this somehow
 
                 stream_clips, metadata_clips = [], []
-                for i, (clip_id, clip_span, clip_pth) in enumerate(correct_clips):
+                for clip_id, clip_span, clip_pth in correct_clips:
                     with open(clip_pth, "rb") as vid_f:
                         clip_bytes = vid_f.read()
                     stream_clips.append(clip_bytes)
@@ -115,8 +140,19 @@ class ClippingSubsampler:
                     # set the timeframe of this clip
                     meta_clip["clips"] = [clip_span]
                     meta_clip["key"] = f"{meta_clip['key']}_{clip_key}"
-                    if lines is not None:
-                        meta_clip["yt_meta_dict"]["subtitles"] = lines[i]
+
+                    if "subtitles" in meta_clip.get("yt_meta_dict", {}):
+                        clip_subtitles = []
+                        s_c, e_c = get_seconds(clip_span[0]), get_seconds(clip_span[1])
+                        for line in meta_clip["yt_meta_dict"]["subtitles"]:
+                            s, e = get_seconds(line["start"]), get_seconds(line["end"])
+                            if max(s_c, s) < min(e_c, e):
+                                clip_subtitles.append(line)
+                            elif s > e_c:
+                                break
+                        # full video subtitles might still be useful for context
+                        meta_clip["clip_subtitles"] = clip_subtitles
+
                     metadata_clips.append(meta_clip)
 
                 streams_clips[k] = stream_clips

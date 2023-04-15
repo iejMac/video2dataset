@@ -34,12 +34,17 @@ class LanguageFilter:
 class KeyFilter:
     """Filters the dataset based on the key"""
 
-    def __init__(self, video_key="mp4"):
-        self.video_key = video_key
+    def __init__(self, enforce_keys=None):
+        self.enforce_keys = enforce_keys
+        if enforce_keys is None:
+            self.enforce_keys = ["mp4", "txt"]
 
     def __call__(self, sample):
         try:
-            return self.video_key in sample and "txt" in sample
+            for key in self.enforce_keys:
+                if key not in sample:
+                    return False
+            return True
         except Exception as _:  # pylint: disable=broad-except
             return False
 

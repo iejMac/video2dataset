@@ -60,12 +60,13 @@ def video2dataset(
     cut_detection_mode: str = "longest",
     cut_framerates: list = None,
     cuts_are_clips: bool = False,
+    cut_detector_threshold: int = 27,
+    cut_detector_min_scene_len: int = 15,
     encode_formats: dict = None,
     stage: str = "download",
-    optical_flow_detector: str = "cv2",
-    optical_flow_fps: int = -1,
-    optical_flow_downsample_size: int = None,
-    optical_flow_dtype: str = "np.float16",
+    optical_flow_params: dict = None,
+    min_clip_length: float = 0.0,
+    precise_clipping: bool = False,
     sampler=None,
     slurm_cpus_per_task: int = 1,
     slurm_job_name: str = "video2dataset",
@@ -84,15 +85,6 @@ def video2dataset(
     create video dataset from video links
     """
     local_args = dict(locals())
-    try:
-        optical_flow_dtype = eval(optical_flow_dtype)
-    except Exception as e:
-        print(f"Invalid optical_flow_dtype specified: {optical_flow_dtype}. Please use valid one")
-        raise e
-
-    assert isinstance(
-        optical_flow_dtype, type
-    ), f"Invalid optical_flow_dtype specified: {optical_flow_dtype}. Please use valid one."
 
     if sampler is None:
         sampler = identity
@@ -121,13 +113,13 @@ def video2dataset(
 
     logger_process = LoggerProcess(output_folder, enable_wandb, wandb_project, config_parameters)
     tmp_path = output_folder + "/_tmp"
-    fs, tmp_dir = fsspec.core.url_to_fs(tmp_path)
-    if not fs.exists(tmp_dir):
-        fs.mkdir(tmp_dir)
+    fs, run_tmp_dir = fsspec.core.url_to_fs(tmp_path)
+    if not fs.exists(run_tmp_dir):
+        fs.mkdir(run_tmp_dir)
 
     def signal_handler(signal_arg, frame):  # pylint: disable=unused-argument
         try:
-            fs.rm(tmp_dir, recursive=True)
+            fs.rm(run_tmp_dir, recursive=True)
         except Exception as _:  # pylint: disable=broad-except
             pass
         logger_process.terminate()
@@ -202,6 +194,10 @@ def video2dataset(
             cut_detection_mode=cut_detection_mode,
             cut_framerates=cut_framerates,
             cuts_are_clips=cuts_are_clips,
+            cut_detector_threshold=cut_detector_threshold,
+            cut_detector_min_scene_len=cut_detector_min_scene_len,
+            min_clip_length=min_clip_length,
+            precise_clipping=precise_clipping,
         )
     elif stage == "subset":
         shard_iterator = OutputSharder(url_list, input_format, done_shards, sampler=sampler)  # type: ignore
@@ -212,9 +208,43 @@ def video2dataset(
             number_sample_per_shard=number_sample_per_shard,
             oom_shard_count=oom_shard_count,
             encode_formats=encode_formats,
+            captions_are_subtitles=captions_are_subtitles,
+            video_size=video_size,
+            resize_mode=resize_mode,
+            video_fps=video_fps,
+            audio_rate=audio_rate,
+            detect_cuts=detect_cuts,
+            cut_detection_mode=cut_detection_mode,
+            cut_framerates=cut_framerates,
+            cuts_are_clips=cuts_are_clips,
+            cut_detector_threshold=cut_detector_threshold,
+            cut_detector_min_scene_len=cut_detector_min_scene_len,
+            min_clip_length=min_clip_length,
+            precise_clipping=precise_clipping,
         )
     elif stage == "optical_flow":
         shard_iterator = OutputSharder(url_list, input_format, done_shards, sampler=sampler)  # type: ignore
+
+        if optical_flow_params is None:
+            optical_flow_params = {
+                "detector": "cv2",
+                "detector_args": None,
+                "fps": -1,
+                "downsample_size": None,
+                "dtype": "fp16",
+            }
+        else:
+            optical_flow_dtype = optical_flow_params.get("dtype", None)
+            if optical_flow_dtype:
+                assert optical_flow_dtype in [
+                    "fp16",
+                    "fp32",
+                ], "please select either fp16 or fp32 for optical flow dtype"
+            else:
+                optical_flow_params["dtype"] = "fp16"
+
+        is_slurm_task = "GLOBAL_RANK" in os.environ and distributor == "multiprocessing"
+
         worker = OpticalFlowWorker(  # type: ignore
             sample_writer_class=sample_writer_class,
             output_folder=output_folder,
@@ -222,10 +252,8 @@ def video2dataset(
             number_sample_per_shard=number_sample_per_shard,
             oom_shard_count=oom_shard_count,
             encode_formats=encode_formats,
-            detector=optical_flow_detector,
-            fps=optical_flow_fps,
-            downsample_size=optical_flow_downsample_size,
-            dtype=optical_flow_dtype,
+            optical_flow_params=optical_flow_params,
+            is_slurm_task=is_slurm_task,
         )
     else:
         raise ValueError(f"Invalid stage: {stage}")
@@ -253,7 +281,7 @@ def video2dataset(
     )
     logger_process.join()
     if not called_from_slurm:
-        fs.rm(tmp_dir, recursive=True)
+        fs.rm(run_tmp_dir, recursive=True)
 
 
 def main():
