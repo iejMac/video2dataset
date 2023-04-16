@@ -105,7 +105,7 @@ def get_video_dataset(
         video_decoder_cls = None
     else:
         dataset_cls = wds.WebDataset
-        video_decoder_cls = VideoDecorder
+        video_decoder_cls = VideoDecorder  # type: ignore
 
     dset = dataset_cls(urls, nodesplitter=wds.split_by_node, shardshuffle=shuffle, handler=wds.warn_and_continue)
 
@@ -131,7 +131,7 @@ def get_video_dataset(
     filters = [aesthetics_filter, language_filter, unsafe_filter]
 
     # Decoding
-    if decoder_kwargs != {}:
+    if video_decoder_cls is not None:
         dset = dset.decode(
             video_decoder_cls(**decoder_kwargs), handler=wds.warn_and_continue, **additional_decoder_kwargs
         ).map(reassemble, handler=wds.warn_and_continue)
