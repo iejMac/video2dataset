@@ -60,7 +60,6 @@ class ClippingSubsampler:
 
         start_0 = (get_seconds(clips[0][0]) == 0.0)
 
-        # ind = 2
         ind = 1 + int(not start_0)
         s_p, e_p = clips[0]
         s_p, e_p = get_seconds(s_p), get_seconds(e_p)
