@@ -6,7 +6,13 @@ from typing import List, Union
 from .custom_wds import WebDatasetWithChangedDecoder, dict_collation_fn
 from .transform import VideoResizer, CutsAdder, CustomTransforms
 from .video_decode import VideoDecorder, VideoDecorderWithCutDetection
-from .filters import KeyFilter, LanguageFilter, AestheticsFilter, UnsafeFilter, UnusedKeyFilter  # pylint: disable=unused-import
+from .filters import (
+    KeyFilter,
+    LanguageFilter,
+    AestheticsFilter,
+    UnsafeFilter,
+    UnusedKeyFilter,
+)  # pylint: disable=unused-import
 
 
 def reassemble(x):
