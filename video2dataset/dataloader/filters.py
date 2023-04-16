@@ -83,7 +83,7 @@ class UnsafeFilter:
                 valid = False
         return valid
 
-class UnusedKeyRemover:
+class UnusedKeyFilter:
      """Removes keys specified keys which are not used during loading and by that speeds up sampling"""
 
      def __init__(self, keys: Union[int, List[int], None] = None) -> None:
