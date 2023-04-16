@@ -58,17 +58,13 @@ class ClippingSubsampler:
             # return an error
             return {}, [], f"Video had no clips longer than {self.min_length}"
 
-        # TODO: look into this, this is only good when you 100% want to discard the first clip
-        # usually this is true but like I found that if you force_key_frames sometimes you're good
-
-        start_0 = (get_seconds(clips[0][0]) == 0)
+        start_0 = (get_seconds(clips[0][0]) == 0.0)
 
         # ind = 2
         ind = 1 + int(not start_0)
         s_p, e_p = clips[0]
         s_p, e_p = get_seconds(s_p), get_seconds(e_p)
-        # splits = [s_p, e_p]
-        splits = [s_p]*(not start_0) + [e_p]
+        splits = (not start_0) * [s_p]  + [e_p]
         # list of indicies of clips to take, used to discard non-contiguous sections
         take_inds = [int(not start_0)]
 
@@ -88,12 +84,6 @@ class ClippingSubsampler:
 
         segment_times = ",".join([str(spl) for spl in splits])
         streams_clips = {}
-
-        print("TAKE_INDS")
-        print(take_inds)
-        print(len(take_inds))
-        print("SEGMENT_TIMES")
-        print(segment_times)
 
         for k in streams.keys():
             stream_bytes = streams[k]
@@ -132,19 +122,11 @@ class ClippingSubsampler:
                 stream_clips = glob.glob(f"{tmpdir}/clip*.{encode_format}")
                 stream_clips.sort(key=lambda x: int(x.split("_")[-1].split(".")[0]))
 
-                print("STREAM")
-                print(stream_clips)
-                print(len(stream_clips))
-
                 correct_clips = []
                 for clip_id, (clip, ind) in enumerate(zip(clips, take_inds)):
                     if ind < len(stream_clips):
                         correct_clips.append((clip_id, clip, stream_clips[ind]))
                 # clips_lost = len(take_inds) - len(correct_clips) # TODO report this somehow
-
-                print("CORRECT")
-                print(correct_clips)
-                print(len(correct_clips))
 
                 stream_clips, metadata_clips = [], []
                 for clip_id, clip_span, clip_pth in correct_clips:
