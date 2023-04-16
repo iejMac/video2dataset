@@ -6,7 +6,7 @@ from typing import List, Union
 from .custom_wds import WebDatasetWithChangedDecoder, dict_collation_fn
 from .transform import VideoResizer, CutsAdder, CustomTransforms
 from .video_decode import VideoDecorder, VideoDecorderWithCutDetection
-from .filters import KeyFilter, LanguageFilter, AestheticsFilter, UnsafeFilter, UnusedKeysFilter  # pylint: disable=unused-import
+from .filters import KeyFilter, LanguageFilter, AestheticsFilter, UnsafeFilter, UnusedKeyFilter  # pylint: disable=unused-import
 
 
 def reassemble(x):
@@ -103,7 +103,7 @@ def get_video_dataset(
 
     dset = dataset_cls(urls, nodesplitter=wds.split_by_node, shardshuffle=shuffle, handler=wds.warn_and_continue)
 
-    dset = dset.repeat(repeat).shuffle(shuffle)
+    dset = dset.repeat(repeat).shuffle(shuffle, initial=shuffle)
 
     unused_key_filter = UnusedKeyFilter(keys=keys_to_remove)
     dset = dset.map(unused_key_filter, handler=wds.warn_and_continue)
