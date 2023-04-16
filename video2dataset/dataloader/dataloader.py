@@ -83,7 +83,8 @@ def get_video_dataset(
         original_height_key (str, optional): The key for the original video height. Default is 'original_height'.
         original_width_key (str, optional): The key for the original video width. Default is 'original_width'.
         enforce_additional_keys (list, optional): Which keys must be in each sample
-        keys_to_remove ((list, int), optional): Keys which, for the sake of speed, will be removed before decoding. Default is None which means nothing will be removed.
+        keys_to_remove ((list, int), optional): Keys which, for the sake of speed, will be
+            removed before decoding. Default is None which means nothing will be removed.
     Returns:
         WebDataset: The processed webdataset.
     """
