@@ -140,11 +140,18 @@ class RAFTDetector:
         frame1, frame2 = padder.pad(frame1, frame2)
         return frame1, frame2, scaling_factor
 
-    def __call__(self, frame1, frame2):
-        frame1, frame2, scaling_factor = self.preprocess(frame1, frame2)
+    def __call__(self, prvs_frames, next_frames):
+        preprocessed_data = [self.preprocess(prvs, next) for prvs, next in zip(prvs_frames, next_frames)]
+        prvs_frames, next_frames, scaling_factors = zip(*preprocessed_data)
+        prvs_frames = torch.cat(prvs_frames, dim=0)
+        next_frames = torch.cat(next_frames, dim=0)
+        print(prvs_frames.shape, flush=True)
+
         with torch.no_grad():
-            _, flow_up = self.model(frame1, frame2, iters=20, test_mode=True)
-        return flow_up[0].permute(1, 2, 0).cpu().numpy() * scaling_factor
+            _, flows_up = self.model(prvs_frames, next_frames, iters=20, test_mode=True)
+
+        flows_up = [flow_up.permute(1, 2, 0).cpu().numpy() * scaling_factor for flow_up, scaling_factor in zip(flows_up, scaling_factors)]
+        return flows_up
 
 
 class Cv2Detector:
@@ -221,7 +228,8 @@ class OpticalFlowSubsampler:
         fps (int): The target frames per second. Defaults to -1 (original FPS).
     """
 
-    def __init__(self, detector="cv2", fps=-1, args=None, downsample_size=None, dtype="fp16", is_slurm_task=False):
+    def __init__(self, detector="cv2", fps=-1, args=None, downsample_size=None, dtype="fp16", is_slurm_task=False, batch_size=16):
+        self.batch_size = batch_size
         if detector == "cv2":
             if args:
                 pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags = args
@@ -258,23 +266,27 @@ class OpticalFlowSubsampler:
             take_every_nth = 1
         else:
             take_every_nth = int(round(original_fps / self.fps))
+        selected_frames = []
+        for idx in range(len(frames)):
+            if idx%take_every_nth == 0:
+                selected_frames.append(idx)
 
         try:
-            frame1 = frames[0]
-            prvs = frame1
-            fc = 0
+            prvs_frames = []
+            next_frames = []
 
-            for frame2 in frames[1:]:
-                fc += 1
-                if fc % take_every_nth != 0:
-                    continue
+            for fc, (frame1_idx, frame2_idx) in enumerate(zip(selected_frames[:-1], selected_frames[1:])):
+                prvs_frames.append(frames[frame1_idx])
+                next_frames.append(frames[frame2_idx])
 
-                next_frame = frame2
+                if len(prvs_frames) == self.batch_size:
+                    flows = self.detector(prvs_frames, next_frames)
+                    optical_flow.extend(flows)
+                    prvs_frames, next_frames = [], []
 
-                flow = self.detector(prvs, next_frame)
-
-                optical_flow.append(flow)
-                prvs = next_frame
+            if prvs_frames:
+                flows = self.detector(prvs_frames, next_frames)
+                optical_flow.extend(flows)
 
             opt_flow = np.array(optical_flow)
             mean_magnitude_per_frame = np.linalg.norm(opt_flow, axis=-1).mean(axis=(1, 2))
