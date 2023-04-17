@@ -3,6 +3,7 @@ import os
 import re
 import numpy as np
 import torch
+import torch.nn.functional as F
 import decord
 import tempfile
 from typing import Iterable
@@ -41,10 +42,19 @@ class VideoDecorder(AbstractVideoDecoder):
     """Basic video decoder that uses decord"""
 
     def __init__(
-        self, n_frames=None, fps=None, num_threads=4, tmpdir="/scratch/", min_fps=1, max_fps=32, return_bytes=False
+        self,
+        n_frames=None,
+        fps=None,
+        num_threads=4,
+        tmpdir="/scratch/",
+        min_fps=1,
+        max_fps=32,
+        return_bytes=False,
+        pad_frames=False,
     ):
         super().__init__()
         self.n_frames = n_frames
+        self.pad_frames = pad_frames
         if fps is not None and not isinstance(fps, Iterable):
             fps = [
                 fps,
@@ -76,6 +86,7 @@ class VideoDecorder(AbstractVideoDecoder):
         info = (
             f'Decoding video clips of length {self.n_frames} with "decord".'
             + f" Subsampling clips to {infostring1} fps {infostring2}"
+            + self.pad_frames * "Padding videos that are too short"
         )
 
         print(info)
@@ -85,7 +96,9 @@ class VideoDecorder(AbstractVideoDecoder):
 
     def get_frames(self, reader, n_frames, stride, **kwargs):  # pylint: disable=arguments-differ
         if n_frames * stride > len(reader):
-            raise ValueError("video clip not long enough for decoding")
+            if not self.pad_frames:
+                raise ValueError("video clip not long enough for decoding")
+            n_frames = len(reader) // stride
 
         # sample frame start and choose scene
         if n_frames == len(reader):
@@ -94,6 +107,11 @@ class VideoDecorder(AbstractVideoDecoder):
             frame_start = self.prng.choice(int(len(reader)) - int(n_frames * stride), 1).item()
         # only decode the frames which are actually needed
         frames = reader.get_batch(np.arange(frame_start, frame_start + n_frames * stride, stride).tolist())
+
+        # TODO: maybe its useful to inform the user which frmaes are padded
+        # can just output first_pad_index or a mask or something
+        if self.pad_frames and frames.shape[0] < self.n_frames:
+            frames = F.pad(frames, (0, 0) * 3 + (0, self.n_frames - frames.shape[0]))
 
         return frames, frame_start
 
