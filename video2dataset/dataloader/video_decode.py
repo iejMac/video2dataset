@@ -42,7 +42,15 @@ class VideoDecorder(AbstractVideoDecoder):
     """Basic video decoder that uses decord"""
 
     def __init__(
-        self, n_frames=None, fps=None, num_threads=4, tmpdir="/scratch/", min_fps=1, max_fps=32, return_bytes=False, pad_frames=False
+        self,
+        n_frames=None,
+        fps=None,
+        num_threads=4,
+        tmpdir="/scratch/",
+        min_fps=1,
+        max_fps=32,
+        return_bytes=False,
+        pad_frames=False,
     ):
         super().__init__()
         self.n_frames = n_frames
@@ -78,7 +86,7 @@ class VideoDecorder(AbstractVideoDecoder):
         info = (
             f'Decoding video clips of length {self.n_frames} with "decord".'
             + f" Subsampling clips to {infostring1} fps {infostring2}"
-            + self.pad_frames * f"Padding videos that are too short"
+            + self.pad_frames * "Padding videos that are too short"
         )
 
         print(info)
@@ -103,7 +111,7 @@ class VideoDecorder(AbstractVideoDecoder):
         # TODO: maybe its useful to inform the user which frmaes are padded
         # can just output first_pad_index or a mask or something
         if self.pad_frames and frames.shape[0] < self.n_frames:
-            frames = F.pad(frames, (0, 0)*3 + (0, self.n_frames - frames.shape[0]))
+            frames = F.pad(frames, (0, 0) * 3 + (0, self.n_frames - frames.shape[0]))
 
         return frames, frame_start
 
