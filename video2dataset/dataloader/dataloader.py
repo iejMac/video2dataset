@@ -6,7 +6,13 @@ from .custom_wds import WebDatasetWithChangedDecoder, dict_collation_fn
 from .transform import VideoResizer, CutsAdder, CustomTransforms
 from .video_decode import VideoDecorder, VideoDecorderWithCutDetection
 from .audio_decode import AudioDecoder
-from .filters import KeyFilter, LanguageFilter, AestheticsFilter, UnsafeFilter  # pylint: disable=unused-import
+from .filters import (
+    KeyFilter,
+    LanguageFilter,
+    AestheticsFilter,
+    UnsafeFilter,
+    UnusedKeyFilter,
+)  # pylint: disable=unused-import
 
 
 def reassemble(x):
