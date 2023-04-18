@@ -53,7 +53,6 @@ def get_video_dataset(
     original_width_key="original_width",
     enforce_additional_keys=None,
 ):
-
     """
     Generates a webdataset given the specified parameters.
 
@@ -91,11 +90,11 @@ def get_video_dataset(
         dataset_cls = WebDatasetWithChangedDecoder
         video_decoder_cls = partial(VideoDecorderWithCutDetection, cuts_key=cuts_key)
         additional_decoder_kwargs = {"passthrough_keys": [video_key]}
-    elif video_key in ['mp3', 'wav', 'flac', 'm4a']:
+    elif video_key in ["mp3", "wav", "flac", "m4a"]:
         dataset_cls = wds.WebDataset
         video_decoder_cls = AudioDecoder
         if decoder_kwargs == {}:
-            decoder_kwargs = {'sample_rate': None}
+            decoder_kwargs = {"sample_rate": None}
     elif decoder_kwargs == {}:  # nothing means just read the bytes
         dataset_cls = wds.WebDataset
         video_decoder_cls = None

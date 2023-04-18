@@ -15,7 +15,6 @@ class OutputSharder:
     """
 
     def __init__(self, shard_list, input_format, done_shards, sampler=lambda x: x) -> None:
-
         self.input_format = input_format
         self.done_shards = done_shards
         self.shard_list = list(braceexpand.braceexpand(shard_list))
