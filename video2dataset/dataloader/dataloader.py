@@ -5,6 +5,7 @@ from functools import partial
 from .custom_wds import WebDatasetWithChangedDecoder, dict_collation_fn
 from .transform import VideoResizer, CutsAdder, CustomTransforms
 from .video_decode import VideoDecorder, VideoDecorderWithCutDetection
+from .audio_decode import AudioDecoder
 from .filters import KeyFilter, LanguageFilter, AestheticsFilter, UnsafeFilter  # pylint: disable=unused-import
 
 
@@ -90,6 +91,11 @@ def get_video_dataset(
         dataset_cls = WebDatasetWithChangedDecoder
         video_decoder_cls = partial(VideoDecorderWithCutDetection, cuts_key=cuts_key)
         additional_decoder_kwargs = {"passthrough_keys": [video_key]}
+    elif video_key in ['mp3', 'wav', 'flac', 'm4a']:
+        dataset_cls = wds.WebDataset
+        video_decoder_cls = AudioDecoder
+        if decoder_kwargs == {}:
+            decoder_kwargs = {'sample_rate': None}
     elif decoder_kwargs == {}:  # nothing means just read the bytes
         dataset_cls = wds.WebDataset
         video_decoder_cls = None
@@ -98,7 +104,6 @@ def get_video_dataset(
         video_decoder_cls = VideoDecorder
 
     dset = dataset_cls(urls, nodesplitter=wds.split_by_node, shardshuffle=shuffle, handler=wds.warn_and_continue)
-
     if repeat:
         dset = dset.repeat()
     if shuffle:
