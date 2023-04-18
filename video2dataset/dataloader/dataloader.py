@@ -103,10 +103,10 @@ def get_video_dataset(
         video_decoder_cls = VideoDecorder
 
     dset = dataset_cls(urls, nodesplitter=wds.split_by_node, shardshuffle=shuffle, handler=wds.warn_and_continue)
-    if repeat:
-        dset = dset.repeat()
-    if shuffle:
-        dset = dset.shuffle(shuffle)
+    dset = dset.repeat(repeat).shuffle(shuffle, initial=shuffle)
+
+    unused_key_filter = UnusedKeyFilter(keys=keys_to_remove)
+    dset = dset.map(unused_key_filter, handler=wds.warn_and_continue)
 
     # TODO: organize this such that you don't always need video.
     # should work with audio-text, just text or whatever you might want
