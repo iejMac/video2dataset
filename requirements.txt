@@ -15,3 +15,4 @@ scenedetect[opencv]
 decord
 torch>=1.7.1,<2
 langdetect
+torchdata==0.6.0

@@ -3,7 +3,7 @@ import webdataset as wds
 from functools import partial
 from typing import List, Union
 
-from .custom_wds import WebDatasetWithChangedDecoder, dict_collation_fn
+from .custom_wds import WebDatasetWithChangedDecoder, ReturnAllWebDataset, dict_collation_fn, AddDefaultFields, S3TorchDataWebdataset
 from .transform import VideoResizer, CutsAdder, CustomTransforms
 from .video_decode import VideoDecorder, VideoDecorderWithCutDetection
 from .filters import (
@@ -40,7 +40,7 @@ def reassemble(x):
 
 
 def get_video_dataset(
-    urls,
+    urls:Union[str,List[str]],
     batch_size,
     shuffle=0,
     repeat=1,
@@ -59,13 +59,15 @@ def get_video_dataset(
     original_width_key="original_width",
     keys_to_remove: Union[int, List[int], None] = None,
     enforce_additional_keys=None,
+    return_always:bool=False,
+    keys_to_return:list=None
 ):
 
     """
     Generates a webdataset given the specified parameters.
 
     Parameters:
-        urls (str): The path to the dataset.
+        urls (str, list[str]): The path to the dataset.
         batch_size (int): The number of samples per batch.
         shuffle (int, optional): Shuffle buffer size. Default is 0 means no shuffling.
         repeat (int, optional): Whether to repeat the dataset. Default is 1. -1 means repeating infinitely
@@ -95,18 +97,33 @@ def get_video_dataset(
         enforce_additional_keys = ["txt"]
 
     additional_decoder_kwargs = {}
+    
+    if isinstance(urls, str):
+        urls = [urls]
+
+
     if cuts_key:
         dataset_cls = WebDatasetWithChangedDecoder
         video_decoder_cls = partial(VideoDecorderWithCutDetection, cuts_key=cuts_key)
         additional_decoder_kwargs = {"passthrough_keys": [video_key]}
+    elif urls[0].replace(" ", "").startswith('s3://'):
+        # if return_always:
+        #     raise NotImplementedError('return always not yet implemented for S3TorchDataset')
+        if not shuffle:
+            # this means not shuffling for TorchData
+            shuffle = 1
+        dataset_cls = S3TorchDataWebdataset
+        video_decoder_cls = VideoDecorder
     elif decoder_kwargs == {}:  # nothing means just read the bytes
-        dataset_cls = wds.WebDataset
+        if isinstance(urls, list):
+            urls = wds.shardlists.expand_urls(urls)
+        dataset_cls = partial(wds.WebDataset, nodesplitter=wds.split_by_node) #if not return_always else partial(ReturnAllWebDataset, suffixes=keys_to_return)
         video_decoder_cls = None
     else:
         dataset_cls = wds.WebDataset
         video_decoder_cls = VideoDecorder
 
-    dset = dataset_cls(urls, nodesplitter=wds.split_by_node, shardshuffle=shuffle, handler=wds.warn_and_continue)
+    dset = dataset_cls(urls, shardshuffle=shuffle, handler=wds.warn_and_continue)
 
     dset = dset.repeat(repeat).shuffle(shuffle)
     unused_key_removal = UnusedKeyRemover(keys=keys_to_remove)
