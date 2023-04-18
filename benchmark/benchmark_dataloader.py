@@ -33,8 +33,8 @@ def benchmark_train_dl(num_frames, num_workers, bs=1, num_threads=4, resize_size
 
 
 if __name__ == "__main__":
-    print("Benchmarking bytes dataloader...")
-    print(benchmark_bytes_dl())
+    # print("Benchmarking bytes dataloader...")
+    # print(benchmark_bytes_dl())
 
     print("# benchmarking without resizing")
     for nf in [8, 16, 32]:
