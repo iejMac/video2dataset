@@ -7,6 +7,8 @@ from video2dataset.dataloader import get_video_dataset
 
 # Benchmark videos are the WebVid validation split (5000 videos)
 SHARDS = "examples/dataset/{00000..00004}.tar"
+
+
 # WEBVID = "pipe:aws s3 cp s3://stability-west/webvid-10M/{00000..00001}.tar -"
 def benchmark_train_dl(num_frames, num_workers, bs=1, num_threads=4, resize_size=None, crop_size=None):
     from argparse import Namespace

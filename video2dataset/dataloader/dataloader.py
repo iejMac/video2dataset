@@ -61,7 +61,6 @@ def get_video_dataset(
     keys_to_remove: Union[int, List[int], None] = None,
     enforce_additional_keys=None,
 ):
-
     """
     Generates a webdataset given the specified parameters.
     Parameters:
@@ -103,7 +102,7 @@ def get_video_dataset(
         additional_decoder_kwargs = {"passthrough_keys": [video_key]}
     elif video_key in ["mp3", "wav", "flac", "m4a"]:
         dataset_cls = wds.WebDataset
-        video_decoder_cls = AudioDecoder    # type: ignore
+        video_decoder_cls = AudioDecoder  # type: ignore
         if decoder_kwargs == {}:
             decoder_kwargs = {"sample_rate": None}
     elif decoder_kwargs == {}:  # nothing means just read the bytes
