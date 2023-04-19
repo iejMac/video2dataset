@@ -21,6 +21,7 @@ def get_seconds(t):
 
 
 def split_time_frame(s, e, max_length):
+    """splits range into n max_length segments"""
     time_format = "%H:%M:%S.%f"  # TODO: maybe paramaterize this?
     start_time, end_time = datetime.strptime(s, time_format), datetime.strptime(e, time_format)
     time_difference = (end_time - start_time).total_seconds()
