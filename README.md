@@ -113,6 +113,8 @@ This module exposes a single function `download` which takes the same arguments 
 * **stage** which stage of processing to execute in betweeen downloading + cheap subsampling and costly subsampling (default *"download"*)
 * **optical_flow_params** Dict containing parameters for optical flow detection. Keys can include *detector* ("cv2" or "raft", default "cv2"), *fps* (-1 or target fps, default *-1*), *detector_args* (additional args to pass to optical flow detector, default *None*), *downsample_size* (size to downsample shortest side of video to when detecting optical flow, default *None*), and *dtype* (datatype to store optical flow data in, default *np.float16*). Optional keys: *device* (only when using RAFT detector, lets you specify the device for the RAFT detector).
 * **min_clip_length** Minimum length in seconds of a clip. Below this the subsampler will reject the clips (default *0.0*)
+* **max_clip_length** Maximum length in seconds of a clip. Above this the ClippingSubsampler cuts up the long clip according to the max_clip_length_strategy (default *999999.0*)
+* **max_clip_length_strategy** Tells the ClippingSubsampler how to resolve clips that are too long. "first" means take the first max_clip_length clip, "all" means take all contiguous max_clip_length clips (default *"all"*)
 * **precise_clipping** If True, provides more precise clipping at the expense of processing speed (default *False*)
 ## Downloading YouTube Metadata
 
