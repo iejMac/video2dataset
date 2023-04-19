@@ -58,14 +58,14 @@ class ClippingSubsampler:
             # return an error
             return {}, [], f"Video had no clips longer than {self.min_length}"
 
-        # TODO: look into this, this is only good when you 100% want to discard the first clip
-        # usually this is true but like I found that if you force_key_frames sometimes you're good
-        ind = 2
+        start_0 = get_seconds(clips[0][0]) == 0.0
+
+        ind = 1 + int(not start_0)
         s_p, e_p = clips[0]
         s_p, e_p = get_seconds(s_p), get_seconds(e_p)
-        splits = [s_p, e_p]
+        splits = (not start_0) * [s_p] + [e_p]
         # list of indicies of clips to take, used to discard non-contiguous sections
-        take_inds = [1]
+        take_inds = [int(not start_0)]
 
         # TODO: make nicer
         for s, e in clips[1:]:
