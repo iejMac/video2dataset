@@ -23,10 +23,7 @@ def get_seconds(t):
 def split_time_frame(s, e, max_length):
     time_d = e - s
     time_frames = [
-        (
-            s + i * max_length,
-            min(s + (i + 1) * max_length, e)
-        )
+        (s + i * max_length, min(s + (i + 1) * max_length, e))
         for i in range(int(time_d // max_length) + (1 if time_d % max_length > 0 else 0))
     ]
     return time_frames
