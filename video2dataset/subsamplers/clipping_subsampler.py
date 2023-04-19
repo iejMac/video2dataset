@@ -20,6 +20,21 @@ def get_seconds(t):
     return t_obj.second + t_obj.microsecond / 1e6 + t_obj.minute * 60 + t_obj.hour * 3600
 
 
+def split_time_frame(s, e, max_length):
+    time_format = "%H:%M:%S.%f"  # TODO: maybe paramaterize this?
+    start_time, end_time = datetime.strptime(s, time_format), datetime.strptime(e, time_format)
+    time_difference = (end_time - start_time).total_seconds()
+    
+    time_frames = [
+        (
+            (start_time + timedelta(seconds=i * max_length)).strftime(time_format),
+            (start_time + timedelta(seconds=min((i + 1) * max_length, time_difference))).strftime(time_format)
+        )
+        for i in range(int(time_difference // max_length) + (1 if time_difference % max_length > 0 else 0))
+    ]
+    return time_frames
+
+
 class ClippingSubsampler:
     """
     Cuts videos up into segments according to the 'clips' metadata
@@ -31,6 +46,11 @@ class ClippingSubsampler:
         A dictionary mapping stream keys to their corresponding file extensions, e.g., {"video": "mp4", "audio": "mp3"}.
     min_length: float optional (default=0.0)
         Minimum length in seconds of a clip. Below this the subsampler will reject the clips
+    max_length: float optional (default=999999.0)
+        Maximum clip length, if exceeded resolve according to max_length_strategy
+    max_length_strategy: str optional (defaul="all")
+        "all" - cut up long clip into as many clips of max_length as possible
+        "first" - take the first max_length clip from the long clip
     precise: bool, optional (default=False)
         If True, provides more precise clipping at the expense of processing speed.
         If False, prioritizes speed over precision.
@@ -40,10 +60,11 @@ class ClippingSubsampler:
     - time to be in the format "%H:%M:%S.%f", or a number representing the second of the timestamp
     """
 
-    def __init__(self, oom_clip_count, encode_formats, min_length=0.0, precise=False):
+    def __init__(self, oom_clip_count, encode_formats, min_length=0.0, max_length=999999.0, max_length_strategy="all", precise=False):
         self.oom_clip_count = oom_clip_count
         self.encode_formats = encode_formats
         self.min_length = min_length
+        self.max_length, self.max_length_strategy = max_length, max_length_strategy
         self.precise = precise
 
     def __call__(self, streams, metadata):
@@ -52,7 +73,13 @@ class ClippingSubsampler:
         if isinstance(clips[0], float):  # make sure clips looks like [[start, end]] and not [start, end]
             clips = [clips]
 
-        clips = [(s, e) for s, e in clips if get_seconds(e) - get_seconds(s) >= self.min_length]
+        filtered_clips = []
+        for s, e in clips:
+            max_len_clips = split_time_frame(s, e, self.max_length)
+            last_time_d = get_seconds(max_len_clips[-1][1]) - get_seconds(max_len_clips[-1][0])
+            max_len_clips = max_len_clips if last_time_d >= self.min_length else max_len_clips[:-1]
+            filtered_clips += max_len_clips
+        clips = filtered_clips
 
         if len(clips) == 0:
             # return an error
