@@ -16,3 +16,4 @@ decord
 torch>=1.7.1,<2
 langdetect
 soundfile
+torchaudio
