@@ -33,6 +33,7 @@ class AudioDecoder:
         extension = re.sub(r".*[.]", "", key)
         if extension not in "mp3 wav flac m4a".split():
             return None
+
         additional_info = dict()
         if extension != 'wav':
             wav_bytes = audio_to_wav(data)
