@@ -78,6 +78,10 @@ class ClippingSubsampler:
             max_len_clips = split_time_frame(s, e, self.max_length)
             last_time_d = get_seconds(max_len_clips[-1][1]) - get_seconds(max_len_clips[-1][0])
             max_len_clips = max_len_clips if last_time_d >= self.min_length else max_len_clips[:-1]
+
+            if max_length_strategy == "first":
+                max_len_clips = max_len_clips[:1]
+
             filtered_clips += max_len_clips
         clips = filtered_clips
 
