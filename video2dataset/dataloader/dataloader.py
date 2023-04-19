@@ -11,7 +11,7 @@ from .filters import (
     LanguageFilter,
     AestheticsFilter,
     UnsafeFilter,
-    UnusedKeyRemover,
+    UnusedKeyFilter,
 )  # pylint: disable=unused-import
 
 
@@ -86,7 +86,8 @@ def get_video_dataset(
         original_width_key (str, optional): The key for the original video width. Default is 'original_width'.
         keys_to_remove ((list, int), optional): Keys which, for the sake of speed, will be removed before decoding. Default is None which means nothing will be removed.
         enforce_additional_keys (list, optional): Which keys must be in each sample
-
+        keys_to_remove ((list, int), optional): Keys which, for the sake of speed, will be
+            removed before decoding. Default is None which means nothing will be removed.
     Returns:
         WebDataset: The processed webdataset.
     """
@@ -95,6 +96,8 @@ def get_video_dataset(
         decoder_kwargs = {}
     if enforce_additional_keys is None:
         enforce_additional_keys = ["txt"]
+    if keys_to_remove is None:
+        keys_to_remove = []
 
     additional_decoder_kwargs = {}
     
@@ -121,13 +124,14 @@ def get_video_dataset(
         video_decoder_cls = None
     else:
         dataset_cls = wds.WebDataset
-        video_decoder_cls = VideoDecorder
+        video_decoder_cls = VideoDecorder  # type: ignore
 
     dset = dataset_cls(urls, shardshuffle=shuffle, handler=wds.warn_and_continue)
 
-    dset = dset.repeat(repeat).shuffle(shuffle)
-    unused_key_removal = UnusedKeyRemover(keys=keys_to_remove)
-    dset = dset.map(unused_key_removal, handler=wds.warn_and_continue)
+    dset = dset.repeat(repeat).shuffle(shuffle, initial=shuffle)
+
+    unused_key_filter = UnusedKeyFilter(keys=keys_to_remove)
+    dset = dset.map(unused_key_filter, handler=wds.warn_and_continue)
 
     # TODO: organize this such that you don't always need video.
     # should work with audio-text, just text or whatever you might want
@@ -146,7 +150,7 @@ def get_video_dataset(
     filters = [aesthetics_filter, language_filter, unsafe_filter]
 
     # Decoding
-    if decoder_kwargs != {}:
+    if video_decoder_cls is not None:
         dset = dset.decode(
             video_decoder_cls(**decoder_kwargs), handler=wds.warn_and_continue, **additional_decoder_kwargs
         ).map(reassemble, handler=wds.warn_and_continue)
