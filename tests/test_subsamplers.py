@@ -42,7 +42,14 @@ def test_clipping_subsampler(clips):
 
     min_length = 5.0 if clips == MULTI else 2.0
     max_length = 999999.0 if clips == MULTI else 3.0
-    subsampler = ClippingSubsampler(3, {"video": "mp4", "audio": "mp3"}, min_length=min_length, max_length=max_length, max_length_strategy="all", precise=False)
+    subsampler = ClippingSubsampler(
+        3,
+        {"video": "mp4", "audio": "mp3"},
+        min_length=min_length,
+        max_length=max_length,
+        max_length_strategy="all",
+        precise=False,
+    )
 
     metadata = {
         "key": "000",
