@@ -1,11 +1,11 @@
 """video dataset creation"""
 import webdataset as wds
 from functools import partial
-from typing import List, Union
 
 from .custom_wds import WebDatasetWithChangedDecoder, dict_collation_fn
 from .transform import VideoResizer, CutsAdder, CustomTransforms
 from .video_decode import VideoDecorder, VideoDecorderWithCutDetection
+from .audio_decode import AudioDecoder
 from .filters import (
     KeyFilter,
     LanguageFilter,
@@ -42,8 +42,8 @@ def reassemble(x):
 def get_video_dataset(
     urls,
     batch_size,
-    shuffle=0,
-    repeat=1,
+    shuffle=False,
+    repeat=False,
     drop_last=False,
     video_key="mp4",
     cuts_key=None,
@@ -57,18 +57,16 @@ def get_video_dataset(
     random_crop=False,
     original_height_key="original_height",
     original_width_key="original_width",
-    keys_to_remove: Union[int, List[int], None] = None,
     enforce_additional_keys=None,
 ):
-
     """
     Generates a webdataset given the specified parameters.
 
     Parameters:
         urls (str): The path to the dataset.
         batch_size (int): The number of samples per batch.
-        shuffle (int, optional): Shuffle buffer size. Default is 0 means no shuffling.
-        repeat (int, optional): Whether to repeat the dataset. Default is 1. -1 means repeating infinitely
+        shuffle (bool, optional): Whether to shuffle the dataset. Default is False.
+        repeat (bool, optional): Whether to repeat the dataset. Default is False.
         drop_last (bool, optional): Whether to drop the last incomplete batch. Default is False.
         video_key (str, optional): The key for video files. Default is 'mp4'.
         cuts_key (str, optional): The key for cut detection. Default is None.
@@ -83,8 +81,7 @@ def get_video_dataset(
         original_height_key (str, optional): The key for the original video height. Default is 'original_height'.
         original_width_key (str, optional): The key for the original video width. Default is 'original_width'.
         enforce_additional_keys (list, optional): Which keys must be in each sample
-        keys_to_remove ((list, int), optional): Keys which, for the sake of speed, will be
-            removed before decoding. Default is None which means nothing will be removed.
+
     Returns:
         WebDataset: The processed webdataset.
     """
@@ -93,23 +90,25 @@ def get_video_dataset(
         decoder_kwargs = {}
     if enforce_additional_keys is None:
         enforce_additional_keys = ["txt"]
-    if keys_to_remove is None:
-        keys_to_remove = []
 
     additional_decoder_kwargs = {}
     if cuts_key:
         dataset_cls = WebDatasetWithChangedDecoder
         video_decoder_cls = partial(VideoDecorderWithCutDetection, cuts_key=cuts_key)
         additional_decoder_kwargs = {"passthrough_keys": [video_key]}
+    elif video_key in ["mp3", "wav", "flac", "m4a"]:
+        dataset_cls = wds.WebDataset
+        video_decoder_cls = AudioDecoder
+        if decoder_kwargs == {}:
+            decoder_kwargs = {"sample_rate": None}
     elif decoder_kwargs == {}:  # nothing means just read the bytes
         dataset_cls = wds.WebDataset
         video_decoder_cls = None
     else:
         dataset_cls = wds.WebDataset
-        video_decoder_cls = VideoDecorder  # type: ignore
+        video_decoder_cls = VideoDecorder
 
     dset = dataset_cls(urls, nodesplitter=wds.split_by_node, shardshuffle=shuffle, handler=wds.warn_and_continue)
-
     dset = dset.repeat(repeat).shuffle(shuffle, initial=shuffle)
 
     unused_key_filter = UnusedKeyFilter(keys=keys_to_remove)
@@ -132,7 +131,7 @@ def get_video_dataset(
     filters = [aesthetics_filter, language_filter, unsafe_filter]
 
     # Decoding
-    if video_decoder_cls is not None:
+    if decoder_kwargs != {}:
         dset = dset.decode(
             video_decoder_cls(**decoder_kwargs), handler=wds.warn_and_continue, **additional_decoder_kwargs
         ).map(reassemble, handler=wds.warn_and_continue)
