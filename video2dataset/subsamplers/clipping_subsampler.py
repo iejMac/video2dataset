@@ -20,12 +20,14 @@ def get_seconds(t):
     return t_obj.second + t_obj.microsecond / 1e6 + t_obj.minute * 60 + t_obj.hour * 3600
 
 
-def split_time_frame(s, e, max_length):
+def split_time_frame(s, e, min_length, max_length):
     time_d = e - s
     time_frames = [
         (s + i * max_length, min(s + (i + 1) * max_length, e))
         for i in range(int(time_d // max_length) + (1 if time_d % max_length > 0 else 0))
     ]
+    last_time_d = time_frames[-1][1] - time_frames[-1][0]
+    time_frames = time_frames if last_time_d >= min_length else time_frames[:-1]
     return time_frames
 
 
@@ -77,9 +79,7 @@ class ClippingSubsampler:
 
         filtered_clips = []
         for s, e in clips:
-            max_len_clips = split_time_frame(get_seconds(s), get_seconds(e), self.max_length)
-            last_time_d = max_len_clips[-1][1] - max_len_clips[-1][0]
-            max_len_clips = max_len_clips if last_time_d >= self.min_length else max_len_clips[:-1]
+            max_len_clips = split_time_frame(get_seconds(s), get_seconds(e), self.min_length, self.max_length)
 
             if self.max_length_strategy == "first":
                 max_len_clips = max_len_clips[:1]
