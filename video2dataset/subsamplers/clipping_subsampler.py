@@ -24,11 +24,11 @@ def split_time_frame(s, e, max_length):
     time_format = "%H:%M:%S.%f"  # TODO: maybe paramaterize this?
     start_time, end_time = datetime.strptime(s, time_format), datetime.strptime(e, time_format)
     time_difference = (end_time - start_time).total_seconds()
-    
+
     time_frames = [
         (
             (start_time + timedelta(seconds=i * max_length)).strftime(time_format),
-            (start_time + timedelta(seconds=min((i + 1) * max_length, time_difference))).strftime(time_format)
+            (start_time + timedelta(seconds=min((i + 1) * max_length, time_difference))).strftime(time_format),
         )
         for i in range(int(time_difference // max_length) + (1 if time_difference % max_length > 0 else 0))
     ]
@@ -60,7 +60,15 @@ class ClippingSubsampler:
     - time to be in the format "%H:%M:%S.%f", or a number representing the second of the timestamp
     """
 
-    def __init__(self, oom_clip_count, encode_formats, min_length=0.0, max_length=999999.0, max_length_strategy="all", precise=False):
+    def __init__(
+        self,
+        oom_clip_count,
+        encode_formats,
+        min_length=0.0,
+        max_length=999999.0,
+        max_length_strategy="all",
+        precise=False,
+    ):
         self.oom_clip_count = oom_clip_count
         self.encode_formats = encode_formats
         self.min_length = min_length
