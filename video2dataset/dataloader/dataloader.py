@@ -103,7 +103,7 @@ def get_video_dataset(
         additional_decoder_kwargs = {"passthrough_keys": [video_key]}
     elif video_key in ["mp3", "wav", "flac", "m4a"]:
         dataset_cls = wds.WebDataset
-        video_decoder_cls = AudioDecoder
+        video_decoder_cls = AudioDecoder    # type: ignore
         if decoder_kwargs == {}:
             decoder_kwargs = {"sample_rate": None}
     elif decoder_kwargs == {}:  # nothing means just read the bytes
@@ -114,6 +114,7 @@ def get_video_dataset(
         video_decoder_cls = VideoDecorder
 
     dset = dataset_cls(urls, nodesplitter=wds.split_by_node, shardshuffle=shuffle, handler=wds.warn_and_continue)
+    
     dset = dset.repeat(repeat).shuffle(shuffle, initial=shuffle)
 
     unused_key_filter = UnusedKeyFilter(keys=keys_to_remove)
