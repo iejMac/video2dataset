@@ -64,7 +64,9 @@ def test_clipping_subsampler(clips):
 
             key_ind += bool(min_length)  # threshold 5.0 omits only the first clip
 
-            assert clips[key_ind] == [s, e]  # correct order
+            s_target, e_target = clips[key_ind]
+            s_target, e_target = get_seconds(s_target), get_seconds(e_target)
+            assert [s_target, e_target] == [s, e]  # correct order
             assert get_seconds(e) - get_seconds(s) >= min_length
 
             s_s, e_s = get_seconds(s), get_seconds(e)

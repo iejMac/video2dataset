@@ -21,17 +21,13 @@ def get_seconds(t):
 
 
 def split_time_frame(s, e, max_length):
-    """splits range into n max_length segments"""
-    time_format = "%H:%M:%S.%f"  # TODO: maybe paramaterize this?
-    start_time, end_time = datetime.strptime(s, time_format), datetime.strptime(e, time_format)
-    time_difference = (end_time - start_time).total_seconds()
-
+    time_d = e - s
     time_frames = [
         (
-            (start_time + timedelta(seconds=i * max_length)).strftime(time_format),
-            (start_time + timedelta(seconds=min((i + 1) * max_length, time_difference))).strftime(time_format),
+            s + i * max_length,
+            min(s + (i + 1) * max_length, e)
         )
-        for i in range(int(time_difference // max_length) + (1 if time_difference % max_length > 0 else 0))
+        for i in range(int(time_d // max_length) + (1 if time_d % max_length > 0 else 0))
     ]
     return time_frames
 
@@ -84,11 +80,11 @@ class ClippingSubsampler:
 
         filtered_clips = []
         for s, e in clips:
-            max_len_clips = split_time_frame(s, e, self.max_length)
-            last_time_d = get_seconds(max_len_clips[-1][1]) - get_seconds(max_len_clips[-1][0])
+            max_len_clips = split_time_frame(get_seconds(s), get_seconds(e), self.max_length)
+            last_time_d = max_len_clips[-1][1] - max_len_clips[-1][0]
             max_len_clips = max_len_clips if last_time_d >= self.min_length else max_len_clips[:-1]
 
-            if max_length_strategy == "first":
+            if self.max_length_strategy == "first":
                 max_len_clips = max_len_clips[:1]
 
             filtered_clips += max_len_clips
