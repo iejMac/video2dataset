@@ -1,7 +1,21 @@
 """Custom WebDataset classes"""
+import os
 import numpy as np
+import random
+import tarfile
+import warnings
+import copy
+from io import BufferedIOBase
+from typing import Callable, Iterator, Tuple, cast, Optional, IO, Union, List
+
 import torch
+import torch.distributed as dist
 from torch.utils.data import IterableDataset
+from torch.utils.data.datapipes.iter import IterableWrapper
+from torch.utils.data.datapipes.utils.common import StreamWrapper
+from torchdata.datapipes.iter import S3FileLoader, IterDataPipe
+from torchdata.datapipes.iter import TarArchiveLoader
+from torchdata.datapipes.utils.common import validate_pathname_binary_tuple
 
 
 import webdataset as wds
@@ -147,3 +161,241 @@ class WebDatasetWithChangedDecoder(DataPipeline, FluidInterfaceWithChangedDecode
                     cache_dir=cache_dir,
                 )
             )
+
+
+def _s3dataset2samples(data, handler=wds.reraise_exception):
+    for sample in data:
+        try:
+            # construct webdataset-style sample
+            key = os.path.split(sample[0][0])[-1].split('.')[0]
+            url = os.path.split(sample[0][0])[0]
+            sample = {s[0].split('.')[-1]: s[1].read() for s in sample}
+            sample["__key__"] = key
+            sample["__url__"] = url
+
+            yield sample
+        except Exception as exn:
+            if handler(exn):
+                continue
+            else:
+                break
+
+
+s3dataset2samples = filters.pipelinefilter(_s3dataset2samples)
+
+
+class SeedSetter(IterDataPipe):
+    """
+    Resets the seed on call of __iter__ (invoked in the reset() method
+    """
+    def __init__(self, datapipe):
+        super().__init__()
+        self.datapipe = datapipe
+        self.is_init = False
+    # # def reset(self):
+    def reset(self):
+        # this will be called whenever __iter__ is invoked again (this should be kept in mind for shuffling
+        if not self.is_init:
+            # we only wanna do this once
+            self.is_init = True
+
+            worker_info = torch.utils.data.get_worker_info()
+
+            if worker_info:
+                worker_id = worker_info.id
+                newseed = np.random.get_state()[1][0] + worker_id
+                # print(f'New seed is {newseed}')
+                np.random.seed(newseed)
+                torch.random.manual_seed(newseed)
+                random.seed(newseed)
+
+
+    def __iter__(self)-> Iterator[Tuple[str, BufferedIOBase]]:
+        # self.set_seed()
+        # print(f'seed in worker init: {seed}')
+        for data in self.datapipe:
+            yield data
+
+class PrefixResampler(IterDataPipe):
+
+    def __init__(self, datapipe:IterDataPipe[str],prefixes:List[str],  ps:List[float] = None):
+        super().__init__()
+        urls = list(datapipe)
+        self._len = len(urls)
+        self.prefix2urls = {p: [] for p in set(prefixes)}
+        self.ps = {k:p for k, p in zip(prefixes,ps)}
+        if self.ps is None:
+            # uniformly distributed
+            self.ps = [1/len(self.prefix2urls)]*len(self.prefix2urls)
+
+
+        print(f'{self.__class__.__name__} got the following prefixes: {prefixes}')
+        for u in urls:
+            self.prefix2urls[list(filter(lambda x: u.startswith(x),prefixes))[0]].append(u)
+
+
+
+
+        for p in self.prefix2urls:
+            if not self.prefix2urls[p]:
+                print(f'removing prefix {p} from repefixes2urls since no_entries')
+                self.prefix2urls.pop(p)
+                self.ps.pop(p)
+
+        sum_ = sum(list(self.ps.values()))
+        self.ps = {k: self.ps[k] / sum_ for k in self.ps}
+
+        print(f'Got the following (prob, prefix) pairs for {len(self.ps)} prefixes {[(k, p) for k, p in self.ps.items()]}')
+
+        # internal iterator for one epoch
+        self.it = 0
+        self.url_pool = {}
+
+        assert len(self.ps) == len(self.prefix2urls) and np.isclose(sum(self.ps.values()),1.), 'Probabilities must have the same length than prefix and must sum up to 1'
+
+    def reset(self):
+        # this will be called whenever __iter__ is invoked again (this should be kept in mind for shuffling
+        print("refilling url_pool")
+        self.url_pool = copy.deepcopy(self.prefix2urls)
+        self.it=0
+
+    def refill_prefix(self, prefix):
+        # refill the buffer
+        self.url_pool[prefix] = copy.deepcopy(self.prefix2urls[prefix])
+
+
+    def __iter__(self):
+        while self.it < self.__len__():
+
+            # sample prefix with corresponding probs
+            prefix_id = np.random.choice(len(self.ps),1,p=list(self.ps.values())).item()
+            prefix = list(self.ps.keys())[prefix_id]
+            # refill the url pool for the selected prefix if empty
+            if not self.url_pool[prefix]:
+                self.refill_prefix(prefix)
+
+            # uniformly sample from all available urls for the selected prefix
+            url_id = np.random.randint(len(self.url_pool[prefix]), dtype=int)
+            url = self.url_pool[prefix].pop(url_id)
+
+            yield url
+            self.it += 1
+
+
+    def __len__(self):
+        return self._len
+
+
+
+class TarArchiveLoaderAndCloser(TarArchiveLoader):
+
+    def __init__(self, handler:Callable = wds.reraise_exception, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.handler = handler
+    def __iter__(self) -> Iterator[Tuple[str, BufferedIOBase]]:
+        for data in self.datapipe:
+            validate_pathname_binary_tuple(data)
+            pathname, data_stream = data
+            try:
+                if isinstance(data_stream, StreamWrapper) and isinstance(data_stream.file_obj, tarfile.TarFile):
+                    tar = data_stream.file_obj
+                else:
+                    reading_mode = (
+                        self.mode
+                        if hasattr(data_stream, "seekable") and data_stream.seekable()
+                        else self.mode.replace(":", "|")
+                    )
+                    # typing.cast is used here to silence mypy's type checker
+                    tar = tarfile.open(fileobj=cast(Optional[IO[bytes]], data_stream), mode=reading_mode)
+                for tarinfo in tar:
+                    if not tarinfo.isfile():
+                        continue
+                    extracted_fobj = tar.extractfile(tarinfo)
+                    if extracted_fobj is None:
+                        warnings.warn(f"failed to extract file {tarinfo.name} from source tarfile {pathname}")
+                        raise tarfile.ExtractError
+                    inner_pathname = os.path.normpath(os.path.join(pathname, tarinfo.name))
+                    yield inner_pathname, StreamWrapper(extracted_fobj, data_stream, name=inner_pathname)  # type: ignore[misc]
+
+                # close tarfile after it's been exceeded
+                tar.close()
+                del tar
+                # if isinstance(data_stream, StreamWrapper):
+                #     data_stream.autoclose()
+            except Exception as e:
+                warnings.warn(f"Unable to extract files from corrupted tarfile stream {pathname} due to: {e}, abort!")
+                if self.handler(e):
+                    if hasattr(e, "args") and len(e.args) > 0:
+                        e.args = (e.args[0] + " @ " + str(extracted_fobj),) + e.args[1:]
+                else:
+                    raise e
+            finally:
+                if isinstance(data_stream, StreamWrapper):
+                    data_stream.autoclose()
+                del data_stream
+
+
+def grouper(x):
+    return x[0].split("/")[-1].split(".")[0]
+
+
+class S3TorchDataWebdataset(DataPipeline,FluidInterfaceWithChangedDecode):
+
+    def __init__(self,urls:Union[List[str], str],
+                 repeat:int=None,
+                 shardshuffle:int=10000,
+                 sample_shuffle:int=0,
+                 buffer_size:int=None,
+                 resample_prefixes:bool=False,
+                 prefix_probs:Optional[List[float]]=None,
+                 handler:Callable=wds.reraise_exception):
+        super().__init__()
+
+        if isinstance(urls, (List, list)):
+            pass
+
+        elif isinstance(urls, str):
+            urls = [urls]
+        else:
+            raise TypeError('urls need to be path to a S3 prefix or list of paths to more than one prefixes')
+
+        # sharding filter ensures propper splitting for distributed environment
+        s3_datapipe = (IterableWrapper(urls)
+                       .list_files_by_s3(masks="**/*.tar")
+                       .sharding_filter())
+
+        # after this operation datapipes in the distinct processes contain different tars
+        global_rank = dist.get_rank()
+        world_size = dist.get_world_size()
+        s3_datapipe.apply_sharding(world_size,global_rank)
+        # synchronize data across processes to prevent hanging if sharding is uneven (which is likely)
+        s3_datapipe = s3_datapipe.fullsync()
+
+        # start shuffling accross shards for the first time to mix different datasets
+        # (can be the same for all workers, just as an additional shuffled initialization)
+        if shardshuffle>1 and not resample_prefixes:
+            raw_tars = list(s3_datapipe)
+            random.shuffle(raw_tars)
+            print('Loader got the following concrete shards (first 25 are shown)')
+            print(raw_tars[:25])
+            # back to datapipes
+            s3_datapipe = IterableWrapper(raw_tars)
+        elif resample_prefixes:
+            s3_datapipe = PrefixResampler(s3_datapipe, prefixes=urls, ps=prefix_probs)
+        s3_datapipe = SeedSetter(s3_datapipe)
+        s3_datapipe = (s3_datapipe
+                       .shuffle(buffer_size=shardshuffle)
+                       .cycle(count=repeat))
+
+        # s3_datapipe = s3_datapipe.sharding_filter()
+
+        # Load data with S3FileLoader
+        s3_datapipe = S3FileLoader(s3_datapipe, buffer_size=buffer_size)
+        # adapted TarLoader which closes open tarfile handles after exceeding them
+        s3_datapipe = (TarArchiveLoaderAndCloser(datapipe=s3_datapipe, handler=handler).
+                       groupby(grouper))
+        if sample_shuffle > 0:
+            s3_datapipe = s3_datapipe.shuffle(buffer_size=sample_shuffle)
+
+        self.append(s3_datapipe)
+        self.append(s3dataset2samples(handler=handler))
