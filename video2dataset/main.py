@@ -65,6 +65,9 @@ def video2dataset(
     encode_formats: dict = None,
     stage: str = "download",
     optical_flow_params: dict = None,
+    optical_flow_batched: bool = False,
+    optical_flow_subsampler_batch_size: int = None,
+    optical_flow_subsampler_n_frames: int = None,
     min_clip_length: float = 0.0,
     precise_clipping: bool = False,
     sampler=None,
@@ -252,6 +255,9 @@ def video2dataset(
             encode_formats=encode_formats,
             optical_flow_params=optical_flow_params,
             is_slurm_task=is_slurm_task,
+            batched=optical_flow_batched,
+            subsampler_batch_size=optical_flow_subsampler_batch_size,
+            n_frames=optical_flow_subsampler_n_frames,
         )
     else:
         raise ValueError(f"Invalid stage: {stage}")

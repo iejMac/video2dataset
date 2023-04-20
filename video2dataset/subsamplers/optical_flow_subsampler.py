@@ -59,9 +59,11 @@ def resize_image_with_aspect_ratio(image, target_shortest_side=16):
         new_width = target_shortest_side
         new_height = int(height * (target_shortest_side / width))
         scaling_factor = width / new_width
-    # Resize the image using the calculated dimensions
-    resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
 
+    # Resize the image using the calculated dimensions
+    image = image.astype(np.float32)
+    resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
+    print(resized_image, flush=True)
     return resized_image, scaling_factor
 
 
@@ -145,14 +147,12 @@ class RAFTDetector:
         prvs_frames, next_frames, scaling_factors = zip(*preprocessed_data)
         prvs_frames = torch.cat(prvs_frames, dim=0)
         next_frames = torch.cat(next_frames, dim=0)
-        print(prvs_frames.shape, flush=True)
 
         with torch.no_grad():
             _, flows_up = self.model(prvs_frames, next_frames, iters=20, test_mode=True)
 
         flows_up = [flow_up.permute(1, 2, 0).cpu().numpy() * scaling_factor for flow_up, scaling_factor in zip(flows_up, scaling_factors)]
         return flows_up
-
 
 class Cv2Detector:
     """
@@ -219,7 +219,94 @@ class Cv2Detector:
         )
 
 
+def get_detector_from_name_and_args(detector, args, downsample_size, is_slurm_task):
+    if detector == "cv2":
+        if args:
+            pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags = args
+            return Cv2Detector(
+                pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags, downsample_size=downsample_size
+            )
+        else:
+            return Cv2Detector(downsample_size=downsample_size)
+    elif detector == "raft":
+        assert args is not None
+        if is_slurm_task:
+            local_rank = os.environ["LOCAL_RANK"]
+            device = f"cuda:{local_rank}"
+            args["device"] = device
+        if not isinstance(args, AttrDict):
+            args = AttrDict(args)
+        return RAFTDetector(args, downsample_size=downsample_size)
+    else:
+        raise NotImplementedError()
+
+
 class OpticalFlowSubsampler:
+    def __init__(self, detector="cv2", fps=-1, args=None, downsample_size=None, dtype="fp16", is_slurm_task=False, batched=False):
+        
+        dtypes = {"fp16": np.float16, "fp32": np.float32}
+        self.detector = get_detector_from_name_and_args(detector, args, downsample_size, is_slurm_task)
+        self.fps = fps
+        self.downsample_size = downsample_size
+        self.dtype = dtypes[dtype]
+        self.batched = batched
+
+    def __call__(self, frames, n_frames_per_video=None):
+        optical_flow = []
+        if self.batched:
+            try:
+                assert n_frames_per_video is not None, "if using batched mode, must specify n_frames_per_video"
+                # Split the frames_batch into separate frames lists
+                prvs_frames = []
+                next_frames = []
+                padding_frame_counts = []
+
+                for vid in frames:
+                    # Identify padding frames
+                    padding_frame_count = np.sum([np.all(frame == 0) for frame in vid])
+                    padding_frame_counts.append(padding_frame_count)
+
+                    prvs_frames.extend(vid[:-1])
+                    next_frames.extend(vid[1:])
+                # Process all the frames at once
+
+                flows = self.detector(prvs_frames, next_frames)
+
+                # Reshape the flows to (batch_size, n_frames_per_video, height, width, 2)
+                flows = np.array(flows).reshape(len(frames), n_frames_per_video, *flows[0].shape)
+
+                metrics_list = []
+                for padding, video_flows in zip(padding_frame_counts, flows):
+                    mean_magnitude_per_frame = np.linalg.norm(video_flows, axis=-1).mean(axis=(1, 2)).astype(self.dtype)
+                    video_mean_magnitude = mean_magnitude_per_frame[:-padding].mean()
+                    video_mean_magnitude_per_frame = mean_magnitude_per_frame[:-padding].tolist()
+                    metrics_list.append([video_mean_magnitude, video_mean_magnitude_per_frame])
+
+                return flows.astype(self.dtype), metrics_list, None
+            except Exception as err:  # pylint: disable=broad-except
+                return [], None, str(err)
+        else:
+            try:
+                frames = frames_batch
+                prvs = frames[0]
+
+                for frame in frames:
+                    next_frame = frame
+
+                    flow = self.detector(prvs, next_frame)
+
+                    optical_flow.append(flow)
+                    prvs = next_frame
+
+                opt_flow = np.array(optical_flow)
+                mean_magnitude_per_frame = np.linalg.norm(opt_flow, axis=-1).mean(axis=(1, 2))
+                mean_magnitude = float(mean_magnitude_per_frame.mean())
+                metrics = [mean_magnitude, mean_magnitude_per_frame.tolist()]
+                return opt_flow.astype(self.dtype), metrics, None
+            except Exception as err:  # pylint: disable=broad-except
+                return [], None, str(err)
+
+class OldOpticalFlowSubsampler:
     """
     A class to detect optical flow in video frames.
 
