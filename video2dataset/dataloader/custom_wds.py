@@ -184,37 +184,29 @@ def _s3dataset2samples(data, handler=wds.reraise_exception):
 s3dataset2samples = filters.pipelinefilter(_s3dataset2samples)
 
 
-class SeedSetter(IterDataPipe):
+class SplitByWorker(IterDataPipe):
     """
-    Resets the seed on call of __iter__ (invoked in the reset() method
+    distributed data across workers to mimic behavior of shard splitting in webdataset
     """
     def __init__(self, datapipe):
         super().__init__()
         self.datapipe = datapipe
-        self.is_init = False
+        self.worker_id = 0
+        self.num_workers = 1
     # # def reset(self):
     def reset(self):
         # this will be called whenever __iter__ is invoked again (this should be kept in mind for shuffling
-        if not self.is_init:
-            # we only wanna do this once
-            self.is_init = True
+        worker_info = torch.utils.data.get_worker_info()
 
-            worker_info = torch.utils.data.get_worker_info()
-
-            if worker_info:
-                worker_id = worker_info.id
-                newseed = np.random.get_state()[1][0] + worker_id
-                # print(f'New seed is {newseed}')
-                np.random.seed(newseed)
-                torch.random.manual_seed(newseed)
-                random.seed(newseed)
+        if worker_info:
+            self.worker_id = worker_info.id
+            self.num_workers = worker_info.num_workers
 
 
     def __iter__(self)-> Iterator[Tuple[str, BufferedIOBase]]:
-        # self.set_seed()
-        # print(f'seed in worker init: {seed}')
-        for data in self.datapipe:
-            yield data
+        for i, data in enumerate(self.datapipe):
+            if i % self.num_workers == self.worker_id:
+                yield data
 
 class PrefixResampler(IterDataPipe):
 
@@ -364,13 +356,16 @@ class S3TorchDataWebdataset(DataPipeline,FluidInterfaceWithChangedDecode):
                        .list_files_by_s3(masks="**/*.tar")
                        .sharding_filter())
 
-        # after this operation datapipes in the distinct processes contain different tars
-        global_rank = dist.get_rank()
-        world_size = dist.get_world_size()
-        s3_datapipe.apply_sharding(world_size,global_rank)
-        # synchronize data across processes to prevent hanging if sharding is uneven (which is likely)
-        s3_datapipe = s3_datapipe.fullsync()
-
+        try:
+            # after this operation datapipes in the distinct processes contain different tars
+            global_rank = dist.get_rank()
+            world_size = dist.get_world_size()
+            s3_datapipe.apply_sharding(world_size,global_rank)
+            # synchronize data across processes to prevent hanging if sharding is uneven (which is likely)
+            s3_datapipe = s3_datapipe.fullsync()
+        except RuntimeError as e:
+            print('torch distributed not used, not applying sharding in dataloader')
+            pass
         # start shuffling accross shards for the first time to mix different datasets
         # (can be the same for all workers, just as an additional shuffled initialization)
         if shardshuffle>1 and not resample_prefixes:
@@ -382,7 +377,9 @@ class S3TorchDataWebdataset(DataPipeline,FluidInterfaceWithChangedDecode):
             s3_datapipe = IterableWrapper(raw_tars)
         elif resample_prefixes:
             s3_datapipe = PrefixResampler(s3_datapipe, prefixes=urls, ps=prefix_probs)
-        s3_datapipe = SeedSetter(s3_datapipe)
+        s3_datapipe = SplitByWorker(s3_datapipe)
+        # different syntax than for webdataset
+        shardshuffle = max(shardshuffle,1)
         s3_datapipe = (s3_datapipe
                        .shuffle(buffer_size=shardshuffle)
                        .cycle(count=repeat))
