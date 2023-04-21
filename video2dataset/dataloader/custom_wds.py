@@ -245,7 +245,7 @@ class PrefixResampler(IterDataPipe):
         self,
         datapipe: IterDataPipe[str],
         prefixes: List[str],
-        ps: Iterable[float] = None,
+        ps: Optional[Iterable[float]] = None,
     ):
         super().__init__()
         urls = list(datapipe)
@@ -275,7 +275,7 @@ class PrefixResampler(IterDataPipe):
 
         # internal iterator for one epoch
         self.it = 0
-        self.url_pool = {}
+        self.url_pool: Dict[str, List] = {}
 
         assert len(self.ps) == len(self.prefix2urls) and np.isclose(
             sum(self.ps.values()), 1.0
@@ -284,7 +284,7 @@ class PrefixResampler(IterDataPipe):
     def reset(self):
         # this will be called whenever __iter__ is invoked again (this should be kept in mind for shuffling
         print("refilling url_pool")
-        self.url_pool: Dict[str, List] = copy.deepcopy(self.prefix2urls)
+        self.url_pool = copy.deepcopy(self.prefix2urls)
         self.it = 0
 
     def refill_prefix(self, prefix):
