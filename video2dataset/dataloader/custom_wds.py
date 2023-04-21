@@ -6,19 +6,7 @@ import tarfile
 import warnings
 import copy
 from io import BufferedIOBase
-from typing import (
-    Callable,
-    Iterator,
-    Tuple,
-    cast,
-    Optional,
-    IO,
-    Union,
-    List,
-    Iterable,
-    Dict,
-    Any
-)
+from typing import Callable, Iterator, Tuple, cast, Optional, IO, Union, List, Iterable, Dict
 
 import torch
 import torch.distributed as dist
@@ -114,6 +102,11 @@ class KeyPassThroughDecoder(Decoder):
 
 
 class FluidInterfaceWithChangedDecode(FluidInterface):
+    """
+    FluidInterface with more Decoder args and different decode function
+    """
+
+    # pylint: disable=missing-function-docstring
     def decode(
         self,
         *args,
@@ -187,6 +180,7 @@ class WebDatasetWithChangedDecoder(DataPipeline, FluidInterfaceWithChangedDecode
             )
 
 
+# pylint: disable=missing-function-docstring
 def _s3dataset2samples(data, handler=wds.reraise_exception):
     for sample in data:
         try:
@@ -198,11 +192,10 @@ def _s3dataset2samples(data, handler=wds.reraise_exception):
             sample["__url__"] = url
 
             yield sample
-        except Exception as exn:
+        except Exception as exn:  # pylint: disable=broad-except
             if handler(exn):
                 continue
-            else:
-                break
+            break
 
 
 s3dataset2samples = filters.pipelinefilter(_s3dataset2samples)
@@ -242,6 +235,10 @@ class SplitByWorker(IterDataPipe):
 
 
 class PrefixResampler(IterDataPipe):
+    """
+    Resampling of prefixes with given probabilities, this is useful when mixing different datasets
+    """
+
     def __init__(
         self,
         datapipe: IterDataPipe[str],
@@ -252,14 +249,21 @@ class PrefixResampler(IterDataPipe):
         urls = list(datapipe)
         self._len = len(urls)
         self.prefix2urls: Dict[str, List] = {p: [] for p in set(prefixes)}
-        self.ps = {k: p for k, p in zip(prefixes, ps)} # type: ignore
+        self.ps = dict(zip(prefixes, ps))  # type: ignore
         if self.ps is None:
             # uniformly distributed
             self.ps = [1 / len(self.prefix2urls)] * len(self.prefix2urls)
 
         print(f"{self.__class__.__name__} got the following prefixes: {prefixes}")
         for u in urls:
-            self.prefix2urls[list(filter(lambda x: u.startswith(x), prefixes))[0]].append(u)
+            self.prefix2urls[
+                list(
+                    # pylint: disable=unnecessary-lambda,cell-var-from-loop
+                    filter(lambda x: u.startswith(x), prefixes)
+                )[0]
+            ].append(
+                u  # pylint: disable=cell-var-from-loop
+            )
 
         for p in self.prefix2urls:
             if not self.prefix2urls[p]:
@@ -270,9 +274,7 @@ class PrefixResampler(IterDataPipe):
         sum_ = sum(list(self.ps.values()))
         self.ps = {k: self.ps[k] / sum_ for k in self.ps}
 
-        print(
-            f"Got the following (prob, prefix) pairs for {len(self.ps)} prefixes {[(k, p) for k, p in self.ps.items()]}"
-        )
+        print(f"Got the following (prob, prefix) pairs for {len(self.ps)} prefixes {list(self.ps.items())}")
 
         # internal iterator for one epoch
         self.it = 0
@@ -314,7 +316,11 @@ class PrefixResampler(IterDataPipe):
 
 
 class TarArchiveLoaderAndCloser(TarArchiveLoader):
-    def __init__(self, handler: Callable = wds.reraise_exception, *args, **kwargs):
+    """
+    Loads tar archive and closes it once iterated through
+    """
+
+    def __init__(self, *args, handler: Callable = wds.reraise_exception, **kwargs):
         super().__init__(*args, **kwargs)
         self.handler = handler
 
@@ -332,6 +338,7 @@ class TarArchiveLoaderAndCloser(TarArchiveLoader):
                         else self.mode.replace(":", "|")
                     )
                     # typing.cast is used here to silence mypy's type checker
+                    # pylint: disable=consider-using-with
                     tar = tarfile.open(
                         fileobj=cast(Optional[IO[bytes]], data_stream),
                         mode=reading_mode,
@@ -351,7 +358,7 @@ class TarArchiveLoaderAndCloser(TarArchiveLoader):
                 del tar
                 # if isinstance(data_stream, StreamWrapper):
                 #     data_stream.autoclose()
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-except
                 warnings.warn(f"Unable to extract files from corrupted tarfile stream {pathname} due to: {e}, abort!")
                 if self.handler(e):
                     if hasattr(e, "args") and len(e.args) > 0:
@@ -369,6 +376,10 @@ def grouper(x):
 
 
 class S3TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
+    """
+    Loads tars from s3 directly in memory which reduces failures due to failed downloads
+    """
+
     def __init__(
         self,
         urls: Union[List[str], str],
@@ -386,11 +397,14 @@ class S3TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
         :param repeat: number of repetitions in the training data. Default is None which means looping perpetually.
         :param shardshuffle: Shuffle buffer size for shard shuffling. size 1 means no shufflin. Default is 10k.
         :param sample_shuffle: Shuffle buffer for sample-level-shuffling. Default is 1 which means no shuffling
-        :param buffer_size: memory size allocated for loading data from s3 in every connection. The number of connections per worker is 25. Default is None which means 128M per connection.
-        :param resample_prefixes: Whether to resample when different prefixes are in the entire dataset. This can be useful in combination with prefix probs when training on merged datasets of non-equal size.
+        :param buffer_size: memory size allocated for loading data from s3 in every connection.
+        The number of connections per worker is 25. Default is None which means 128M per connection.
+        :param resample_prefixes: Whether to resample when different prefixes are in the entire dataset.
+         This can be useful in combination with prefix probs when training on merged datasets of non-equal size.
         :param prefix_probs: list containing resampling probabilities for every prefix in `urls`
         :param drop_last: whether to drop last samples to prevent hanging (recommended)
-        :param shard_pattern: pattern for identifying the desired shards from with the specified prefixes. Default is taking all shards in all sub-prefixes
+        :param shard_pattern: pattern for identifying the desired shards from with the specified prefixes.
+        Default is taking all shards in all sub-prefixes
         :param handler: handler for handling exceptions as in webdataset
         """
         super().__init__()
@@ -413,7 +427,7 @@ class S3TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
             s3_datapipe.apply_sharding(world_size, global_rank)
             # synchronize data across processes to prevent hanging if sharding is uneven (which is likely)
             s3_datapipe = s3_datapipe.fullsync()
-        except RuntimeError as e:
+        except RuntimeError:
             print("torch distributed not used, not applying sharding in dataloader")
             pass
         # start shuffling accross shards for the first time to mix different datasets

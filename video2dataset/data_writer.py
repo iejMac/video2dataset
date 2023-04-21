@@ -162,7 +162,7 @@ class TFRecordSampleWriter:
         try:
             os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
             import tensorflow_io as _  # pylint: disable=import-outside-toplevel
-            from tensorflow.python.lib.io.tf_record import (
+            from tensorflow.python.lib.io.tf_record import (  # pylint: disable=import-outside-toplevel
                 TFRecordWriter,
             )  # pylint: disable=import-outside-toplevel
             from tensorflow.python.training.training import (  # pylint: disable=import-outside-toplevel
