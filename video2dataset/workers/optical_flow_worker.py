@@ -177,13 +177,23 @@ class OpticalFlowWorker:
 
         # give schema to writer
         sample_writer = self.sample_writer_class(
-            shard_id, self.output_folder, self.save_caption, self.oom_shard_count, schema, self.encode_formats
+            shard_id,
+            self.output_folder,
+            self.save_caption,
+            self.oom_shard_count,
+            schema,
+            self.encode_formats,
         )
 
         successes = 0
         failed_to_subsample = 0
 
-        decoder_kwargs = {"n_frames": None, "fps": None, "num_threads": 4, "return_bytes": True}
+        decoder_kwargs = {
+            "n_frames": None,
+            "fps": None,
+            "num_threads": 4,
+            "return_bytes": True,
+        }
 
         local_rank = os.environ.get("LOCAL_RANK", 0)
         print(shard, local_rank, flush=True)
@@ -207,7 +217,9 @@ class OpticalFlowWorker:
             for mod, fmt in self.encode_formats.items():
                 streams[mod] = sample.get(fmt, b"")
 
-            optical_flow, metrics, error_message = self.optical_flow_subsampler(frames, native_fps)
+            optical_flow, metrics, error_message = self.optical_flow_subsampler(
+                frames, native_fps
+            )
 
             if error_message is not None:
                 failed_to_subsample += 1

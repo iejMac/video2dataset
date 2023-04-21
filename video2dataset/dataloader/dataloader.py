@@ -3,7 +3,11 @@ import webdataset as wds
 from functools import partial
 from typing import List, Union
 
-from .custom_wds import WebDatasetWithChangedDecoder, dict_collation_fn, S3TorchDataWebdataset
+from .custom_wds import (
+    WebDatasetWithChangedDecoder,
+    dict_collation_fn,
+    S3TorchDataWebdataset,
+)
 from .transform import VideoResizer, CutsAdder, CustomTransforms
 from .video_decode import VideoDecorder, VideoDecorderWithCutDetection
 from .filters import (
@@ -164,7 +168,9 @@ def get_video_dataset(
     # Decoding
     if video_decoder_cls is not None:
         dset = dset.decode(
-            video_decoder_cls(**decoder_kwargs), handler=wds.warn_and_continue, **additional_decoder_kwargs
+            video_decoder_cls(**decoder_kwargs),
+            handler=wds.warn_and_continue,
+            **additional_decoder_kwargs,
         ).map(reassemble, handler=wds.warn_and_continue)
 
     # Filters
@@ -186,9 +192,13 @@ def get_video_dataset(
         )
 
     if custom_transforms:
-        dset = dset.map(CustomTransforms(custom_transforms), handler=wds.warn_and_continue)
+        dset = dset.map(
+            CustomTransforms(custom_transforms), handler=wds.warn_and_continue
+        )
 
     if decoder_kwargs != {}:
-        dset = dset.batched(batch_size, partial=drop_last, collation_fn=dict_collation_fn)
+        dset = dset.batched(
+            batch_size, partial=drop_last, collation_fn=dict_collation_fn
+        )
 
     return dset

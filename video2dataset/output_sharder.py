@@ -14,7 +14,9 @@ class OutputSharder:
     - group_shards: the number of shards to group together
     """
 
-    def __init__(self, shard_list, input_format, done_shards, sampler=lambda x: x) -> None:
+    def __init__(
+        self, shard_list, input_format, done_shards, sampler=lambda x: x
+    ) -> None:
 
         self.input_format = input_format
         self.done_shards = done_shards
@@ -26,7 +28,11 @@ class OutputSharder:
             self.shard_ids = [s.split("/")[-1] for s in self.shard_list]
 
         self.shards = sampler(
-            [(s_id, s) for s_id, s in zip(self.shard_ids, self.shard_list) if int(s_id) not in self.done_shards]
+            [
+                (s_id, s)
+                for s_id, s in zip(self.shard_ids, self.shard_list)
+                if int(s_id) not in self.done_shards
+            ]
         )
 
     def __iter__(self):

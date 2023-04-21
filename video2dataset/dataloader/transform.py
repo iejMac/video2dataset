@@ -35,12 +35,18 @@ class VideoResizer(PRNGMixin):
         self.random_crop = random_crop and self.crop_size is not None
 
         if self.crop_size or self.resize_size:
-            print(f"{self.__class__.__name__} is resizing video to size {self.resize_size} ...")
+            print(
+                f"{self.__class__.__name__} is resizing video to size {self.resize_size} ..."
+            )
 
             if self.crop_size:
-                print(f'... and {"random" if self.random_crop else "center"} cropping to size {self.crop_size}.')
+                print(
+                    f'... and {"random" if self.random_crop else "center"} cropping to size {self.crop_size}.'
+                )
         else:
-            print(f"WARNING: {self.__class__.__name__} is not resizing or croppping videos. Is this intended?")
+            print(
+                f"WARNING: {self.__class__.__name__} is not resizing or croppping videos. Is this intended?"
+            )
 
     def _get_rand_reference(self, resize_size, h, w):
         """gets random reference"""
@@ -127,13 +133,20 @@ class VideoResizer(PRNGMixin):
         for frame in frames:
 
             if resize_size is not None:
-                frame = cv2.resize(frame, tuple(reversed(resize_size)), interpolation=cv2.INTER_LANCZOS4)
+                frame = cv2.resize(
+                    frame,
+                    tuple(reversed(resize_size)),
+                    interpolation=cv2.INTER_LANCZOS4,
+                )
 
             if self.crop_size is not None:
                 x_ = reference[1] - int(round(self.crop_size[1] / 2))
                 y_ = reference[0] - int(round(self.crop_size[0] / 2))
 
-                frame = frame[int(y_) : int(y_) + self.crop_size[0], int(x_) : int(x_) + self.crop_size[1]]
+                frame = frame[
+                    int(y_) : int(y_) + self.crop_size[0],
+                    int(x_) : int(x_) + self.crop_size[1],
+                ]
 
             # TODO: maybe lets add other options for normalization
             # will need for VideoCLIP built on top of CLIP
@@ -154,9 +167,16 @@ class CutsAdder:
         self.video_key = video_key
 
     def __call__(self, sample):
-        assert self.cuts_key in sample, f'no field with key "{self.cuts_key}" in sample, but this is required.'
-        assert self.video_key in sample, f'no field with key "{self.video_key}" in sample, but this is required.'
-        sample[self.video_key] = {self.video_key: sample[self.video_key], self.cuts_key: sample[self.cuts_key]}
+        assert (
+            self.cuts_key in sample
+        ), f'no field with key "{self.cuts_key}" in sample, but this is required.'
+        assert (
+            self.video_key in sample
+        ), f'no field with key "{self.video_key}" in sample, but this is required.'
+        sample[self.video_key] = {
+            self.video_key: sample[self.video_key],
+            self.cuts_key: sample[self.cuts_key],
+        }
         del sample[self.cuts_key]
         return sample
 

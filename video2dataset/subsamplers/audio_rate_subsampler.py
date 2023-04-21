@@ -30,7 +30,9 @@ class AudioRateSubsampler:
                     # TODO: for now assuming m4a, change this
                     ffmpeg_args = {"ar": str(self.sample_rate), "f": ext}
                     _ = ffmpeg.input(f"{tmpdir}/input.m4a")
-                    _ = _.output(f"{tmpdir}/output.{ext}", **ffmpeg_args).run(capture_stdout=True, quiet=True)
+                    _ = _.output(f"{tmpdir}/output.{ext}", **ffmpeg_args).run(
+                        capture_stdout=True, quiet=True
+                    )
                 except Exception as err:  # pylint: disable=broad-except
                     return [], str(err)
 

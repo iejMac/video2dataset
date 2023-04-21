@@ -36,7 +36,9 @@ class ResolutionSubsampler:
                         _ = _.filter("crop", w=self.video_size, h=self.video_size)
                     if "pad" in self.resize_mode:
                         _ = _.filter("pad", w=self.video_size, h=self.video_size)
-                    _ = _.output(f"{tmpdir}/output.mp4", reset_timestamps=1).run(capture_stdout=True, quiet=True)
+                    _ = _.output(f"{tmpdir}/output.mp4", reset_timestamps=1).run(
+                        capture_stdout=True, quiet=True
+                    )
                 except Exception as err:  # pylint: disable=broad-except
                     return [], str(err)
 

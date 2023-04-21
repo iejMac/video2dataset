@@ -33,7 +33,9 @@ class CutDetectionSubsampler:
     - framerates to be None (for original fps only) or a list of target framerates to detect cuts in
     """
 
-    def __init__(self, cut_detection_mode="all", framerates=None, threshold=27, min_scene_len=15):
+    def __init__(
+        self, cut_detection_mode="all", framerates=None, threshold=27, min_scene_len=15
+    ):
         self.framerates = framerates
         self.cut_detection_mode = cut_detection_mode
         self.threshold = threshold
@@ -49,7 +51,9 @@ class CutDetectionSubsampler:
 
             video = open_video(video_path)
 
-            detector = ContentDetector(threshold=self.threshold, min_scene_len=self.min_scene_len)
+            detector = ContentDetector(
+                threshold=self.threshold, min_scene_len=self.min_scene_len
+            )
             scene_manager = SceneManager()
             scene_manager.add_detector(detector)
 
@@ -58,12 +62,16 @@ class CutDetectionSubsampler:
             cuts["original_fps"] = original_fps
 
             scene_manager.detect_scenes(video=video)
-            cuts["cuts_original_fps"] = get_scenes_from_scene_manager(scene_manager, self.cut_detection_mode)
+            cuts["cuts_original_fps"] = get_scenes_from_scene_manager(
+                scene_manager, self.cut_detection_mode
+            )
             if self.framerates is not None:
                 for target_fps in self.framerates:
                     video.reset()
 
-                    detector = ContentDetector(threshold=self.threshold, min_scene_len=self.min_scene_len)
+                    detector = ContentDetector(
+                        threshold=self.threshold, min_scene_len=self.min_scene_len
+                    )
                     scene_manager = SceneManager()
                     scene_manager.add_detector(detector)
                     frame_skip = max(
@@ -72,7 +80,9 @@ class CutDetectionSubsampler:
                     # so if we desire to sample 1/N of the video, we need to subtract one when doing frame skipping
 
                     scene_manager.detect_scenes(video=video, frame_skip=frame_skip)
-                    cuts[f"cuts_{target_fps}"] = get_scenes_from_scene_manager(scene_manager, self.cut_detection_mode)
+                    cuts[f"cuts_{target_fps}"] = get_scenes_from_scene_manager(
+                        scene_manager, self.cut_detection_mode
+                    )
                     scene_manager.clear()
 
         return cuts

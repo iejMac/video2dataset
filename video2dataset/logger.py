@@ -96,7 +96,14 @@ class SpeedLogger(Logger):
         self.enable_wandb = enable_wandb
 
     def __call__(
-        self, count, success, failed_to_download, failed_to_subsample, bytes_downloaded, start_time, end_time
+        self,
+        count,
+        success,
+        failed_to_download,
+        failed_to_subsample,
+        bytes_downloaded,
+        start_time,
+        end_time,
     ):  # pylint: disable=arguments-differ
         self.count += count
         self.success += success
@@ -116,7 +123,14 @@ class SpeedLogger(Logger):
         )
 
     def do_log(
-        self, count, success, failed_to_download, failed_to_subsample, bytes_downloaded, start_time, end_time
+        self,
+        count,
+        success,
+        failed_to_download,
+        failed_to_subsample,
+        bytes_downloaded,
+        start_time,
+        end_time,
     ):  # pylint: disable=arguments-differ
         duration = end_time - start_time
         vid_per_sec = count / duration
@@ -155,7 +169,9 @@ class SpeedLogger(Logger):
 class StatusTableLogger(Logger):
     """Log status table to W&B, up to `max_status` most frequent items"""
 
-    def __init__(self, max_status=100, min_interval=60, enable_wandb=False, **logger_args):
+    def __init__(
+        self, max_status=100, min_interval=60, enable_wandb=False, **logger_args
+    ):
         super().__init__(min_interval=min_interval, **logger_args)
         # avoids too many errors unique to a specific website (SSL certificates, etc)
         self.max_status = max_status
@@ -165,7 +181,10 @@ class StatusTableLogger(Logger):
         if self.enable_wandb:
             status_table = wandb.Table(
                 columns=["status", "frequency", "count"],
-                data=[[k, 1.0 * v / count, v] for k, v in status_dict.most_common(self.max_status)],
+                data=[
+                    [k, 1.0 * v / count, v]
+                    for k, v in status_dict.most_common(self.max_status)
+                ],
             )
             wandb.run.log({"status": status_table})
 
@@ -213,7 +232,14 @@ def write_stats(
 class LoggerProcess(multiprocessing.context.SpawnProcess):
     """Logger process that reads stats files regularly, aggregates and send to wandb / print to terminal"""
 
-    def __init__(self, output_folder, enable_wandb, wandb_project, config_parameters, log_interval=5):
+    def __init__(
+        self,
+        output_folder,
+        enable_wandb,
+        wandb_project,
+        config_parameters,
+        log_interval=5,
+    ):
         super().__init__()
         self.log_interval = log_interval
         self.enable_wandb = enable_wandb
@@ -228,10 +254,16 @@ class LoggerProcess(multiprocessing.context.SpawnProcess):
     def run(self):
         """Run logger process"""
 
-        fs, output_path = fsspec.core.url_to_fs(self.output_folder, use_listings_cache=False)
+        fs, output_path = fsspec.core.url_to_fs(
+            self.output_folder, use_listings_cache=False
+        )
 
         if self.enable_wandb:
-            self.current_run = wandb.init(project=self.wandb_project, config=self.config_parameters, anonymous="allow")
+            self.current_run = wandb.init(
+                project=self.wandb_project,
+                config=self.config_parameters,
+                anonymous="allow",
+            )
         else:
             self.current_run = None
         self.total_speed_logger = SpeedLogger("total", enable_wandb=self.enable_wandb)
@@ -253,7 +285,11 @@ class LoggerProcess(multiprocessing.context.SpawnProcess):
                 stats_files = fs.glob(output_path + "/*.json")
 
                 # filter out files that have an id smaller that are already done
-                stats_files = [f for f in stats_files if int(f.split("/")[-1].split("_")[0]) not in self.done_shards]
+                stats_files = [
+                    f
+                    for f in stats_files
+                    if int(f.split("/")[-1].split("_")[0]) not in self.done_shards
+                ]
 
                 # get new stats files
                 new_stats_files = set(stats_files) - self.stats_files
@@ -287,7 +323,9 @@ class LoggerProcess(multiprocessing.context.SpawnProcess):
                             )
                             status_dict = CappedCounter.load(stats["status_dict"])
                             total_status_dict.update(status_dict)
-                            self.status_table_logger(total_status_dict, self.total_speed_logger.count)
+                            self.status_table_logger(
+                                total_status_dict, self.total_speed_logger.count
+                            )
                         except Exception as err:  # pylint: disable=broad-except
                             print(f"failed to parse stats file {stats_file}", err)
 
