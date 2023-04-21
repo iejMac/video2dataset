@@ -85,6 +85,7 @@ def get_video_dataset(
         enforce_additional_keys (list, optional): Which keys must be in each sample
         keys_to_remove ((list, int), optional): Keys which, for the sake of speed, will be
             removed before decoding. Default is None which means nothing will be removed.
+
     Returns:
         WebDataset: The processed webdataset.
     """
@@ -105,14 +106,14 @@ def get_video_dataset(
 
     additional_decoder_kwargs = {}
     if cuts_key:
-        dataset_cls = partial(WebDatasetWithChangedDecoder, nodesplitter=wds.split_by_node, ) if not use_torchdata else partial(S3TorchDataWebdataset, repeat=repeat,)
+        dataset_cls = partial(WebDatasetWithChangedDecoder, nodesplitter=wds.split_by_node, ) if not use_torchdata else partial(S3TorchDataWebdataset, repeat=repeat,drop_last=drop_last)
         video_decoder_cls = partial(VideoDecorderWithCutDetection, cuts_key=cuts_key)
         additional_decoder_kwargs = {"passthrough_keys": [video_key]}
     elif decoder_kwargs == {}:  # nothing means just read the bytes
-        dataset_cls = partial(wds.WebDataset, nodesplitter=wds.split_by_node, ) if not use_torchdata else partial(S3TorchDataWebdataset, repeat=repeat,)
+        dataset_cls = partial(wds.WebDataset, nodesplitter=wds.split_by_node, ) if not use_torchdata else partial(S3TorchDataWebdataset, repeat=repeat,drop_last=drop_last)
         video_decoder_cls = None
     else:
-        dataset_cls = partial(wds.WebDataset, nodesplitter=wds.split_by_node, ) if not use_torchdata else partial(S3TorchDataWebdataset, repeat=repeat,)
+        dataset_cls = partial(wds.WebDataset, nodesplitter=wds.split_by_node, ) if not use_torchdata else partial(S3TorchDataWebdataset, repeat=repeat,drop_last=drop_last)
         video_decoder_cls = VideoDecorder  # type: ignore
 
     dset = dataset_cls(urls,  shardshuffle=shuffle, handler=wds.warn_and_continue)

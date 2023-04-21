@@ -188,11 +188,15 @@ class SplitByWorker(IterDataPipe):
     """
     distributed data across workers to mimic behavior of shard splitting in webdataset
     """
-    def __init__(self, datapipe):
+    def __init__(self, datapipe, drop_last = False):
         super().__init__()
         self.datapipe = datapipe
+        self._len = len(list(self.datapipe))
+        self.drop_last = drop_last
         self.worker_id = 0
         self.num_workers = 1
+        self.max_it = (self._len // self.num_workers) * self.num_workers
+
     # # def reset(self):
     def reset(self):
         # this will be called whenever __iter__ is invoked again (this should be kept in mind for shuffling
@@ -201,10 +205,13 @@ class SplitByWorker(IterDataPipe):
         if worker_info:
             self.worker_id = worker_info.id
             self.num_workers = worker_info.num_workers
-
+            self.max_it = (self._len // self.num_workers) * self.num_workers
 
     def __iter__(self)-> Iterator[Tuple[str, BufferedIOBase]]:
         for i, data in enumerate(self.datapipe):
+            # avoid hanging due to uneven number of shards per worker
+            if self.drop_last and i >= self.max_it:
+                break
             if i % self.num_workers == self.worker_id:
                 yield data
 
@@ -340,7 +347,20 @@ class S3TorchDataWebdataset(DataPipeline,FluidInterfaceWithChangedDecode):
                  buffer_size:int=None,
                  resample_prefixes:bool=False,
                  prefix_probs:Optional[List[float]]=None,
+                 drop_last: bool = False,
                  handler:Callable=wds.reraise_exception):
+        """
+        :param urls: s3 prefixes to load the shards from, can be a list of different prefoxes for dataset mixing
+        :param repeat: number of repetitions in the training data. Default is None which means looping perpetually.
+        :param shardshuffle: Shuffle buffer size for shard shuffling. size 1 means no shufflin. Default is 10k.
+        :param sample_shuffle: Shuffle buffer for sample-level-shuffling. Default is 1 which means no shuffling
+        :param buffer_size: memory size allocated for loading data from s3 in every connection. The number of connections per worker is 25. Default is None which means 128M per connection.
+        :param resample_prefixes: Whether to resample when different prefixes are in the entire dataset. This can be useful in combination with prefix probs when training on merged datasets of non-equal size.
+        :param prefix_probs: list containing resampling probabilities for every prefix in `urls`
+        :param drop_last: whether to drop last samples to prevent hanging (recommended)
+        :param shard_pattern: pattern for identifying the desired shards from with the specified prefixes. Default is taking all shards in all sub-prefixes
+        :param handler: handler for handling exceptions as in webdataset
+        """
         super().__init__()
 
         if isinstance(urls, (List, list)):
@@ -353,7 +373,7 @@ class S3TorchDataWebdataset(DataPipeline,FluidInterfaceWithChangedDecode):
 
         # sharding filter ensures propper splitting for distributed environment
         s3_datapipe = (IterableWrapper(urls)
-                       .list_files_by_s3(masks="**/*.tar")
+                       .shard_expand()
                        .sharding_filter())
 
         try:
@@ -377,7 +397,7 @@ class S3TorchDataWebdataset(DataPipeline,FluidInterfaceWithChangedDecode):
             s3_datapipe = IterableWrapper(raw_tars)
         elif resample_prefixes:
             s3_datapipe = PrefixResampler(s3_datapipe, prefixes=urls, ps=prefix_probs)
-        s3_datapipe = SplitByWorker(s3_datapipe)
+        s3_datapipe = SplitByWorker(s3_datapipe, drop_last=drop_last)
         # different syntax than for webdataset
         shardshuffle = max(shardshuffle,1)
         s3_datapipe = (s3_datapipe
