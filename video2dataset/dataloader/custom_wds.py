@@ -17,6 +17,7 @@ from typing import (
     List,
     Iterable,
     Dict,
+    Any
 )
 
 import torch
@@ -245,7 +246,7 @@ class PrefixResampler(IterDataPipe):
         self,
         datapipe: IterDataPipe[str],
         prefixes: List[str],
-        ps: Optional[Iterable[float]] = None,
+        ps: Any[Iterable[float]] = None,
     ):
         super().__init__()
         urls = list(datapipe)
