@@ -2,6 +2,7 @@
 Benchmark dataloader speed
 """
 import time
+
 # from video2dataset.dataloader import get_bytes_dataloader
 from video2dataset.dataloader import get_video_dataset
 

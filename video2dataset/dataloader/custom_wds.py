@@ -167,9 +167,9 @@ def _s3dataset2samples(data, handler=wds.reraise_exception):
     for sample in data:
         try:
             # construct webdataset-style sample
-            key = os.path.split(sample[0][0])[-1].split('.')[0]
+            key = os.path.split(sample[0][0])[-1].split(".")[0]
             url = os.path.split(sample[0][0])[0]
-            sample = {s[0].split('.')[-1]: s[1].read() for s in sample}
+            sample = {s[0].split(".")[-1]: s[1].read() for s in sample}
             sample["__key__"] = key
             sample["__url__"] = url
 
@@ -188,7 +188,8 @@ class SplitByWorker(IterDataPipe):
     """
     distributed data across workers to mimic behavior of shard splitting in webdataset
     """
-    def __init__(self, datapipe, drop_last = False):
+
+    def __init__(self, datapipe, drop_last=False):
         super().__init__()
         self.datapipe = datapipe
         self._len = len(list(self.datapipe))
@@ -207,7 +208,7 @@ class SplitByWorker(IterDataPipe):
             self.num_workers = worker_info.num_workers
             self.max_it = (self._len // self.num_workers) * self.num_workers
 
-    def __iter__(self)-> Iterator[Tuple[str, BufferedIOBase]]:
+    def __iter__(self) -> Iterator[Tuple[str, BufferedIOBase]]:
         for i, data in enumerate(self.datapipe):
             # avoid hanging due to uneven number of shards per worker
             if self.drop_last and i >= self.max_it:
@@ -215,59 +216,58 @@ class SplitByWorker(IterDataPipe):
             if i % self.num_workers == self.worker_id:
                 yield data
 
-class PrefixResampler(IterDataPipe):
 
-    def __init__(self, datapipe:IterDataPipe[str],prefixes:List[str],  ps:List[float] = None):
+class PrefixResampler(IterDataPipe):
+    def __init__(self, datapipe: IterDataPipe[str], prefixes: List[str], ps: List[float] = None):
         super().__init__()
         urls = list(datapipe)
         self._len = len(urls)
         self.prefix2urls = {p: [] for p in set(prefixes)}
-        self.ps = {k:p for k, p in zip(prefixes,ps)}
+        self.ps = {k: p for k, p in zip(prefixes, ps)}
         if self.ps is None:
             # uniformly distributed
-            self.ps = [1/len(self.prefix2urls)]*len(self.prefix2urls)
+            self.ps = [1 / len(self.prefix2urls)] * len(self.prefix2urls)
 
-
-        print(f'{self.__class__.__name__} got the following prefixes: {prefixes}')
+        print(f"{self.__class__.__name__} got the following prefixes: {prefixes}")
         for u in urls:
-            self.prefix2urls[list(filter(lambda x: u.startswith(x),prefixes))[0]].append(u)
-
-
-
+            self.prefix2urls[list(filter(lambda x: u.startswith(x), prefixes))[0]].append(u)
 
         for p in self.prefix2urls:
             if not self.prefix2urls[p]:
-                print(f'removing prefix {p} from repefixes2urls since no_entries')
+                print(f"removing prefix {p} from repefixes2urls since no_entries")
                 self.prefix2urls.pop(p)
                 self.ps.pop(p)
 
         sum_ = sum(list(self.ps.values()))
         self.ps = {k: self.ps[k] / sum_ for k in self.ps}
 
-        print(f'Got the following (prob, prefix) pairs for {len(self.ps)} prefixes {[(k, p) for k, p in self.ps.items()]}')
+        print(
+            f"Got the following (prob, prefix) pairs for {len(self.ps)} prefixes {[(k, p) for k, p in self.ps.items()]}"
+        )
 
         # internal iterator for one epoch
         self.it = 0
         self.url_pool = {}
 
-        assert len(self.ps) == len(self.prefix2urls) and np.isclose(sum(self.ps.values()),1.), 'Probabilities must have the same length than prefix and must sum up to 1'
+        assert len(self.ps) == len(self.prefix2urls) and np.isclose(
+            sum(self.ps.values()), 1.0
+        ), "Probabilities must have the same length than prefix and must sum up to 1"
 
     def reset(self):
         # this will be called whenever __iter__ is invoked again (this should be kept in mind for shuffling
         print("refilling url_pool")
         self.url_pool = copy.deepcopy(self.prefix2urls)
-        self.it=0
+        self.it = 0
 
     def refill_prefix(self, prefix):
         # refill the buffer
         self.url_pool[prefix] = copy.deepcopy(self.prefix2urls[prefix])
 
-
     def __iter__(self):
         while self.it < self.__len__():
 
             # sample prefix with corresponding probs
-            prefix_id = np.random.choice(len(self.ps),1,p=list(self.ps.values())).item()
+            prefix_id = np.random.choice(len(self.ps), 1, p=list(self.ps.values())).item()
             prefix = list(self.ps.keys())[prefix_id]
             # refill the url pool for the selected prefix if empty
             if not self.url_pool[prefix]:
@@ -280,17 +280,15 @@ class PrefixResampler(IterDataPipe):
             yield url
             self.it += 1
 
-
     def __len__(self):
         return self._len
 
 
-
 class TarArchiveLoaderAndCloser(TarArchiveLoader):
-
-    def __init__(self, handler:Callable = wds.reraise_exception, *args, **kwargs):
+    def __init__(self, handler: Callable = wds.reraise_exception, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.handler = handler
+
     def __iter__(self) -> Iterator[Tuple[str, BufferedIOBase]]:
         for data in self.datapipe:
             validate_pathname_binary_tuple(data)
@@ -338,17 +336,19 @@ def grouper(x):
     return x[0].split("/")[-1].split(".")[0]
 
 
-class S3TorchDataWebdataset(DataPipeline,FluidInterfaceWithChangedDecode):
-
-    def __init__(self,urls:Union[List[str], str],
-                 repeat:int=None,
-                 shardshuffle:int=10000,
-                 sample_shuffle:int=0,
-                 buffer_size:int=None,
-                 resample_prefixes:bool=False,
-                 prefix_probs:Optional[List[float]]=None,
-                 drop_last: bool = False,
-                 handler:Callable=wds.reraise_exception):
+class S3TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
+    def __init__(
+        self,
+        urls: Union[List[str], str],
+        repeat: int = None,
+        shardshuffle: int = 10000,
+        sample_shuffle: int = 0,
+        buffer_size: int = None,
+        resample_prefixes: bool = False,
+        prefix_probs: Optional[List[float]] = None,
+        drop_last: bool = False,
+        handler: Callable = wds.reraise_exception,
+    ):
         """
         :param urls: s3 prefixes to load the shards from, can be a list of different prefoxes for dataset mixing
         :param repeat: number of repetitions in the training data. Default is None which means looping perpetually.
@@ -369,29 +369,27 @@ class S3TorchDataWebdataset(DataPipeline,FluidInterfaceWithChangedDecode):
         elif isinstance(urls, str):
             urls = [urls]
         else:
-            raise TypeError('urls need to be path to a S3 prefix or list of paths to more than one prefixes')
+            raise TypeError("urls need to be path to a S3 prefix or list of paths to more than one prefixes")
 
         # sharding filter ensures propper splitting for distributed environment
-        s3_datapipe = (IterableWrapper(urls)
-                       .shard_expand()
-                       .sharding_filter())
+        s3_datapipe = IterableWrapper(urls).shard_expand().sharding_filter()
 
         try:
             # after this operation datapipes in the distinct processes contain different tars
             global_rank = dist.get_rank()
             world_size = dist.get_world_size()
-            s3_datapipe.apply_sharding(world_size,global_rank)
+            s3_datapipe.apply_sharding(world_size, global_rank)
             # synchronize data across processes to prevent hanging if sharding is uneven (which is likely)
             s3_datapipe = s3_datapipe.fullsync()
         except RuntimeError as e:
-            print('torch distributed not used, not applying sharding in dataloader')
+            print("torch distributed not used, not applying sharding in dataloader")
             pass
         # start shuffling accross shards for the first time to mix different datasets
         # (can be the same for all workers, just as an additional shuffled initialization)
-        if shardshuffle>1 and not resample_prefixes:
+        if shardshuffle > 1 and not resample_prefixes:
             raw_tars = list(s3_datapipe)
             random.shuffle(raw_tars)
-            print('Loader got the following concrete shards (first 25 are shown)')
+            print("Loader got the following concrete shards (first 25 are shown)")
             print(raw_tars[:25])
             # back to datapipes
             s3_datapipe = IterableWrapper(raw_tars)
@@ -399,18 +397,15 @@ class S3TorchDataWebdataset(DataPipeline,FluidInterfaceWithChangedDecode):
             s3_datapipe = PrefixResampler(s3_datapipe, prefixes=urls, ps=prefix_probs)
         s3_datapipe = SplitByWorker(s3_datapipe, drop_last=drop_last)
         # different syntax than for webdataset
-        shardshuffle = max(shardshuffle,1)
-        s3_datapipe = (s3_datapipe
-                       .shuffle(buffer_size=shardshuffle)
-                       .cycle(count=repeat))
+        shardshuffle = max(shardshuffle, 1)
+        s3_datapipe = s3_datapipe.shuffle(buffer_size=shardshuffle).cycle(count=repeat)
 
         # s3_datapipe = s3_datapipe.sharding_filter()
 
         # Load data with S3FileLoader
         s3_datapipe = S3FileLoader(s3_datapipe, buffer_size=buffer_size)
         # adapted TarLoader which closes open tarfile handles after exceeding them
-        s3_datapipe = (TarArchiveLoaderAndCloser(datapipe=s3_datapipe, handler=handler).
-                       groupby(grouper))
+        s3_datapipe = TarArchiveLoaderAndCloser(datapipe=s3_datapipe, handler=handler).groupby(grouper)
         if sample_shuffle > 0:
             s3_datapipe = s3_datapipe.shuffle(buffer_size=sample_shuffle)
 

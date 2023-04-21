@@ -40,7 +40,7 @@ def reassemble(x):
 
 
 def get_video_dataset(
-    urls:Union[str, List[str]],
+    urls: Union[str, List[str]],
     batch_size,
     shuffle=0,
     repeat=1,
@@ -106,17 +106,38 @@ def get_video_dataset(
 
     additional_decoder_kwargs = {}
     if cuts_key:
-        dataset_cls = partial(WebDatasetWithChangedDecoder, nodesplitter=wds.split_by_node, ) if not use_torchdata else partial(S3TorchDataWebdataset, repeat=repeat,drop_last=drop_last)
+        dataset_cls = (
+            partial(
+                WebDatasetWithChangedDecoder,
+                nodesplitter=wds.split_by_node,
+            )
+            if not use_torchdata
+            else partial(S3TorchDataWebdataset, repeat=repeat, drop_last=drop_last)
+        )
         video_decoder_cls = partial(VideoDecorderWithCutDetection, cuts_key=cuts_key)
         additional_decoder_kwargs = {"passthrough_keys": [video_key]}
     elif decoder_kwargs == {}:  # nothing means just read the bytes
-        dataset_cls = partial(wds.WebDataset, nodesplitter=wds.split_by_node, ) if not use_torchdata else partial(S3TorchDataWebdataset, repeat=repeat,drop_last=drop_last)
+        dataset_cls = (
+            partial(
+                wds.WebDataset,
+                nodesplitter=wds.split_by_node,
+            )
+            if not use_torchdata
+            else partial(S3TorchDataWebdataset, repeat=repeat, drop_last=drop_last)
+        )
         video_decoder_cls = None
     else:
-        dataset_cls = partial(wds.WebDataset, nodesplitter=wds.split_by_node, ) if not use_torchdata else partial(S3TorchDataWebdataset, repeat=repeat,drop_last=drop_last)
+        dataset_cls = (
+            partial(
+                wds.WebDataset,
+                nodesplitter=wds.split_by_node,
+            )
+            if not use_torchdata
+            else partial(S3TorchDataWebdataset, repeat=repeat, drop_last=drop_last)
+        )
         video_decoder_cls = VideoDecorder  # type: ignore
 
-    dset = dataset_cls(urls,  shardshuffle=shuffle, handler=wds.warn_and_continue)
+    dset = dataset_cls(urls, shardshuffle=shuffle, handler=wds.warn_and_continue)
 
     if not use_torchdata:
         dset = dset.repeat(repeat).shuffle(shuffle, initial=shuffle)
