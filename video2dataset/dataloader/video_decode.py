@@ -3,6 +3,7 @@ import os
 import re
 import numpy as np
 import torch
+import torch.nn.functional as F
 import decord
 import tempfile
 from typing import Iterable
@@ -41,10 +42,19 @@ class VideoDecorder(AbstractVideoDecoder):
     """Basic video decoder that uses decord"""
 
     def __init__(
-        self, n_frames=None, fps=None, num_threads=4, tmpdir="/scratch/", min_fps=1, max_fps=32, return_bytes=False
+        self,
+        n_frames=None,
+        fps=None,
+        num_threads=4,
+        tmpdir="/tmp/",
+        min_fps=1,
+        max_fps=32,
+        return_bytes=False,
+        pad_frames=False,
     ):
         super().__init__()
         self.n_frames = n_frames
+        self.pad_frames = pad_frames
         if fps is not None and not isinstance(fps, Iterable):
             fps = [
                 fps,
@@ -76,6 +86,7 @@ class VideoDecorder(AbstractVideoDecoder):
         info = (
             f'Decoding video clips of length {self.n_frames} with "decord".'
             + f" Subsampling clips to {infostring1} fps {infostring2}"
+            + self.pad_frames * "Padding videos that are too short"
         )
 
         print(info)
@@ -85,7 +96,9 @@ class VideoDecorder(AbstractVideoDecoder):
 
     def get_frames(self, reader, n_frames, stride, **kwargs):  # pylint: disable=arguments-differ
         if n_frames * stride > len(reader):
-            raise ValueError("video clip not long enough for decoding")
+            if not self.pad_frames:
+                raise ValueError("video clip not long enough for decoding")
+            n_frames = len(reader) // stride
 
         # sample frame start and choose scene
         if n_frames == len(reader):
@@ -95,7 +108,13 @@ class VideoDecorder(AbstractVideoDecoder):
         # only decode the frames which are actually needed
         frames = reader.get_batch(np.arange(frame_start, frame_start + n_frames * stride, stride).tolist())
 
-        return frames, frame_start
+        # TODO: maybe its useful to inform the user which frmaes are padded
+        # can just output first_pad_index or a mask or something
+        pad_start = len(frames)
+        if self.pad_frames and frames.shape[0] < self.n_frames:
+            frames = F.pad(frames, (0, 0) * 3 + (0, self.n_frames - frames.shape[0]))
+
+        return frames, frame_start, pad_start
 
     def __call__(self, key, data, scene_list=None):  # pylint: disable=arguments-differ
         extension = re.sub(r".*[.]", "", key)
@@ -134,11 +153,15 @@ class VideoDecorder(AbstractVideoDecoder):
         stride = int(np.round(native_fps / chosen_fps))
         additional_info.update({"fps_id": torch.Tensor([fs_id] * n_frames).long()})
 
-        frames, start_frame = self.get_frames(reader, n_frames, stride, scene_list=scene_list)
+        frames, start_frame, pad_start = self.get_frames(reader, n_frames, stride, scene_list=scene_list)
         frames = frames.float().numpy()
 
         additional_info["original_height"] = torch.full((frames.shape[0],), fill_value=frames.shape[1]).long()
         additional_info["original_width"] = torch.full((frames.shape[0],), fill_value=frames.shape[2]).long()
+
+        pad_masks = torch.zeros((frames.shape[0],))
+        pad_masks[:pad_start] = 1.0
+        additional_info["pad_masks"] = pad_masks
 
         if self.n_frames is not None and frames.shape[0] < self.n_frames:
             raise ValueError("Decoded video not long enough, skipping")

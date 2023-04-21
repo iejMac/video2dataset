@@ -162,7 +162,15 @@ class Cv2Detector:
     """
 
     def __init__(
-        self, pyr_scale=0.5, levels=3, winsize=15, iterations=3, poly_n=5, poly_sigma=1.2, flags=0, downsample_size=None
+        self,
+        pyr_scale=0.5,
+        levels=3,
+        winsize=15,
+        iterations=3,
+        poly_n=5,
+        poly_sigma=1.2,
+        flags=0,
+        downsample_size=None,
     ):
         self.pyr_scale = pyr_scale
         self.levels = levels
@@ -221,12 +229,27 @@ class OpticalFlowSubsampler:
         fps (int): The target frames per second. Defaults to -1 (original FPS).
     """
 
-    def __init__(self, detector="cv2", fps=-1, args=None, downsample_size=None, dtype="fp16", is_slurm_task=False):
+    def __init__(
+        self,
+        detector="cv2",
+        fps=-1,
+        args=None,
+        downsample_size=None,
+        dtype="fp16",
+        is_slurm_task=False,
+    ):
         if detector == "cv2":
             if args:
                 pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags = args
                 self.detector = Cv2Detector(
-                    pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags, downsample_size=downsample_size
+                    pyr_scale,
+                    levels,
+                    winsize,
+                    iterations,
+                    poly_n,
+                    poly_sigma,
+                    flags,
+                    downsample_size=downsample_size,
                 )
             else:
                 self.detector = Cv2Detector(downsample_size=downsample_size)
