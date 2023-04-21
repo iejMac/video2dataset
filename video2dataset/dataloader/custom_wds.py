@@ -246,13 +246,13 @@ class PrefixResampler(IterDataPipe):
         self,
         datapipe: IterDataPipe[str],
         prefixes: List[str],
-        ps: Any[Iterable[float]] = None,
+        ps: Optional[Iterable[float]] = None,
     ):
         super().__init__()
         urls = list(datapipe)
         self._len = len(urls)
         self.prefix2urls: Dict[str, List] = {p: [] for p in set(prefixes)}
-        self.ps = {k: p for k, p in zip(prefixes, ps)}
+        self.ps = {k: p for k, p in zip(prefixes, ps)} # type: ignore
         if self.ps is None:
             # uniformly distributed
             self.ps = [1 / len(self.prefix2urls)] * len(self.prefix2urls)
