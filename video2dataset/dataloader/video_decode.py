@@ -46,7 +46,7 @@ class VideoDecorder(AbstractVideoDecoder):
         n_frames=None,
         fps=None,
         num_threads=4,
-        tmpdir="/scratch/",
+        tmpdir="/tmp/",
         min_fps=1,
         max_fps=32,
         return_bytes=False,

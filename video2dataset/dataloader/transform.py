@@ -127,13 +127,20 @@ class VideoResizer(PRNGMixin):
         for frame in frames:
 
             if resize_size is not None:
-                frame = cv2.resize(frame, tuple(reversed(resize_size)), interpolation=cv2.INTER_LANCZOS4)
+                frame = cv2.resize(
+                    frame,
+                    tuple(reversed(resize_size)),
+                    interpolation=cv2.INTER_LANCZOS4,
+                )
 
             if self.crop_size is not None:
                 x_ = reference[1] - int(round(self.crop_size[1] / 2))
                 y_ = reference[0] - int(round(self.crop_size[0] / 2))
 
-                frame = frame[int(y_) : int(y_) + self.crop_size[0], int(x_) : int(x_) + self.crop_size[1]]
+                frame = frame[
+                    int(y_) : int(y_) + self.crop_size[0],
+                    int(x_) : int(x_) + self.crop_size[1],
+                ]
 
             # TODO: maybe lets add other options for normalization
             # will need for VideoCLIP built on top of CLIP
@@ -156,7 +163,10 @@ class CutsAdder:
     def __call__(self, sample):
         assert self.cuts_key in sample, f'no field with key "{self.cuts_key}" in sample, but this is required.'
         assert self.video_key in sample, f'no field with key "{self.video_key}" in sample, but this is required.'
-        sample[self.video_key] = {self.video_key: sample[self.video_key], self.cuts_key: sample[self.cuts_key]}
+        sample[self.video_key] = {
+            self.video_key: sample[self.video_key],
+            self.cuts_key: sample[self.cuts_key],
+        }
         del sample[self.cuts_key]
         return sample
 
