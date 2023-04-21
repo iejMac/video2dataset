@@ -27,9 +27,7 @@ class FrameSubsampler:
                 try:
                     _ = ffmpeg.input(f"{tmpdir}/input.mp4")
                     _ = _.filter("fps", fps=self.frame_rate)
-                    _ = _.output(f"{tmpdir}/output.mp4", reset_timestamps=1).run(
-                        capture_stdout=True, quiet=True
-                    )
+                    _ = _.output(f"{tmpdir}/output.mp4", reset_timestamps=1).run(capture_stdout=True, quiet=True)
                 except Exception as err:  # pylint: disable=broad-except
                     return [], str(err)
 

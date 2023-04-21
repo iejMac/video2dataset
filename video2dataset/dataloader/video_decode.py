@@ -66,9 +66,7 @@ class VideoDecorder(AbstractVideoDecoder):
         # for frame rate conditioning
         if self.fps == "sample":
             # this means we sample fps in every iteration
-            self.fs_ids = {
-                fr: i for i, fr in enumerate(range(self.min_fps, self.max_fps + 1))
-            }
+            self.fs_ids = {fr: i for i, fr in enumerate(range(self.min_fps, self.max_fps + 1))}
         elif isinstance(self.fps, list):
             self.fs_ids = {fr: i for i, fr in enumerate(self.fps)}
         else:
@@ -96,9 +94,7 @@ class VideoDecorder(AbstractVideoDecoder):
         self.tmpdir = tmpdir
         print(f"Setting {self.tmpdir} as temporary directory for the decoder")
 
-    def get_frames(
-        self, reader, n_frames, stride, **kwargs
-    ):  # pylint: disable=arguments-differ
+    def get_frames(self, reader, n_frames, stride, **kwargs):  # pylint: disable=arguments-differ
         if n_frames * stride > len(reader):
             if not self.pad_frames:
                 raise ValueError("video clip not long enough for decoding")
@@ -108,13 +104,9 @@ class VideoDecorder(AbstractVideoDecoder):
         if n_frames == len(reader):
             frame_start = 0
         else:
-            frame_start = self.prng.choice(
-                int(len(reader)) - int(n_frames * stride), 1
-            ).item()
+            frame_start = self.prng.choice(int(len(reader)) - int(n_frames * stride), 1).item()
         # only decode the frames which are actually needed
-        frames = reader.get_batch(
-            np.arange(frame_start, frame_start + n_frames * stride, stride).tolist()
-        )
+        frames = reader.get_batch(np.arange(frame_start, frame_start + n_frames * stride, stride).tolist())
 
         # TODO: maybe its useful to inform the user which frmaes are padded
         # can just output first_pad_index or a mask or something
@@ -153,9 +145,7 @@ class VideoDecorder(AbstractVideoDecoder):
                 return None
             max_fps = min(native_fps, self.max_fps)
             additional_info.update({"fps_id": 0})
-            chosen_fps = self.prng.choice(
-                np.arange(self.min_fps, max_fps + 1), 1
-            ).item()
+            chosen_fps = self.prng.choice(np.arange(self.min_fps, max_fps + 1), 1).item()
         else:
             chosen_fps = native_fps
 
@@ -163,17 +153,11 @@ class VideoDecorder(AbstractVideoDecoder):
         stride = int(np.round(native_fps / chosen_fps))
         additional_info.update({"fps_id": torch.Tensor([fs_id] * n_frames).long()})
 
-        frames, start_frame, pad_start = self.get_frames(
-            reader, n_frames, stride, scene_list=scene_list
-        )
+        frames, start_frame, pad_start = self.get_frames(reader, n_frames, stride, scene_list=scene_list)
         frames = frames.float().numpy()
 
-        additional_info["original_height"] = torch.full(
-            (frames.shape[0],), fill_value=frames.shape[1]
-        ).long()
-        additional_info["original_width"] = torch.full(
-            (frames.shape[0],), fill_value=frames.shape[2]
-        ).long()
+        additional_info["original_height"] = torch.full((frames.shape[0],), fill_value=frames.shape[1]).long()
+        additional_info["original_width"] = torch.full((frames.shape[0],), fill_value=frames.shape[2]).long()
 
         pad_masks = torch.zeros((frames.shape[0],))
         pad_masks[:pad_start] = 1.0
@@ -183,9 +167,7 @@ class VideoDecorder(AbstractVideoDecoder):
             raise ValueError("Decoded video not long enough, skipping")
 
         # return compatible with torchvisioin API
-        additional_info.update(
-            {"native_fps": chosen_fps if chosen_fps is not None else native_fps}
-        )
+        additional_info.update({"native_fps": chosen_fps if chosen_fps is not None else native_fps})
         additional_info.update({"start_frame": start_frame})
 
         if self.return_bytes:
@@ -216,9 +198,7 @@ class VideoDecorderWithCutDetection(VideoDecorder):
 
         return super().__call__(key, data, scene_list=cut_list)
 
-    def get_frames(
-        self, reader, n_frames, stride, scene_list
-    ):  # pylint: disable=arguments-differ
+    def get_frames(self, reader, n_frames, stride, scene_list):  # pylint: disable=arguments-differ
 
         min_len = n_frames * stride
         # filter out subclips shorther than minimal required length
@@ -229,13 +209,8 @@ class VideoDecorderWithCutDetection(VideoDecorder):
         clip_id = self.prng.choice(len(scene_list), 1).item()
         start, end = scene_list[clip_id].tolist()
         # sample frame start and choose scene
-        frame_start = (
-            self.prng.choice(int(end - start) - int(n_frames * stride), 1).item()
-            + start
-        )
+        frame_start = self.prng.choice(int(end - start) - int(n_frames * stride), 1).item() + start
         # only decode the frames which are actually needed
-        frames = reader.get_batch(
-            np.arange(frame_start, frame_start + n_frames * stride, stride).tolist()
-        )
+        frames = reader.get_batch(np.arange(frame_start, frame_start + n_frames * stride, stride).tolist())
 
         return frames, frame_start

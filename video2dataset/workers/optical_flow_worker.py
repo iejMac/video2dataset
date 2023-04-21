@@ -217,9 +217,7 @@ class OpticalFlowWorker:
             for mod, fmt in self.encode_formats.items():
                 streams[mod] = sample.get(fmt, b"")
 
-            optical_flow, metrics, error_message = self.optical_flow_subsampler(
-                frames, native_fps
-            )
+            optical_flow, metrics, error_message = self.optical_flow_subsampler(frames, native_fps)
 
             if error_message is not None:
                 failed_to_subsample += 1

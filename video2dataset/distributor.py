@@ -26,9 +26,7 @@ def retrier(runf, failed_shards, max_shard_retry):
         )
 
 
-def multiprocessing_distributor(
-    processes_count, worker, input_sharder, _, max_shard_retry
-):
+def multiprocessing_distributor(processes_count, worker, input_sharder, _, max_shard_retry):
     """Distribute the work to the processes using multiprocessing"""
     ctx = get_context("spawn")
     with ctx.Pool(processes_count, maxtasksperchild=5) as process_pool:
@@ -49,9 +47,7 @@ def multiprocessing_distributor(
         del process_pool
 
 
-def pyspark_distributor(
-    processes_count, worker, input_sharder, subjob_size, max_shard_retry
-):
+def pyspark_distributor(processes_count, worker, input_sharder, subjob_size, max_shard_retry):
     """Distribute the work to the processes using pyspark"""
 
     with _spark_session(processes_count) as spark:
@@ -119,15 +115,11 @@ class SlurmDistributor:
         worker_args["distributor"] = "multiprocessing"
 
         # save worker args to file (this is written by the slurm_executor)
-        self.worker_args_as_file = os.path.join(
-            self.cache_path, f"{self.timestamp}_worker_args.yaml"
-        )
+        self.worker_args_as_file = os.path.join(self.cache_path, f"{self.timestamp}_worker_args.yaml")
         with self.fs.open(self.worker_args_as_file, "w", encoding="utf-8") as f:
             yaml.dump(worker_args, f, default_flow_style=False)
 
-        self.launcher_path = os.path.join(
-            self.cache_path, self.timestamp + "_launcher.sh"
-        )
+        self.launcher_path = os.path.join(self.cache_path, self.timestamp + "_launcher.sh")
         with self.fs.open(self.launcher_path, "w", encoding="utf-8") as launcher_file:
             launcher_file.write(self._make_launch_cpu())
 
@@ -140,15 +132,9 @@ class SlurmDistributor:
 
     def _make_sbatch(self):
 
-        nodelist = (
-            ("#SBATCH --nodelist " + self.nodelist) if self.nodelist is not None else ""
-        )
-        exclude = (
-            ("#SBATCH --exclude " + self.exclude) if self.exclude is not None else ""
-        )
-        account = (
-            ("#SBATCH --account " + self.account) if self.account is not None else ""
-        )
+        nodelist = ("#SBATCH --nodelist " + self.nodelist) if self.nodelist is not None else ""
+        exclude = ("#SBATCH --exclude " + self.exclude) if self.exclude is not None else ""
+        account = ("#SBATCH --account " + self.account) if self.account is not None else ""
         return f"""#!/bin/bash
 #SBATCH --partition={self.partition}
 #SBATCH --job-name={self.job_name}
@@ -271,10 +257,7 @@ python {script} --worker_args {self.worker_args_as_file} --node_id $SLURM_NODEID
         if self.verbose_wait:
             print(f"job status is {status}")
 
-        return (
-            status == "slurm_load_jobs error: Invalid job id specified"
-            or len(status.split("\n")) == 2
-        )
+        return status == "slurm_load_jobs error: Invalid job id specified" or len(status.split("\n")) == 2
 
 
 @contextmanager
@@ -288,9 +271,7 @@ def _spark_session(processes_count: int):
     if spark_major_version >= 3:
         spark = SparkSession.getActiveSession()
     else:
-        spark = (
-            pyspark.sql.SparkSession._instantiatedSession
-        )  # pylint: disable=protected-access
+        spark = pyspark.sql.SparkSession._instantiatedSession  # pylint: disable=protected-access
 
     if spark is None:
         print("No pyspark session found, creating a new one!")

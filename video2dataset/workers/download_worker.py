@@ -28,10 +28,8 @@ from video2dataset.subsamplers import (
 def compute_key(key, shard_id, oom_sample_per_shard, oom_shard_count):
     true_key = (10**oom_sample_per_shard) * shard_id + key
     key_format = oom_sample_per_shard + oom_shard_count
-    str_key = (
-        "{true_key:0{key_format}d}".format(  # pylint: disable=consider-using-f-string
-            key_format=key_format, true_key=true_key
-        )
+    str_key = "{true_key:0{key_format}d}".format(  # pylint: disable=consider-using-f-string
+        key_format=key_format, true_key=true_key
     )
     return str_key
 
@@ -80,9 +78,7 @@ class DownloadWorker:
 
         self.encode_formats = encode_formats
 
-        self.data_reader = VideoDataReader(
-            video_size, audio_rate, timeout, tmp_dir, yt_metadata_args, encode_formats
-        )
+        self.data_reader = VideoDataReader(video_size, audio_rate, timeout, tmp_dir, yt_metadata_args, encode_formats)
 
         self.clipping_subsampler = ClippingSubsampler(
             oom_clip_count,
@@ -163,9 +159,7 @@ class DownloadWorker:
         failed_to_subsample = 0
         bytes_downloaded = 0
         url_indice = self.column_list.index("url")
-        caption_indice = (
-            self.column_list.index("caption") if "caption" in self.column_list else None
-        )
+        caption_indice = self.column_list.index("caption") if "caption" in self.column_list else None
         key_url_list = [(key, x[url_indice]) for key, x in shard_to_dl]
 
         semaphore = Semaphore(self.thread_count)
@@ -195,14 +189,9 @@ class DownloadWorker:
             ):
                 try:
                     _, sample_data = shard_to_dl[key]
-                    str_key = compute_key(
-                        key, shard_id, oom_sample_per_shard, self.oom_shard_count
-                    )
+                    str_key = compute_key(key, shard_id, oom_sample_per_shard, self.oom_shard_count)
                     meta = {
-                        **{
-                            self.column_list[i]: sample_data[i]
-                            for i in range(len(self.column_list))
-                        },
+                        **{self.column_list[i]: sample_data[i] for i in range(len(self.column_list))},
                         "key": str_key,
                         "status": None,
                         "error_message": error_message,
@@ -210,12 +199,8 @@ class DownloadWorker:
                     }
 
                     if error_message is not None:
-                        if (
-                            "[youtube]" in error_message
-                        ):  # video-specific error, remove videoID
-                            error_message = (
-                                "ERROR: [youtube]:" + error_message.split(":")[-1]
-                            )
+                        if "[youtube]" in error_message:  # video-specific error, remove videoID
+                            error_message = "ERROR: [youtube]:" + error_message.split(":")[-1]
                         failed_to_download += 1
                         status = "failed_to_download"
                         status_dict.increment(error_message)
@@ -223,9 +208,7 @@ class DownloadWorker:
                         sample_writer.write(
                             {},
                             str_key,
-                            sample_data[caption_indice]
-                            if caption_indice is not None
-                            else None,
+                            sample_data[caption_indice] if caption_indice is not None else None,
                             meta,
                         )
                         semaphore.release()
@@ -238,10 +221,7 @@ class DownloadWorker:
 
                     if self.captions_are_subtitles:  # create clips
                         subtitles = meta["yt_meta_dict"]["subtitles"]
-                        meta["clips"] = [
-                            [line_dict["start"], line_dict["end"]]
-                            for line_dict in subtitles
-                        ]
+                        meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
                     elif self.detect_cuts:  # apply cut detection to get clips
                         meta["cuts"] = self.cut_detector(streams)
 
@@ -253,22 +233,14 @@ class DownloadWorker:
                     # 1 video -> many videos (either clipping or noop which does identity broadcasting)
                     broadcast_subsampler = (
                         self.clipping_subsampler
-                        if (
-                            "clips" in self.column_list
-                            or self.captions_are_subtitles
-                            or self.cuts_are_clips
-                        )
+                        if ("clips" in self.column_list or self.captions_are_subtitles or self.cuts_are_clips)
                         else self.noop_subsampler
                     )
-                    subsampled_streams, metas, error_message = broadcast_subsampler(
-                        streams, meta
-                    )
+                    subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
 
                     for modality in subsampled_streams:
                         for modality_subsampler in self.subsamplers[modality]:
-                            subsampled_modality, error_message = modality_subsampler(
-                                subsampled_streams[modality]
-                            )
+                            subsampled_modality, error_message = modality_subsampler(subsampled_streams[modality])
                             subsampled_streams[modality] = subsampled_modality
 
                     if error_message is not None:
@@ -281,9 +253,7 @@ class DownloadWorker:
                         sample_writer.write(
                             {},
                             str_key,
-                            sample_data[caption_indice]
-                            if caption_indice is not None
-                            else None,
+                            sample_data[caption_indice] if caption_indice is not None else None,
                             meta,
                         )
                         semaphore.release()
@@ -293,17 +263,12 @@ class DownloadWorker:
                     status = "success"
                     status_dict.increment(status)
                     subsampled_streams_list = [
-                        dict(zip(subsampled_streams, s))
-                        for s in zip(*subsampled_streams.values())
+                        dict(zip(subsampled_streams, s)) for s in zip(*subsampled_streams.values())
                     ]
                     for subsampled_streams, meta in zip(subsampled_streams_list, metas):
                         meta["status"] = status
 
-                        text_caption = (
-                            sample_data[caption_indice]
-                            if caption_indice is not None
-                            else None
-                        )
+                        text_caption = sample_data[caption_indice] if caption_indice is not None else None
                         if self.captions_are_subtitles:
                             text_caption = meta["yt_meta_dict"].pop("subtitles")
 

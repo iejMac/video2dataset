@@ -60,9 +60,7 @@ def resize_image_with_aspect_ratio(image, target_shortest_side=16):
         new_height = int(height * (target_shortest_side / width))
         scaling_factor = width / new_width
     # Resize the image using the calculated dimensions
-    resized_image = cv2.resize(
-        image, (new_width, new_height), interpolation=cv2.INTER_AREA
-    )
+    resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
 
     return resized_image, scaling_factor
 
@@ -126,9 +124,7 @@ class RAFTDetector:
         """
         scaling_factor = 1
         if self.downsample_size:
-            frame1, scaling_factor = resize_image_with_aspect_ratio(
-                frame1, self.downsample_size
-            )
+            frame1, scaling_factor = resize_image_with_aspect_ratio(frame1, self.downsample_size)
             frame2, _ = resize_image_with_aspect_ratio(frame2, self.downsample_size)
 
         frame1 = frame1.astype(np.uint8)
@@ -189,9 +185,7 @@ class Cv2Detector:
         out = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         scaling_factor = 1
         if self.downsample_size:
-            out, scaling_factor = resize_image_with_aspect_ratio(
-                out, self.downsample_size
-            )
+            out, scaling_factor = resize_image_with_aspect_ratio(out, self.downsample_size)
 
         return out, scaling_factor
 
@@ -306,9 +300,7 @@ class OpticalFlowSubsampler:
                 prvs = next_frame
 
             opt_flow = np.array(optical_flow)
-            mean_magnitude_per_frame = np.linalg.norm(opt_flow, axis=-1).mean(
-                axis=(1, 2)
-            )
+            mean_magnitude_per_frame = np.linalg.norm(opt_flow, axis=-1).mean(axis=(1, 2))
             mean_magnitude = float(mean_magnitude_per_frame.mean())
             metrics = [mean_magnitude, mean_magnitude_per_frame.tolist()]
             return opt_flow.astype(self.dtype), metrics, None

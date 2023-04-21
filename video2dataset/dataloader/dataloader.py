@@ -192,13 +192,9 @@ def get_video_dataset(
         )
 
     if custom_transforms:
-        dset = dset.map(
-            CustomTransforms(custom_transforms), handler=wds.warn_and_continue
-        )
+        dset = dset.map(CustomTransforms(custom_transforms), handler=wds.warn_and_continue)
 
     if decoder_kwargs != {}:
-        dset = dset.batched(
-            batch_size, partial=drop_last, collation_fn=dict_collation_fn
-        )
+        dset = dset.batched(batch_size, partial=drop_last, collation_fn=dict_collation_fn)
 
     return dset

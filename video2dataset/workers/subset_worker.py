@@ -157,9 +157,7 @@ class SubsetWorker:
 
             if self.captions_are_subtitles:  # create clips
                 subtitles = meta["yt_meta_dict"]["subtitles"]
-                meta["clips"] = [
-                    [line_dict["start"], line_dict["end"]] for line_dict in subtitles
-                ]
+                meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
 
             elif self.detect_cuts:  # apply cut detection to get clips
                 meta["cuts"] = self.cut_detector(streams)
@@ -167,9 +165,7 @@ class SubsetWorker:
             if self.cuts_are_clips:
                 cuts = meta["cuts"]
                 native_fps = cuts["original_fps"]
-                meta["clips"] = (
-                    np.array(cuts["cuts_original_fps"]) / native_fps
-                ).tolist()
+                meta["clips"] = (np.array(cuts["cuts_original_fps"]) / native_fps).tolist()
 
             # 1 video -> many videos (either clipping or noop which does identity broadcasting)
             broadcast_subsampler = (
@@ -177,14 +173,10 @@ class SubsetWorker:
                 if (self.captions_are_subtitles or self.cuts_are_clips)
                 else self.noop_subsampler
             )
-            subsampled_streams, metas, error_message = broadcast_subsampler(
-                streams, meta
-            )
+            subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
             for modality in subsampled_streams:
                 for modality_subsampler in self.subsamplers[modality]:
-                    subsampled_modality, error_message = modality_subsampler(
-                        subsampled_streams[modality]
-                    )
+                    subsampled_modality, error_message = modality_subsampler(subsampled_streams[modality])
                     subsampled_streams[modality] = subsampled_modality
 
             if error_message is not None:
@@ -205,10 +197,7 @@ class SubsetWorker:
             successes += 1
             status = "success"
             status_dict.increment(status)
-            subsampled_streams_list = [
-                dict(zip(subsampled_streams, s))
-                for s in zip(*subsampled_streams.values())
-            ]
+            subsampled_streams_list = [dict(zip(subsampled_streams, s)) for s in zip(*subsampled_streams.values())]
             if len(subsampled_streams_list) == 0:  # no audio or video, just write meta
                 meta["status"] = status
                 sample_writer.write(

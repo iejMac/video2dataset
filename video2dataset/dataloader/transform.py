@@ -35,18 +35,12 @@ class VideoResizer(PRNGMixin):
         self.random_crop = random_crop and self.crop_size is not None
 
         if self.crop_size or self.resize_size:
-            print(
-                f"{self.__class__.__name__} is resizing video to size {self.resize_size} ..."
-            )
+            print(f"{self.__class__.__name__} is resizing video to size {self.resize_size} ...")
 
             if self.crop_size:
-                print(
-                    f'... and {"random" if self.random_crop else "center"} cropping to size {self.crop_size}.'
-                )
+                print(f'... and {"random" if self.random_crop else "center"} cropping to size {self.crop_size}.')
         else:
-            print(
-                f"WARNING: {self.__class__.__name__} is not resizing or croppping videos. Is this intended?"
-            )
+            print(f"WARNING: {self.__class__.__name__} is not resizing or croppping videos. Is this intended?")
 
     def _get_rand_reference(self, resize_size, h, w):
         """gets random reference"""
@@ -167,12 +161,8 @@ class CutsAdder:
         self.video_key = video_key
 
     def __call__(self, sample):
-        assert (
-            self.cuts_key in sample
-        ), f'no field with key "{self.cuts_key}" in sample, but this is required.'
-        assert (
-            self.video_key in sample
-        ), f'no field with key "{self.video_key}" in sample, but this is required.'
+        assert self.cuts_key in sample, f'no field with key "{self.cuts_key}" in sample, but this is required.'
+        assert self.video_key in sample, f'no field with key "{self.video_key}" in sample, but this is required.'
         sample[self.video_key] = {
             self.video_key: sample[self.video_key],
             self.cuts_key: sample[self.cuts_key],

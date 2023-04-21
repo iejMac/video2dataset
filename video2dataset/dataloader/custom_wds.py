@@ -77,9 +77,7 @@ class KeyPassThroughDecoder(Decoder):
         :param **kwargs: Keyword arguments to be passed to the base Decoder class.
         """
         super().__init__(*args, **kwargs)
-        self.passthrough_keys = (
-            passthrough_keys or []
-        )  # Simplified passthrough_keys initialization
+        self.passthrough_keys = passthrough_keys or []  # Simplified passthrough_keys initialization
 
     def decode(self, sample):
         """
@@ -260,9 +258,7 @@ class PrefixResampler(IterDataPipe):
 
         print(f"{self.__class__.__name__} got the following prefixes: {prefixes}")
         for u in urls:
-            self.prefix2urls[
-                list(filter(lambda x: u.startswith(x), prefixes))[0]
-            ].append(u)
+            self.prefix2urls[list(filter(lambda x: u.startswith(x), prefixes))[0]].append(u)
 
         for p in self.prefix2urls:
             if not self.prefix2urls[p]:
@@ -299,9 +295,7 @@ class PrefixResampler(IterDataPipe):
         while self.it < self.__len__():
 
             # sample prefix with corresponding probs
-            prefix_id = np.random.choice(
-                len(self.ps), 1, p=list(self.ps.values())
-            ).item()
+            prefix_id = np.random.choice(len(self.ps), 1, p=list(self.ps.values())).item()
             prefix = list(self.ps.keys())[prefix_id]
             # refill the url pool for the selected prefix if empty
             if not self.url_pool[prefix]:
@@ -328,9 +322,7 @@ class TarArchiveLoaderAndCloser(TarArchiveLoader):
             validate_pathname_binary_tuple(data)
             pathname, data_stream = data
             try:
-                if isinstance(data_stream, StreamWrapper) and isinstance(
-                    data_stream.file_obj, tarfile.TarFile
-                ):
+                if isinstance(data_stream, StreamWrapper) and isinstance(data_stream.file_obj, tarfile.TarFile):
                     tar = data_stream.file_obj
                 else:
                     reading_mode = (
@@ -348,13 +340,9 @@ class TarArchiveLoaderAndCloser(TarArchiveLoader):
                         continue
                     extracted_fobj = tar.extractfile(tarinfo)
                     if extracted_fobj is None:
-                        warnings.warn(
-                            f"failed to extract file {tarinfo.name} from source tarfile {pathname}"
-                        )
+                        warnings.warn(f"failed to extract file {tarinfo.name} from source tarfile {pathname}")
                         raise tarfile.ExtractError
-                    inner_pathname = os.path.normpath(
-                        os.path.join(pathname, tarinfo.name)
-                    )
+                    inner_pathname = os.path.normpath(os.path.join(pathname, tarinfo.name))
                     yield inner_pathname, StreamWrapper(extracted_fobj, data_stream, name=inner_pathname)  # type: ignore[misc]
 
                 # close tarfile after it's been exceeded
@@ -363,9 +351,7 @@ class TarArchiveLoaderAndCloser(TarArchiveLoader):
                 # if isinstance(data_stream, StreamWrapper):
                 #     data_stream.autoclose()
             except Exception as e:
-                warnings.warn(
-                    f"Unable to extract files from corrupted tarfile stream {pathname} due to: {e}, abort!"
-                )
+                warnings.warn(f"Unable to extract files from corrupted tarfile stream {pathname} due to: {e}, abort!")
                 if self.handler(e):
                     if hasattr(e, "args") and len(e.args) > 0:
                         e.args = (e.args[0] + " @ " + str(extracted_fobj),) + e.args[1:]
@@ -414,9 +400,7 @@ class S3TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
         elif isinstance(urls, str):
             urls = [urls]
         else:
-            raise TypeError(
-                "urls need to be path to a S3 prefix or list of paths to more than one prefixes"
-            )
+            raise TypeError("urls need to be path to a S3 prefix or list of paths to more than one prefixes")
 
         # sharding filter ensures propper splitting for distributed environment
         s3_datapipe = IterableWrapper(urls).shard_expand().sharding_filter()
@@ -452,9 +436,7 @@ class S3TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
         # Load data with S3FileLoader
         s3_datapipe = S3FileLoader(s3_datapipe, buffer_size=buffer_size)
         # adapted TarLoader which closes open tarfile handles after exceeding them
-        s3_datapipe = TarArchiveLoaderAndCloser(
-            datapipe=s3_datapipe, handler=handler
-        ).groupby(grouper)
+        s3_datapipe = TarArchiveLoaderAndCloser(datapipe=s3_datapipe, handler=handler).groupby(grouper)
         if sample_shuffle > 0:
             s3_datapipe = s3_datapipe.shuffle(buffer_size=sample_shuffle)
 

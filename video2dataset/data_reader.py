@@ -81,9 +81,7 @@ def get_yt_meta(url, yt_metadata_args: dict) -> dict:
 
         info_dict = yt.extract_info(url, download=False)
         if write_subs:
-            sub_url = info_dict["requested_subtitles"][
-                yt_metadata_args["subtitleslangs"][0]
-            ]["url"]
+            sub_url = info_dict["requested_subtitles"][yt_metadata_args["subtitleslangs"][0]]["url"]
             res = requests.get(sub_url)
             sub = io.TextIOWrapper(io.BytesIO(res.content)).read()
             sub_dict = sub_to_dict(sub)
@@ -143,9 +141,7 @@ class WebFileDownloader:
 
         if modality == "video" and self.encode_formats.get("audio", None):
             audio_format = self.encode_formats["audio"]
-            audio_path = video2audio(
-                modality_paths["video"], audio_format, self.tmp_dir
-            )
+            audio_path = video2audio(modality_paths["video"], audio_format, self.tmp_dir)
             if audio_path is not None:
                 modality_paths["audio"] = audio_path
 
@@ -172,11 +168,11 @@ class YtDlpDownloader:
         modality_paths = {}
 
         # video_format_string = f"bv*[height<={self.video_size}][ext=mp4]/b[height<={self.video_size}][ext=mp4] / wv/w[ext=mp4]"
-        video_format_string = f"wv*[height>={self.video_size}][ext=mp4]/w[height>={self.video_size}][ext=mp4] / bv/b[ext=mp4]"
+        video_format_string = (
+            f"wv*[height>={self.video_size}][ext=mp4]/w[height>={self.video_size}][ext=mp4] / bv/b[ext=mp4]"
+        )
         audio_fmt_string = (
-            f"wa[asr>={self.audio_rate}][ext=m4a] / ba[ext=m4a]"
-            if self.audio_rate > 0
-            else "ba[ext=m4a]"
+            f"wa[asr>={self.audio_rate}][ext=m4a] / ba[ext=m4a]" if self.audio_rate > 0 else "ba[ext=m4a]"
         )
 
         if self.encode_formats.get("audio", None):
@@ -237,13 +233,9 @@ class YtDlpDownloader:
 class VideoDataReader:
     """Video data reader provide data for a video"""
 
-    def __init__(
-        self, video_size, audio_rate, dl_timeout, tmp_dir, yt_meta_args, encode_formats
-    ) -> None:
+    def __init__(self, video_size, audio_rate, dl_timeout, tmp_dir, yt_meta_args, encode_formats) -> None:
         self.webfile_downloader = WebFileDownloader(dl_timeout, tmp_dir, encode_formats)
-        self.yt_downloader = YtDlpDownloader(
-            tmp_dir, yt_meta_args, video_size, audio_rate, encode_formats
-        )
+        self.yt_downloader = YtDlpDownloader(tmp_dir, yt_meta_args, video_size, audio_rate, encode_formats)
 
     def __call__(self, row):
         key, url = row

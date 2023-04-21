@@ -117,9 +117,7 @@ def video2dataset(
     output_folder = make_path_absolute(output_folder)
     url_list = make_path_absolute(url_list)
 
-    logger_process = LoggerProcess(
-        output_folder, enable_wandb, wandb_project, config_parameters
-    )
+    logger_process = LoggerProcess(output_folder, enable_wandb, wandb_project, config_parameters)
     tmp_path = output_folder + "/_tmp"
     fs, run_tmp_dir = fsspec.core.url_to_fs(tmp_path)
     if not fs.exists(run_tmp_dir):
@@ -144,10 +142,7 @@ def video2dataset(
         done_shards = set()
     else:
         if incremental_mode == "incremental":
-            done_shards = set(
-                int(x.split("/")[-1].split("_")[0])
-                for x in fs.glob(output_path + "/*.json")
-            )
+            done_shards = set(int(x.split("/")[-1].split("_")[0]) for x in fs.glob(output_path + "/*.json"))
         elif incremental_mode == "overwrite":
             fs.rm(output_path, recursive=True)
             fs.mkdir(output_path)
@@ -279,14 +274,8 @@ def video2dataset(
     elif distributor == "pyspark":
         distributor_fn = pyspark_distributor
     elif distributor == "slurm":
-        slurm_args = {
-            "_".join(key.split("_")[1:]): local_args[key]
-            for key in local_args
-            if key.startswith("slurm")
-        }
-        worker_args = {
-            key: local_args[key] for key in local_args if not key.startswith("slurm")
-        }
+        slurm_args = {"_".join(key.split("_")[1:]): local_args[key] for key in local_args if key.startswith("slurm")}
+        worker_args = {key: local_args[key] for key in local_args if not key.startswith("slurm")}
         distributor_fn = SlurmDistributor(worker_args=worker_args, **slurm_args)
     else:
         raise ValueError(f"Distributor {distributor} not supported")
