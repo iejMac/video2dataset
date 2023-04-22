@@ -3,7 +3,11 @@ import webdataset as wds
 from functools import partial
 from typing import List, Union
 
-from .custom_wds import WebDatasetWithChangedDecoder, dict_collation_fn
+from .custom_wds import (
+    WebDatasetWithChangedDecoder,
+    dict_collation_fn,
+    S3TorchDataWebdataset,
+)
 from .transform import VideoResizer, CutsAdder, CustomTransforms
 from .video_decode import VideoDecorder, VideoDecorderWithCutDetection
 from .audio_decode import AudioDecoder
@@ -41,7 +45,7 @@ def reassemble(x):
 
 
 def get_video_dataset(
-    urls,
+    urls: Union[str, List[str]],
     batch_size,
     shuffle=0,
     repeat=1,
@@ -64,7 +68,7 @@ def get_video_dataset(
     """
     Generates a webdataset given the specified parameters.
     Parameters:
-        urls (str): The path to the dataset.
+        urls (str, list(str)): The path to the dataset or a list of paths to the different locations of the dataset.
         batch_size (int): The number of samples per batch.
         shuffle (int, optional): Shuffle buffer size. Default is 0 means no shuffling.
         repeat (int, optional): Whether to repeat the dataset. Default is 1. -1 means repeating infinitely
@@ -95,9 +99,23 @@ def get_video_dataset(
     if keys_to_remove is None:
         keys_to_remove = []
 
+    if isinstance(urls, str):
+        urls = [urls]
+    use_torchdata = urls[0].replace(" ", "").startswith("s3://")
+
+    if not use_torchdata:
+        urls = urls[0]
+
     additional_decoder_kwargs = {}
     if cuts_key:
-        dataset_cls = WebDatasetWithChangedDecoder
+        dataset_cls = (
+            partial(
+                WebDatasetWithChangedDecoder,
+                nodesplitter=wds.split_by_node,
+            )
+            if not use_torchdata
+            else partial(S3TorchDataWebdataset, repeat=repeat, drop_last=drop_last)
+        )
         video_decoder_cls = partial(VideoDecorderWithCutDetection, cuts_key=cuts_key)
         additional_decoder_kwargs = {"passthrough_keys": [video_key]}
     elif video_key in ["mp3", "wav", "flac", "m4a"]:
@@ -107,6 +125,18 @@ def get_video_dataset(
             decoder_kwargs = {"sample_rate": None}
     elif decoder_kwargs == {}:  # nothing means just read the bytes
         dataset_cls = wds.WebDataset
+        video_decoder_cls = AudioDecoder  # type: ignore
+        if decoder_kwargs == {}:
+            decoder_kwargs = {"sample_rate": None}
+    elif decoder_kwargs == {}:  # nothing means just read the bytes
+        dataset_cls = (
+            partial(
+                wds.WebDataset,
+                nodesplitter=wds.split_by_node,
+            )
+            if not use_torchdata
+            else partial(S3TorchDataWebdataset, repeat=repeat, drop_last=drop_last)
+        )
         video_decoder_cls = None
     else:
         dataset_cls = wds.WebDataset
@@ -137,7 +167,9 @@ def get_video_dataset(
     # Decoding
     if video_decoder_cls is not None:
         dset = dset.decode(
-            video_decoder_cls(**decoder_kwargs), handler=wds.warn_and_continue, **additional_decoder_kwargs
+            video_decoder_cls(**decoder_kwargs),
+            handler=wds.warn_and_continue,
+            **additional_decoder_kwargs,
         ).map(reassemble, handler=wds.warn_and_continue)
 
     # Filters

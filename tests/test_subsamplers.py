@@ -10,6 +10,7 @@ import cv2
 from video2dataset.subsamplers import (
     ClippingSubsampler,
     get_seconds,
+    split_time_frame,
     ResolutionSubsampler,
     FrameSubsampler,
     AudioRateSubsampler,
@@ -39,8 +40,16 @@ def test_clipping_subsampler(clips):
     with open(audio, "rb") as aud_f:
         audio_bytes = aud_f.read()
 
-    min_length = 5.0 if clips == MULTI else 0.0
-    subsampler = ClippingSubsampler(3, {"video": "mp4", "audio": "mp3"}, min_length=min_length, precise=False)
+    min_length = 5.0 if clips == MULTI else 2.0
+    max_length = 999999.0 if clips == MULTI else 3.0
+    subsampler = ClippingSubsampler(
+        3,
+        {"video": "mp4", "audio": "mp3"},
+        min_length=min_length,
+        max_length=max_length,
+        max_length_strategy="all",
+        precise=False,
+    )
 
     metadata = {
         "key": "000",
@@ -53,18 +62,27 @@ def test_clipping_subsampler(clips):
     audio_fragments = stream_fragments["audio"]
     assert error_message is None
     # first one is only 4.5s
-    assert len(audio_fragments) == len(video_fragments) == len(meta_fragments) == len(clips) - bool(min_length)
+    assert len(audio_fragments) == len(video_fragments) == len(meta_fragments)
+    if clips == SINGLE:
+        assert len(video_fragments) == 3
+    else:
+        assert len(video_fragments) == 4
 
     for vid_frag, meta_frag in zip(video_fragments, meta_fragments):
         with tempfile.NamedTemporaryFile() as tmp:
             tmp.write(vid_frag)
-
             key_ind = int(meta_frag["key"].split("_")[-1])
             s, e = meta_frag["clips"][0]
 
-            key_ind += bool(min_length)  # threshold 5.0 omits only the first clip
+            if clips == MULTI:
+                key_ind += 1
+            else:
+                key_ind = 0
 
-            assert clips[key_ind] == [s, e]  # correct order
+            s_target, e_target = clips[key_ind]
+            s_target, e_target = get_seconds(s_target), get_seconds(e_target)
+            expected_clips = split_time_frame(s_target, e_target, min_length, max_length)
+            assert (s, e) in expected_clips
             assert get_seconds(e) - get_seconds(s) >= min_length
 
             s_s, e_s = get_seconds(s), get_seconds(e)

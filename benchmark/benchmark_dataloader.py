@@ -2,11 +2,16 @@
 Benchmark dataloader speed
 """
 import time
-from video2dataset.dataloader import get_bytes_dataloader
+
+# from video2dataset.dataloader import get_bytes_dataloader
 from video2dataset.dataloader import get_video_dataset
 
 # Benchmark videos are the WebVid validation split (5000 videos)
-SHARDS = "examples/dataset/{00000..00004}.tar"
+
+# SHARDS = "examples/dataset/{00000..00004}.tar"
+SHARDS = "s3://stability-west/hd-vila/coca_cut_detection/{000000000..000000001}.tar"
+
+
 
 
 # WEBVID = "pipe:aws s3 cp s3://stability-west/webvid-10M/{00000..00001}.tar -"

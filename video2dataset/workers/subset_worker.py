@@ -43,6 +43,8 @@ class SubsetWorker:
         cut_detector_threshold,
         cut_detector_min_scene_len,
         min_clip_length,
+        max_clip_length,
+        max_clip_length_strategy,
         precise_clipping,
         oom_clip_count=5,
     ) -> None:
@@ -57,7 +59,12 @@ class SubsetWorker:
         self.encode_formats = encode_formats
 
         self.clipping_subsampler = ClippingSubsampler(
-            oom_clip_count, encode_formats, min_length=min_clip_length, precise=precise_clipping
+            oom_clip_count,
+            encode_formats,
+            min_length=min_clip_length,
+            max_length=max_clip_length,
+            max_length_strategy=max_clip_length_strategy,
+            precise=precise_clipping,
         )
         self.cut_detection_mode = cut_detection_mode
         self.cut_framerates = cut_framerates
@@ -116,7 +123,12 @@ class SubsetWorker:
 
         # give schema to writer
         sample_writer = self.sample_writer_class(
-            shard_id, self.output_folder, self.save_caption, self.oom_shard_count, schema, self.encode_formats
+            shard_id,
+            self.output_folder,
+            self.save_caption,
+            self.oom_shard_count,
+            schema,
+            self.encode_formats,
         )
 
         successes = 0

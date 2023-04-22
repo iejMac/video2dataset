@@ -96,7 +96,14 @@ class SpeedLogger(Logger):
         self.enable_wandb = enable_wandb
 
     def __call__(
-        self, count, success, failed_to_download, failed_to_subsample, bytes_downloaded, start_time, end_time
+        self,
+        count,
+        success,
+        failed_to_download,
+        failed_to_subsample,
+        bytes_downloaded,
+        start_time,
+        end_time,
     ):  # pylint: disable=arguments-differ
         self.count += count
         self.success += success
@@ -116,7 +123,14 @@ class SpeedLogger(Logger):
         )
 
     def do_log(
-        self, count, success, failed_to_download, failed_to_subsample, bytes_downloaded, start_time, end_time
+        self,
+        count,
+        success,
+        failed_to_download,
+        failed_to_subsample,
+        bytes_downloaded,
+        start_time,
+        end_time,
     ):  # pylint: disable=arguments-differ
         duration = end_time - start_time
         vid_per_sec = count / duration
@@ -213,7 +227,14 @@ def write_stats(
 class LoggerProcess(multiprocessing.context.SpawnProcess):
     """Logger process that reads stats files regularly, aggregates and send to wandb / print to terminal"""
 
-    def __init__(self, output_folder, enable_wandb, wandb_project, config_parameters, log_interval=5):
+    def __init__(
+        self,
+        output_folder,
+        enable_wandb,
+        wandb_project,
+        config_parameters,
+        log_interval=5,
+    ):
         super().__init__()
         self.log_interval = log_interval
         self.enable_wandb = enable_wandb
@@ -231,7 +252,11 @@ class LoggerProcess(multiprocessing.context.SpawnProcess):
         fs, output_path = fsspec.core.url_to_fs(self.output_folder, use_listings_cache=False)
 
         if self.enable_wandb:
-            self.current_run = wandb.init(project=self.wandb_project, config=self.config_parameters, anonymous="allow")
+            self.current_run = wandb.init(
+                project=self.wandb_project,
+                config=self.config_parameters,
+                anonymous="allow",
+            )
         else:
             self.current_run = None
         self.total_speed_logger = SpeedLogger("total", enable_wandb=self.enable_wandb)
