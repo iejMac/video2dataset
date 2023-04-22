@@ -170,7 +170,8 @@ echo THEID=$THEID
 
 # set new location for cache dir
 export XDG_CACHE_HOME="{self.cache_path}"
-
+#in case of accessing s3 disable ssl verification (for making torchdata s3 related functionality work)
+export S3_VERIFY_SSL=0
 
 cd {project_root}
 source {venv}/bin/activate

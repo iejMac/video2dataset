@@ -173,7 +173,12 @@ class DownloadWorker:
 
         # give schema to writer
         sample_writer = self.sample_writer_class(
-            shard_id, self.output_folder, self.save_caption, self.oom_shard_count, schema, self.encode_formats
+            shard_id,
+            self.output_folder,
+            self.save_caption,
+            self.oom_shard_count,
+            schema,
+            self.encode_formats,
         )
         oom_sample_per_shard = math.ceil(math.log10(self.number_sample_per_shard))
 
