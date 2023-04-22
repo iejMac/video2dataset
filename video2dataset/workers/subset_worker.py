@@ -136,14 +136,12 @@ class SubsetWorker:
         failed_to_subsample = 0
         error_message = None
 
-        # if shard.startswith("s3://"):
-        #    shard = f"pipe:aws s3 cp {shard} -"
-
         dataloader = get_video_dataset(
             urls=shard,
             batch_size=1,
             decoder_kwargs={},
             enforce_additional_keys=[],
+            keys_to_remove=["m4a"],
         )
         count = 0
         for sample in dataloader:
