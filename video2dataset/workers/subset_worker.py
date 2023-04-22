@@ -175,7 +175,7 @@ class SubsetWorker:
                         meta,
                     )
                     continue
-                meta["cuts"] = self.cut_detector(video_bytes)  # downsampled_video_bytes[0])
+                meta["cuts"] = self.cut_detector(downsampled_video_bytes)  # downsampled_video_bytes[0])
 
             if self.cuts_are_clips:
                 cuts = meta["cuts"]
