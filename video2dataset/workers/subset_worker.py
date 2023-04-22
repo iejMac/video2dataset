@@ -80,6 +80,7 @@ class SubsetWorker:
             )
         self.cuts_are_clips = cuts_are_clips
         self.noop_subsampler = NoOpSubsampler()
+        self.cut_detector_downsampler = ResolutionSubsampler(video_size=64, resize_mode="scale")
 
         video_subsamplers: List[Any] = []
         if resize_mode is not None:
@@ -135,14 +136,12 @@ class SubsetWorker:
         failed_to_subsample = 0
         error_message = None
 
-        if shard.startswith("s3://"):
-            shard = f"pipe:aws s3 cp {shard} -"
-
         dataloader = get_video_dataset(
-            urls=[shard],
+            urls=shard,
             batch_size=1,
             decoder_kwargs={},
             enforce_additional_keys=[],
+            keys_to_remove=["m4a"],
         )
         count = 0
         for sample in dataloader:
