@@ -81,7 +81,7 @@ def test_clipping_subsampler(clips):
 
             s_target, e_target = clips[key_ind]
             s_target, e_target = _get_seconds(s_target), _get_seconds(e_target)
-            expected_clips = split_time_frame(s_target, e_target, min_length, max_length)
+            expected_clips = _split_time_frame(s_target, e_target, min_length, max_length)
             assert (s, e) in expected_clips
             assert _get_seconds(e) - _get_seconds(s) >= min_length
 
