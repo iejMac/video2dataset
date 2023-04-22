@@ -31,9 +31,12 @@ class VideoResizer(PRNGMixin):
         self.resize_size = size
         # crop size as [h,w]
         self.crop_size = crop_size
+        self.zero_pad = zero_pad
         if isinstance(self.crop_size, int):
             self.crop_size = [self.crop_size] * 2
         self.random_crop = random_crop and self.crop_size is not None
+        
+        # TODO: handle integer zero pad?
 
         if self.crop_size or self.resize_size:
             print(f"{self.__class__.__name__} is resizing video to size {self.resize_size} ...")
@@ -42,6 +45,14 @@ class VideoResizer(PRNGMixin):
                 print(f'... and {"random" if self.random_crop else "center"} cropping to size {self.crop_size}.')
         else:
             print(f"WARNING: {self.__class__.__name__} is not resizing or croppping videos. Is this intended?")
+
+    def _zero_pad_frame(self, frame, target_h, target_w):
+        h, w = frame.shape[:2]
+        bottom_pad = target_h - h
+        right_pad = target_w - w
+        assert bottom_pad >= 0 and right_pad >= 0, "Target dimensions should be greater than or equal to the original dimensions"
+        new_frame = np.pad(frame, ((0, bottom_pad), (0, right_pad), (0, 0)), mode='constant')
+        return new_frame
 
     def _get_rand_reference(self, resize_size, h, w):
         """gets random reference"""
@@ -99,7 +110,7 @@ class VideoResizer(PRNGMixin):
         return reference
 
     def __call__(self, data):
-        if self.crop_size is None and self.resize_size is None:
+        if self.crop_size is None and self.resize_size is None and self.zero_pad is None:
             if isinstance(data[self.key], list):
                 # convert to tensor
                 data[self.key] = torch.from_numpy(np.stack(data[self.key]))
@@ -136,9 +147,11 @@ class VideoResizer(PRNGMixin):
 
                 frame = frame[int(y_) : int(y_) + self.crop_size[0], int(x_) : int(x_) + self.crop_size[1]]
 
+            if self.zero_pad is not None:
+                frame = self._zero_pad_frame(frame, *self.zero_pad)
             # TODO: maybe lets add other options for normalization
             # will need for VideoCLIP built on top of CLIP
-            frame = frame.astype(float) / 127.5 - 1.0
+            #frame = frame.astype(float) / 127.5 - 1.0
 
             frame = torch.from_numpy(frame)
             result.append(frame)

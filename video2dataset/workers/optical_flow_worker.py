@@ -31,6 +31,17 @@ def numpy_npz_dumps(numpy_dict):
     np.savez_compressed(stream, **numpy_dict)
     return stream.getvalue()
 
+def undo_zero_padding(padded_video, original_height, original_width):
+    num_frames, padded_height, padded_width = padded_video.shape[:3]
+    
+    assert padded_height >= original_height and padded_width >= original_width, "Padded dimensions should be greater than or equal to the original dimensions"
+
+    _, _, _, num_channels = padded_video.shape
+    unpadded_video = np.zeros((num_frames, original_height, original_width, num_channels), dtype=np.float32)
+
+    unpadded_video[:, :original_height, :original_width] = padded_video[:, :original_height, :original_width]
+
+    return unpadded_video
 
 def frames_to_mp4_bytes(frames, fps=30, codec="mp4v"):
     """
@@ -196,16 +207,15 @@ class OpticalFlowWorker:
         successes = 0
         failed_to_subsample = 0
 
-        decoder_kwargs = {"n_frames": self.n_frames+1, "fps": self.fps, "num_threads": 12, "return_bytes": True, "tmpdir": "/tmp/"}
-        if self.batched:
-            print("HI!")
-            print(self.subsampler_batch_size, flush=True)
-            print(self.n_frames, flush=True)
-            data_loader_batch_size = self.subsampler_batch_size // self.n_frames
-            decoder_kwargs["pad_frames"] = True
-        else:
-            data_loader_batch_size = 1
-            decoder_kwargs["pad_frames"] = False
+        decoder_kwargs = {
+            "n_frames": self.n_frames+1, 
+            "fps": self.fps, 
+            "num_threads": 12, 
+            "return_bytes": True, 
+            "tmpdir": "/tmp/", 
+            "pad_frames": self.batched
+        }
+        data_loader_batch_size = self.subsampler_batch_size // self.n_frames if self.batched else 1
 
         if shard.startswith("s3://"):
             shard = f"pipe:aws s3 cp {shard} -"
@@ -215,8 +225,9 @@ class OpticalFlowWorker:
             batch_size=data_loader_batch_size,
             decoder_kwargs=decoder_kwargs,
             resize_size=None,
-            crop_size=(150,300),
+            crop_size=None,
             enforce_additional_keys=[],
+            zero_pad=(1000, 1000),
             keys_to_remove=["m4a"]
         )
 
@@ -225,10 +236,17 @@ class OpticalFlowWorker:
                 keys = batch["__key__"]
                 captions = batch.get("txt", [b""] * len(keys))
                 metas = batch.get("json", [{}] * len(keys))
-
                 # Process the batch of frames
                 frames_batch = [np.array(frames) for frames in batch.get("mp4")]
-                optical_flow, metrics_list, error_message = self.optical_flow_subsampler(frames_batch, n_frames_per_video=self.n_frames)
+                # print(frames_batch[0], flush=True)
+                optical_flow, metrics_list, error_message = self.optical_flow_subsampler(
+                    frames_batch,
+                    n_frames_per_video=self.n_frames,
+                    padding_masks=batch.get("pad_masks"), 
+                    original_height=batch.get("original_height"),
+                    original_width=batch.get("original_width"),
+                    zero_pad=(1000, 1000)
+                )
                 print("Im having an error: ", error_message, flush=True)
                 if error_message is not None:
                     for key, caption, meta in zip(keys, captions, metas):

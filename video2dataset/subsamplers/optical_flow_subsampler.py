@@ -4,6 +4,7 @@ optical flow detection
 import cv2
 import numpy as np
 import os
+import traceback
 
 try:
     from raft import RAFT
@@ -63,9 +64,7 @@ def resize_image_with_aspect_ratio(image, target_shortest_side=16):
     # Resize the image using the calculated dimensions
     image = image.astype(np.float32)
     resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
-    print(resized_image, flush=True)
     return resized_image, scaling_factor
-
 
 class RAFTDetector:
     """
@@ -218,7 +217,6 @@ class Cv2Detector:
             * scaling_factor
         )
 
-
 def get_detector_from_name_and_args(detector, args, downsample_size, is_slurm_task):
     if detector == "cv2":
         if args:
@@ -240,6 +238,28 @@ def get_detector_from_name_and_args(detector, args, downsample_size, is_slurm_ta
     else:
         raise NotImplementedError()
 
+def undo_zero_padding(padded_video, original_height, original_width):
+    num_frames, padded_height, padded_width = padded_video.shape[:3]
+    
+    assert padded_height >= original_height and padded_width >= original_width, "Padded dimensions should be greater than or equal to the original dimensions"
+    _, _, _, n_channels = padded_video.shape
+    unpadded_video = np.zeros((num_frames, original_height, original_width, n_channels), dtype=np.float32)
+    unpadded_video[:, :original_height, :original_width] = padded_video[:, :original_height, :original_width]
+
+    return unpadded_video
+
+def get_downsampled_dimensions(original_height, original_width, downsample_size):
+    aspect_ratio = original_width / original_height
+
+    if original_height <= original_width:
+        downsampled_height = downsample_size
+        downsampled_width = int(round(aspect_ratio * downsample_size))
+    else:
+        downsampled_width = downsample_size
+        downsampled_height = int(round(downsample_size / aspect_ratio))
+
+    return downsampled_height, downsampled_width
+
 
 class OpticalFlowSubsampler:
     def __init__(self, detector="cv2", fps=-1, args=None, downsample_size=None, dtype="fp16", is_slurm_task=False, batched=False):
@@ -250,25 +270,20 @@ class OpticalFlowSubsampler:
         self.downsample_size = downsample_size
         self.dtype = dtypes[dtype]
         self.batched = batched
-
-    def __call__(self, frames, n_frames_per_video=None):
+    
+    def __call__(self, frames, n_frames_per_video=None, padding_masks=None, original_height=None, original_width=None, zero_pad=None):
         optical_flow = []
+        zero_pad_height, zero_pad_width = zero_pad
         if self.batched:
             try:
-                assert n_frames_per_video is not None, "if using batched mode, must specify n_frames_per_video"
+                assert n_frames_per_video is not None and padding_masks is not None, "if using batched mode, must specify n_frames_per_video and padding mask"
                 # Split the frames_batch into separate frames lists
                 prvs_frames = []
                 next_frames = []
-                padding_frame_counts = []
 
                 for vid in frames:
-                    # Identify padding frames
-                    padding_frame_count = np.sum([np.all(frame == 0) for frame in vid])
-                    padding_frame_counts.append(padding_frame_count)
-
                     prvs_frames.extend(vid[:-1])
                     next_frames.extend(vid[1:])
-                # Process all the frames at once
 
                 flows = self.detector(prvs_frames, next_frames)
 
@@ -276,14 +291,39 @@ class OpticalFlowSubsampler:
                 flows = np.array(flows).reshape(len(frames), n_frames_per_video, *flows[0].shape)
 
                 metrics_list = []
-                for padding, video_flows in zip(padding_frame_counts, flows):
+                # TODO: figure out how to exclude the black borders from the optical flow
+                for padding_mask, video_flows, heights, widths in zip(padding_masks, flows, original_height, original_width):
+                    n_padding_frames = int((sum(padding_mask)-1).item())
+                    video_flows = video_flows[:n_padding_frames] # dont want optical flow btwn last frame and padding
+
+                    height_ratio = heights[0]/zero_pad_height
+                    width_ratio = widths[0]/zero_pad_width
+
+                    _, h, w, _ = video_flows.shape
+                    non_padded_h = int(h*height_ratio)
+                    non_padded_w = int(w*width_ratio)
+
+                    video_flows = video_flows[:, :non_padded_h, :non_padded_w, :]
+
+                    #orig_h, orig_w = heights[0].item(), widths[0].item()
+                    #downsampled_h, downsampled_w = get_downsampled_dimensions(orig_h, orig_w, self.downsample_size)
+                    print('='*100, flush=True)
+                    print(video_flows[0:2], flush=True)
+                    #print(downsampled_h, downsampled_w, video_flows.shape, flush=True)
+                    #padder = InputPadder((3, downsampled_h, downsampled_w))
+                    #x = torch.zeros(3, downsampled_h, downsampled_w)
+                    #stuff = padder.pad(x)[0]
+                    #print(video_flows.shape, stuff.shape, flush=True)
+                    print('='*100, flush=True)
+                    #video_flows = undo_zero_padding(video_flows, downsampled_h, downsampled_w)
                     mean_magnitude_per_frame = np.linalg.norm(video_flows, axis=-1).mean(axis=(1, 2)).astype(self.dtype)
-                    video_mean_magnitude = mean_magnitude_per_frame[:-padding].mean()
-                    video_mean_magnitude_per_frame = mean_magnitude_per_frame[:-padding].tolist()
+                    video_mean_magnitude = mean_magnitude_per_frame.mean()
+                    video_mean_magnitude_per_frame = mean_magnitude_per_frame.tolist()
                     metrics_list.append([video_mean_magnitude, video_mean_magnitude_per_frame])
 
                 return flows.astype(self.dtype), metrics_list, None
             except Exception as err:  # pylint: disable=broad-except
+                traceback.print_exc()
                 return [], None, str(err)
         else:
             try:

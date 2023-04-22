@@ -54,6 +54,7 @@ def get_video_dataset(
     p_unsafe_threshold=None,
     resize_size=None,
     crop_size=None,
+    zero_pad=None,
     random_crop=False,
     original_height_key="original_height",
     original_width_key="original_width",
@@ -142,11 +143,13 @@ def get_video_dataset(
         dset = dset.select(fltr)
 
     # Resizing
+    print(zero_pad)
     if decoder_kwargs != {}:  # bytes
         dset = dset.map(
             VideoResizer(
                 size=resize_size,
                 crop_size=crop_size,
+                zero_pad=zero_pad,
                 random_crop=random_crop,
                 key=video_key,
                 width_key=original_width_key,
