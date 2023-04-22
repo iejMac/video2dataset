@@ -125,7 +125,6 @@ class VideoResizer(PRNGMixin):
         reference = self._get_reference_frame(resize_size, h, w)
 
         for frame in frames:
-
             if resize_size is not None:
                 frame = cv2.resize(
                     frame,
