@@ -237,23 +237,7 @@ class SubsetWorker:
                     text_caption,
                     meta,
                 )
-            """
-            except Exception as err:  # pylint: disable=broad-except
-                failed_to_subsample += 1
-                status = "failed_to_subsample"
-                status_dict.increment(error_message)
-                meta["status"] = status
-                meta["error_message"] = error_message
-
-                sample_writer.write(
-                    {},
-                    key,
-                    caption,
-                    meta,
-                )
-                traceback.print_exc()
-                print(f"Sample {key} failed to download: {err}")
-            """
+            
         sample_writer.close()
         end_time = time.time()
 
