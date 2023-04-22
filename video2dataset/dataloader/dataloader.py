@@ -139,11 +139,18 @@ def get_video_dataset(
         )
         video_decoder_cls = None
     else:
-        dataset_cls = wds.WebDataset
-        video_decoder_cls = VideoDecorder  # type: ignore
+        dataset_cls = (
+            partial(
+                wds.WebDataset,
+                nodesplitter=wds.split_by_node,
+            )
+            if not use_torchdata
+            else partial(S3TorchDataWebdataset, repeat=repeat, drop_last=drop_last)
+        )
+    dset = dataset_cls(urls, shardshuffle=shuffle, handler=wds.warn_and_continue)
 
-    dset = dataset_cls(urls, nodesplitter=wds.split_by_node, shardshuffle=shuffle, handler=wds.warn_and_continue)
-    dset = dset.repeat(repeat).shuffle(shuffle, initial=shuffle)
+    if not use_torchdata:
+        dset = dset.repeat(repeat).shuffle(shuffle, initial=shuffle)
 
     unused_key_filter = UnusedKeyFilter(keys=keys_to_remove)
     dset = dset.map(unused_key_filter, handler=wds.warn_and_continue)
