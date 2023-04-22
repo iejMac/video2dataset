@@ -124,11 +124,6 @@ def get_video_dataset(
         if decoder_kwargs == {}:
             decoder_kwargs = {"sample_rate": None}
     elif decoder_kwargs == {}:  # nothing means just read the bytes
-        dataset_cls = wds.WebDataset
-        video_decoder_cls = AudioDecoder  # type: ignore
-        if decoder_kwargs == {}:
-            decoder_kwargs = {"sample_rate": None}
-    elif decoder_kwargs == {}:  # nothing means just read the bytes
         dataset_cls = (
             partial(
                 wds.WebDataset,

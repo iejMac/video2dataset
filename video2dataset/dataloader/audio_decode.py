@@ -1,7 +1,6 @@
 """Audio Decoders"""
 import torchaudio
 import io
-import torch
 
 torchaudio.set_audio_backend("sox_io")
 
