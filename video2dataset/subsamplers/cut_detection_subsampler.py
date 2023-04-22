@@ -39,9 +39,7 @@ class CutDetectionSubsampler:
         self.threshold = threshold
         self.min_scene_len = min_scene_len
 
-    def __call__(self, streams):
-        video_bytes = streams["video"]
-
+    def __call__(self, video_bytes):
         with tempfile.TemporaryDirectory() as tmpdir:
             video_path = os.path.join(tmpdir, "input.mp4")
             with open(video_path, "wb") as f:

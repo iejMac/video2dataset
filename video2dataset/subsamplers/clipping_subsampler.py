@@ -26,6 +26,8 @@ def split_time_frame(s, e, min_length, max_length):
         (s + i * max_length, min(s + (i + 1) * max_length, e))
         for i in range(int(time_d // max_length) + (1 if time_d % max_length > 0 else 0))
     ]
+    if len(time_frames) == 0:
+        return []
     last_time_d = time_frames[-1][1] - time_frames[-1][0]
     time_frames = time_frames if last_time_d >= min_length else time_frames[:-1]
     return time_frames
