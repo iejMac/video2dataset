@@ -80,12 +80,12 @@ def test_clipping_subsampler(clips):
                 key_ind = 0
 
             s_target, e_target = clips[key_ind]
-            s_target, e_target = get_seconds(s_target), get_seconds(e_target)
+            s_target, e_target = _get_seconds(s_target), _get_seconds(e_target)
             expected_clips = split_time_frame(s_target, e_target, min_length, max_length)
             assert (s, e) in expected_clips
-            assert get_seconds(e) - get_seconds(s) >= min_length
+            assert _get_seconds(e) - _get_seconds(s) >= min_length
 
-            s_s, e_s = get_seconds(s), get_seconds(e)
+            s_s, e_s = _get_seconds(s), _get_seconds(e)
             probe = ffmpeg.probe(tmp.name)
             video_stream = [stream for stream in probe["streams"] if stream["codec_type"] == "video"][0]
             frag_len = float(video_stream["duration"])
