@@ -18,7 +18,11 @@ from .data_writer import (
 )
 from .input_sharder import InputSharder
 from .output_sharder import OutputSharder
-from .distributor import multiprocessing_distributor, pyspark_distributor, SlurmDistributor
+from .distributor import (
+    multiprocessing_distributor,
+    pyspark_distributor,
+    SlurmDistributor,
+)
 from .workers import DownloadWorker, SubsetWorker, OpticalFlowWorker
 
 
