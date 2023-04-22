@@ -199,6 +199,7 @@ class VideoDecorderWithCutDetection(VideoDecorder):
         return super().__call__(key, data, scene_list=cut_list)
 
     def get_frames(self, reader, n_frames, stride, scene_list):  # pylint: disable=arguments-differ
+
         min_len = n_frames * stride
         # filter out subclips shorther than minimal required length
         scene_list = list(filter(lambda x: x[1] - x[0] > min_len, scene_list))

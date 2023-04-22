@@ -83,6 +83,7 @@ class RAFTDetector:
     """
 
     def __init__(self, args, downsample_size=None):
+
         self.device = args.get("device", "cuda")
         self.downsample_size = downsample_size
 

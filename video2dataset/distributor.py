@@ -33,7 +33,7 @@ def multiprocessing_distributor(processes_count, worker, input_sharder, _, max_s
 
         def run(gen):
             failed_shards = []
-            for status, row in tqdm(process_pool.imap_unordered(worker, gen)):
+            for (status, row) in tqdm(process_pool.imap_unordered(worker, gen)):
                 if status is False:
                     failed_shards.append(row)
             return failed_shards
@@ -61,7 +61,7 @@ def pyspark_distributor(processes_count, worker, input_sharder, subjob_size, max
             failed_shards = []
             for batch in batcher(gen, subjob_size):
                 rdd = spark.sparkContext.parallelize(batch, len(batch))
-                for status, row in rdd.map(worker).collect():
+                for (status, row) in rdd.map(worker).collect():
                     if status is False:
                         failed_shards.append(row)
             return failed_shards
@@ -131,6 +131,7 @@ class SlurmDistributor:
         print(f"Wrote sbatch to {self.sbatch_path}")
 
     def _make_sbatch(self):
+
         nodelist = ("#SBATCH --nodelist " + self.nodelist) if self.nodelist is not None else ""
         exclude = ("#SBATCH --exclude " + self.exclude) if self.exclude is not None else ""
         account = ("#SBATCH --account " + self.account) if self.account is not None else ""
@@ -155,6 +156,7 @@ srun --account {self.account} bash {self.launcher_path}
     def _make_launch_cpu(
         self,
     ):
+
         venv = os.environ["VIRTUAL_ENV"]
         cdir = os.path.abspath(os.path.dirname(__file__))
         script = os.path.join(cdir, "slurm_executor.py")
