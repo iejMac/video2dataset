@@ -1,19 +1,10 @@
 """Audio Decoders"""
-import re
 import torchaudio
 import io
-import subprocess as sp
+import torch
 
-torchaudio.set_audio_backend("soundfile")
+torchaudio.set_audio_backend("sox_io")
 
-
-def audio_to_wav(audio_bytes):
-    cmd = ["/fsx/iejmac/ffmpeg2/ffmpeg", "-v", "error", "-i", "pipe:", "-f", "wav", "pipe:"]
-    with sp.Popen(cmd, stdin=sp.PIPE, stderr=sp.PIPE, stdout=sp.PIPE) as proc:
-        out, err = proc.communicate(audio_bytes)
-        err = err.decode()
-        proc.wait()
-        return out
 
 
 class AudioDecoder:
@@ -24,15 +15,12 @@ class AudioDecoder:
         self.num_channels = num_channels
 
     def __call__(self, key, data):
-        extension = re.sub(r".*[.]", "", key)
+        extension = key.split('.')[-1]
+
         if extension not in "mp3 wav flac m4a".split():
             return None
         additional_info = {}
-        if extension != "wav":
-            wav_bytes = audio_to_wav(data)
-        else:
-            wav_bytes = data
-
-        waveform, sample_rate = torchaudio.load(io.BytesIO(wav_bytes), format="wav")
+        wav_bytes = data
+        waveform, sample_rate = torchaudio.load(io.BytesIO(wav_bytes), format=extension)
         additional_info["original_sample_rate"] = sample_rate
         return (waveform, additional_info)
