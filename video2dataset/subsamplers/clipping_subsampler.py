@@ -15,13 +15,13 @@ from datetime import datetime
 def get_seconds(t):
     """
     Converts a given time string or float into seconds.
-    
+
     Args:
     t (str or float): A time string in the format "%H:%M:%S.%f" or a float representing time in seconds.
-    
+
     Returns:
     float: The total number of seconds represented by the input time.
-    
+
     Note:
     The current implementation assumes the time string is in the format "%H:%M:%S.%f".
     To support other formats, consider parameterizing the time_format variable.
@@ -36,13 +36,13 @@ def get_seconds(t):
 def split_time_frame(s, e, min_length, max_length):
     """
     Splits a given time frame into smaller time frames based on min_length and max_length.
-    
+
     Args:
     s (int): The start time of the time frame.
     e (int): The end time of the time frame.
     min_length (int): The minimum length of each smaller time frame.
     max_length (int): The maximum length of each smaller time frame.
-    
+
     Returns:
     list: A list of tuples representing the smaller time frames. Each tuple contains a start
           and end time for the smaller time frame.
