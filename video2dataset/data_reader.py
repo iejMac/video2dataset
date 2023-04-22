@@ -78,6 +78,7 @@ def get_yt_meta(url, yt_metadata_args: dict) -> dict:
     info_dict, sub_dict = None, None
 
     with yt_dlp.YoutubeDL(yt_metadata_args) as yt:
+
         info_dict = yt.extract_info(url, download=False)
         if write_subs:
             sub_url = info_dict["requested_subtitles"][yt_metadata_args["subtitleslangs"][0]]["url"]
