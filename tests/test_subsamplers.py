@@ -9,8 +9,8 @@ import cv2
 
 from video2dataset.subsamplers import (
     ClippingSubsampler,
-    get_seconds,
-    split_time_frame,
+    _get_seconds,
+    _split_time_frame,
     ResolutionSubsampler,
     FrameSubsampler,
     AudioRateSubsampler,
