@@ -13,6 +13,12 @@ tqdm
 timeout-decorator
 scenedetect[opencv]
 decord
+<<<<<<< HEAD
 torch>=2
 langdetect
 torchdata==0.6.0
+=======
+torch>=1.7.1,<2
+langdetect
+soundfile
+>>>>>>> 7746146 (up-to-date)
