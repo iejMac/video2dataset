@@ -147,6 +147,7 @@ def get_video_dataset(
             if not use_torchdata
             else partial(S3TorchDataWebdataset, repeat=repeat, drop_last=drop_last)
         )
+        video_decoder_cls = VideoDecorder
     dset = dataset_cls(urls, shardshuffle=shuffle, handler=wds.warn_and_continue)
 
     if not use_torchdata:
