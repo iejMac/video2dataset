@@ -6,7 +6,6 @@ import torch
 torchaudio.set_audio_backend("sox_io")
 
 
-
 class AudioDecoder:
     """Basic audio decoder that converts audio into torch tensors"""
 
@@ -15,7 +14,7 @@ class AudioDecoder:
         self.num_channels = num_channels
 
     def __call__(self, key, data):
-        extension = key.split('.')[-1]
+        extension = key.split(".")[-1]
 
         if extension not in "mp3 wav flac m4a".split():
             return None
