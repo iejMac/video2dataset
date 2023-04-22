@@ -160,6 +160,7 @@ class SubsetWorker:
             elif self.detect_cuts:  # apply cut detection to get clips
                 video_bytes = streams["video"]
                 downsampled_video_bytes, error_message = self.cut_detector_downsampler([video_bytes])
+
                 if error_message is not None:
                     failed_to_subsample += 1
                     status = "failed_to_subsample"
@@ -174,7 +175,7 @@ class SubsetWorker:
                         meta,
                     )
                     continue
-                meta["cuts"] = self.cut_detector(downsampled_video_bytes[0])
+                meta["cuts"] = self.cut_detector(video_bytes)  # downsampled_video_bytes[0])
 
             if self.cuts_are_clips:
                 cuts = meta["cuts"]

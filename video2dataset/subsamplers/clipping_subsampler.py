@@ -21,6 +21,7 @@ def _get_seconds(t):
 
 
 def _split_time_frame(s, e, min_length, max_length):
+    """Filters out cuts by min and max length"""
     time_d = e - s
     time_frames = [
         (s + i * max_length, min(s + (i + 1) * max_length, e))
