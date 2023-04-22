@@ -63,6 +63,7 @@ def get_video_dataset(
     original_width_key="original_width",
     keys_to_remove: Union[int, List[int], None] = None,
     enforce_additional_keys=None,
+    return_always:bool=False
 ):
 
     """
@@ -86,10 +87,10 @@ def get_video_dataset(
         random_crop (bool, optional): Whether to apply random cropping. Default is False.
         original_height_key (str, optional): The key for the original video height. Default is 'original_height'.
         original_width_key (str, optional): The key for the original video width. Default is 'original_width'.
-        enforce_additional_keys (list, optional): Which keys must be in each sample
         keys_to_remove ((list, int), optional): Keys which, for the sake of speed, will be
-            removed before decoding. Default is None which means nothing will be removed.
-
+        removed before decoding. Default is None which means nothing will be removed.
+        enforce_additional_keys (list, optional): Which keys must be in each sample
+        return_always (bool): return all samples also when corrupted
     Returns:
         WebDataset: The processed webdataset.
     """
@@ -116,7 +117,7 @@ def get_video_dataset(
                 nodesplitter=wds.split_by_node,
             )
             if not use_torchdata
-            else partial(S3TorchDataWebdataset, repeat=repeat, drop_last=drop_last)
+            else partial(S3TorchDataWebdataset, repeat=repeat, drop_last=drop_last, return_always=return_always)
         )
         video_decoder_cls = partial(VideoDecorderWithCutDetection, cuts_key=cuts_key)
         additional_decoder_kwargs = {"passthrough_keys": [video_key]}
@@ -127,7 +128,7 @@ def get_video_dataset(
                 nodesplitter=wds.split_by_node,
             )
             if not use_torchdata
-            else partial(S3TorchDataWebdataset, repeat=repeat, drop_last=drop_last)
+            else partial(S3TorchDataWebdataset, repeat=repeat, drop_last=drop_last, return_always=return_always)
         )
         video_decoder_cls = None
     else:
@@ -137,7 +138,7 @@ def get_video_dataset(
                 nodesplitter=wds.split_by_node,
             )
             if not use_torchdata
-            else partial(S3TorchDataWebdataset, repeat=repeat, drop_last=drop_last)
+            else partial(S3TorchDataWebdataset, repeat=repeat, drop_last=drop_last, return_always=return_always)
         )
         video_decoder_cls = VideoDecorder  # type: ignore
 

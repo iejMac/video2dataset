@@ -33,6 +33,36 @@ def dict_collation_fn(samples, combine_tensors=True, combine_scalars=True):
     :returns: single sample consisting of a batch
     :rtype: dict
     """
+
+    # first, get all keys, for no missing a shared field
+    keys = set.union(*[set(sample.keys()) for sample in samples])
+    if "__corrupted__" in keys:
+        # set default dummy
+        dummy = (key: None if key != '__corrupted__' else True for key in keys if key)
+        dummy_set = False
+        missed_ids = {}
+        #search for first non-corrupted sample and take that as a dummy
+        for i,sample in enumerate(samples):
+            if not (dummy_set or sample["__corrupted__"]):
+                # set dummy to reasonble output, but keep sample['__corrupted__']=True
+                dummy = sample
+                dummy['__corrupted__'] = True
+                dummy_set = True
+            elif not dummy_set and sample['__corrupted__']:
+                # add default dummy and remember id
+                missed_ids.add(i)
+                samples[i] = dummy
+            elif sample['__corrupted__']:
+                # set corrupted sample to dummy
+                samples[i] = dummy
+
+        if missed_ids and dummy_set:
+            #this will be only to do if at least one element in the batch is not corrupted and
+            # if there is at least one missed sample
+            for i in missed_ids:
+                samples[i] = dummy
+
+        # the resorting case if the all samples in the batch are corrupted, then the batch will be
     keys = set.intersection(*[set(sample.keys()) for sample in samples])
     batched = {key: [s[key] for s in samples] for key in keys}
 
@@ -181,7 +211,33 @@ class WebDatasetWithChangedDecoder(DataPipeline, FluidInterfaceWithChangedDecode
 
 
 # pylint: disable=missing-function-docstring
-def _s3dataset2samples(data, handler=wds.reraise_exception):
+def _return_always_map(data, f, return_always=False, handler=wds.reraise_exception):
+    """Map samples."""
+    for sample in data:
+        try:
+            result = f(sample)
+        except Exception as exn:
+            if handler(exn):
+                if return_always:
+                    result = {'__corrupted__': True}
+                else:
+                    continue
+            else:
+                break
+        if result is None:
+            if return_always:
+                result = {'__corrupted__': True}
+            else:
+                continue
+        if isinstance(sample, dict) and isinstance(result, dict):
+            result["__key__"] = sample.get("__key__")
+        yield result
+
+return_always_map = wds.pipelinefilter(_return_always_map)
+
+
+# pylint: disable=missing-function-docstring
+def _s3dataset2samples(data, return_always=False, handler=wds.reraise_exception):
     for sample in data:
         try:
             # construct webdataset-style sample
@@ -190,6 +246,9 @@ def _s3dataset2samples(data, handler=wds.reraise_exception):
             sample = {s[0].split(".")[-1]: s[1].read() for s in sample}
             sample["__key__"] = key
             sample["__url__"] = url
+            if return_always:
+                # assume sample is heatlthy in the beginning
+                sample['__corrupted__'] = False
 
             yield sample
         except Exception as exn:  # pylint: disable=broad-except
@@ -390,10 +449,11 @@ class S3TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
         resample_prefixes: bool = False,
         prefix_probs: Optional[List[float]] = None,
         drop_last: bool = False,
+        return_always: bool = False,
         handler: Callable = wds.reraise_exception,
     ):
         """
-        :param urls: s3 prefixes to load the shards from, can be a list of different prefoxes for dataset mixing
+        :param urls: s3 prefixes to load the shards from, can be a list of different prefoxes for dataset mixing. With shards specified using braceexpand notation
         :param repeat: number of repetitions in the training data. Default is None which means looping perpetually.
         :param shardshuffle: Shuffle buffer size for shard shuffling. size 1 means no shufflin. Default is 10k.
         :param sample_shuffle: Shuffle buffer for sample-level-shuffling. Default is 1 which means no shuffling
@@ -403,12 +463,12 @@ class S3TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
          This can be useful in combination with prefix probs when training on merged datasets of non-equal size.
         :param prefix_probs: list containing resampling probabilities for every prefix in `urls`
         :param drop_last: whether to drop last samples to prevent hanging (recommended)
-        :param shard_pattern: pattern for identifying the desired shards from with the specified prefixes.
-        Default is taking all shards in all sub-prefixes
+        :param return_always: Flag indicating whether to drop a sample and continue on error (default) or
+        to return a dummy output with a
         :param handler: handler for handling exceptions as in webdataset
         """
         super().__init__()
-
+        self.return_always =return_always
         if isinstance(urls, (List, list)):
             pass
 
@@ -456,4 +516,7 @@ class S3TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
             s3_datapipe = s3_datapipe.shuffle(buffer_size=sample_shuffle)
 
         self.append(s3_datapipe)
-        self.append(s3dataset2samples(handler=handler))
+        self.append(s3dataset2samples(return_always=self.return_always, handler=handler))
+
+    def map(self, f, handler=wds.reraise_exception):
+        return self.compose(return_always_map(f, return_always=self.return_always, handler=handler))
