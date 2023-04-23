@@ -128,10 +128,7 @@ class VideoDecorder(AbstractVideoDecoder):
                 stream.write(data)
             reader = decord.VideoReader(fname, num_threads=self.num_threads)
 
-        if self.n_frames is None:
-            n_frames = len(reader)
-        else:
-            n_frames = self.n_frames
+        
 
         native_fps = int(np.round(reader.get_avg_fps()))
         if isinstance(self.fps, list):
@@ -151,6 +148,10 @@ class VideoDecorder(AbstractVideoDecoder):
 
         fs_id = self.fs_ids[chosen_fps] if self.fs_ids else 0
         stride = int(np.round(native_fps / chosen_fps))
+        if self.n_frames is None:
+            n_frames = len(reader) // stride
+        else:
+            n_frames = self.n_frames
         additional_info.update({"fps_id": torch.Tensor([fs_id] * n_frames).long()})
 
         frames, start_frame, pad_start = self.get_frames(reader, n_frames, stride, scene_list=scene_list)
