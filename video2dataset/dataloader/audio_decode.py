@@ -3,7 +3,8 @@ import torchaudio
 import io
 
 def set_backend(extension):
-    if extension in ['wav', 'mp3', 'flac']:
+    """Set torchaudio backend for different extensions (soundfile doesn't support M4A and MP3)"""
+    if extension in ['wav', 'flac']:
         torchaudio.set_audio_backend("soundfile")
     else:
         torchaudio.set_audio_backend("sox_io")
@@ -23,7 +24,6 @@ class AudioDecoder:
         if extension not in "mp3 wav flac m4a".split():
             return None
         additional_info = {}
-        wav_bytes = data
-        waveform, sample_rate = torchaudio.load(io.BytesIO(wav_bytes), format=extension)
+        waveform, sample_rate = torchaudio.load(io.BytesIO(data), format=extension)
         additional_info["original_sample_rate"] = sample_rate
         return (waveform, additional_info)
