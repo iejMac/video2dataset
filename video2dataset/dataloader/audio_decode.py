@@ -14,13 +14,13 @@ def set_backend(extension):
 class AudioDecoder:
     """Basic audio decoder that converts audio into torch tensors"""
 
-    def __init__(self, sample_rate=None, num_channels=None):
+    def __init__(self, sample_rate=None, num_channels=None, extension='mp3'):
         self.sample_rate = sample_rate
         self.num_channels = num_channels
+        set_backend(extension)
 
     def __call__(self, key, data):
         extension = key.split(".")[-1]
-        set_backend(extension)
 
         if extension not in "mp3 wav flac m4a".split():
             return None
