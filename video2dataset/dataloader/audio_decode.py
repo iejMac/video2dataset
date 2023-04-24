@@ -2,7 +2,11 @@
 import torchaudio
 import io
 
-torchaudio.set_audio_backend("sox_io")
+def set_backend(extension):
+    if extension in ['wav', 'mp3', 'flac']:
+        torchaudio.set_audio_backend("soundfile")
+    else:
+        torchaudio.set_audio_backend("sox_io")
 
 
 class AudioDecoder:
@@ -14,6 +18,7 @@ class AudioDecoder:
 
     def __call__(self, key, data):
         extension = key.split(".")[-1]
+        set_backend(extension)
 
         if extension not in "mp3 wav flac m4a".split():
             return None
