@@ -2,9 +2,10 @@
 import torchaudio
 import io
 
+
 def set_backend(extension):
     """Set torchaudio backend for different extensions (soundfile doesn't support M4A and MP3)"""
-    if extension in ['wav', 'flac']:
+    if extension in ["wav", "flac"]:
         torchaudio.set_audio_backend("soundfile")
     else:
         torchaudio.set_audio_backend("sox_io")
