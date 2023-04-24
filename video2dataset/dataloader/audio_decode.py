@@ -1,4 +1,5 @@
-"""Audio Decoder"""
+"""Audio Decoders"""
+import re
 import torchaudio
 import io
 
