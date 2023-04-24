@@ -123,6 +123,7 @@ def get_video_dataset(
         video_decoder_cls = AudioDecoder  # type: ignore
         if decoder_kwargs == {}:
             decoder_kwargs = {"sample_rate": None}
+        decoder_kwargs['extension'] = video_key
     elif decoder_kwargs == {}:  # nothing means just read the bytes
         dataset_cls = (
             partial(
