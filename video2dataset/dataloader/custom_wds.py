@@ -6,12 +6,13 @@ import tarfile
 import warnings
 import copy
 from io import BufferedIOBase
+from operator import itemgetter
 from typing import Callable, Iterator, Tuple, cast, Optional, IO, Union, List, Iterable, Dict
 
 import torch
 import torch.distributed as dist
 from torch.utils.data import IterableDataset
-from torch.utils.data.datapipes.iter import IterableWrapper
+from torch.utils.data.datapipes.iter import IterableWrapper, FileOpener
 from torch.utils.data.datapipes.utils.common import StreamWrapper
 from torchdata.datapipes.iter import S3FileLoader, IterDataPipe
 from torchdata.datapipes.iter import TarArchiveLoader
@@ -241,7 +242,7 @@ class PrefixResampler(IterDataPipe):
 
     def __init__(
         self,
-        datapipe: IterDataPipe[str],
+        datapipe: IterDataPipe[Tuple[str, List[str]]],
         prefixes: List[str],
         ps: Optional[Iterable[float]] = None,
     ):
@@ -255,14 +256,15 @@ class PrefixResampler(IterDataPipe):
             self.ps = [1 / len(self.prefix2urls)] * len(self.prefix2urls)
 
         print(f"{self.__class__.__name__} got the following prefixes: {prefixes}")
+        # this operation drops the prefix-key for the datapipe
         for u in urls:
             self.prefix2urls[
                 list(
                     # pylint: disable=unnecessary-lambda,cell-var-from-loop
-                    filter(lambda x: u.startswith(x), prefixes)
+                    filter(lambda x: u[0].startswith(x), prefixes)
                 )[0]
             ].append(
-                u  # pylint: disable=cell-var-from-loop
+                u[1]  # pylint: disable=cell-var-from-loop
             )
 
         for p in self.prefix2urls:
@@ -383,6 +385,7 @@ class S3TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
     def __init__(
         self,
         urls: Union[List[str], str],
+        meta_urls: Optional[Union[List[List[str]], List[str]]] = None,
         repeat: int = None,
         shardshuffle: int = 10000,
         sample_shuffle: int = 0,
@@ -394,6 +397,10 @@ class S3TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
     ):
         """
         :param urls: s3 prefixes to load the shards from, can be a list of different prefoxes for dataset mixing
+        :param urls: s3 prefixes to load the shards from, can be a list of different prefoxes for dataset mixing.
+        With shards specified using braceexpand notation
+        :param meta_urls: A list of lists of metadata tars which are expected to be saved in different
+        s3-prefixes/directories than the main tars but have same filenames
         :param repeat: number of repetitions in the training data. Default is None which means looping perpetually.
         :param shardshuffle: Shuffle buffer size for shard shuffling. size 1 means no shufflin. Default is 10k.
         :param sample_shuffle: Shuffle buffer for sample-level-shuffling. Default is 1 which means no shuffling
@@ -417,43 +424,105 @@ class S3TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
         else:
             raise TypeError("urls need to be path to a S3 prefix or list of paths to more than one prefixes")
 
+        load_from_s3 = urls[0].replace(" ", "").startswith("s3://")
+
+        # map to (s3-prefix/basefilename/shard_id, [shardfile,]) to have the same format both for with and
+        # without metadata shards
+        main_datapipe = (
+            IterableWrapper(urls)
+            .shard_expand()
+            .map(
+                fn=lambda x: (
+                    os.path.join(os.path.split(x)[0], os.path.split(x)[1].split(".")[0]),
+                    [
+                        x,
+                    ],
+                )
+            )
+        )
+
+        if meta_urls:
+            print(f"Chaining together {len(meta_urls)} meta datapipes and zipping the result to ")
+
+            def merge_them(u1, u2):
+                # concat lists: these lists should contain all tarfiles from the same prefix but
+                # with different filenames
+                return u1[1] + [
+                    u2,
+                ]
+
+            for meta_url_collection in meta_urls:
+                # merging always based on filenames where the metadata shards are expected to have <main_shard_id>_<metaspec>.tar,
+                # e.g. for a main shard "0000.tar" and an optical flow metadatashard we'd have "0000_flow.tar" for the metadata shard
+                # and the resulting key would be s3://path/to/prefix/0000
+                main_datapipe = main_datapipe.zip_with_iter(
+                    ref_datapipe=IterableWrapper(meta_url_collection).shard_expand(),
+                    key_fn=itemgetter(0),
+                    ref_key_fn=lambda x: os.path.join(os.path.split(x)[0], os.path.split(x)[1].split("_")[0]),
+                    keep_key=True,
+                    merge_fn=merge_them,
+                )
+
         # sharding filter ensures propper splitting for distributed environment
-        s3_datapipe = IterableWrapper(urls).shard_expand().sharding_filter()
+        main_datapipe = main_datapipe.sharding_filter()
 
         try:
             # after this operation datapipes in the distinct processes contain different tars
             global_rank = dist.get_rank()
             world_size = dist.get_world_size()
-            s3_datapipe.apply_sharding(world_size, global_rank)
+            main_datapipe.apply_sharding(world_size, global_rank)
             # synchronize data across processes to prevent hanging if sharding is uneven (which is likely)
-            s3_datapipe = s3_datapipe.fullsync()
+            main_datapipe = main_datapipe.fullsync()
         except RuntimeError:
             print("torch distributed not used, not applying sharding in dataloader")
             pass
         # start shuffling accross shards for the first time to mix different datasets
         # (can be the same for all workers, just as an additional shuffled initialization)
         if shardshuffle > 1 and not resample_prefixes:
-            raw_tars = list(s3_datapipe)
+            raw_tars = list(main_datapipe)
             random.shuffle(raw_tars)
             print("Loader got the following concrete shards (first 25 are shown)")
             print(raw_tars[:25])
-            # back to datapipes
-            s3_datapipe = IterableWrapper(raw_tars)
+            # back to datapipes. We further apply a map to remove the key, so that the result is the sames than
+            # for the prefix subsampler
+            main_datapipe = IterableWrapper(raw_tars).map(fn=lambda x: x[1])
         elif resample_prefixes:
-            s3_datapipe = PrefixResampler(s3_datapipe, prefixes=urls, ps=prefix_probs)
-        s3_datapipe = SplitByWorker(s3_datapipe, drop_last=drop_last)
+            main_datapipe = PrefixResampler(main_datapipe, prefixes=urls, ps=prefix_probs)
+        main_datapipe = SplitByWorker(main_datapipe, drop_last=drop_last)
         # different syntax than for webdataset
         shardshuffle = max(shardshuffle, 1)
-        s3_datapipe = s3_datapipe.shuffle(buffer_size=shardshuffle).cycle(count=repeat)
+        main_datapipe = main_datapipe.shuffle(buffer_size=shardshuffle).cycle(count=repeat)
 
-        # s3_datapipe = s3_datapipe.sharding_filter()
+        # unzip before loading, since here we can be sure that all shards are distributed and shuffled
+        # aligned with their corresponding metadata shards
+        main_datapipe, *meta_datapipes = main_datapipe.unzip(sequence_length=len(meta_urls) + 1)
 
-        # Load data with S3FileLoader
-        s3_datapipe = S3FileLoader(s3_datapipe, buffer_size=buffer_size)
+        # to preserve loading, handle all metadata shards independently
+        if load_from_s3:
+            # Load data with S3FileLoader
+            main_datapipe = S3FileLoader(main_datapipe, buffer_size=buffer_size)
+            meta_datapipes = [S3FileLoader(m, buffer_size=buffer_size) for m in meta_datapipes]
+        else:
+            # regular fileopener
+            main_datapipe = FileOpener(main_datapipe, mode="b")
+            meta_datapipes = [FileOpener(m, buffer_size=buffer_size) for m in meta_datapipes]
+
         # adapted TarLoader which closes open tarfile handles after exceeding them
-        s3_datapipe = TarArchiveLoaderAndCloser(datapipe=s3_datapipe, handler=handler).groupby(grouper)
-        if sample_shuffle > 0:
-            s3_datapipe = s3_datapipe.shuffle(buffer_size=sample_shuffle)
+        main_datapipe = TarArchiveLoaderAndCloser(datapipe=main_datapipe, handler=handler).groupby(grouper)
+        meta_datapipes = [
+            TarArchiveLoaderAndCloser(datapipe=m, handler=handler).groupby(grouper) for m in meta_datapipes
+        ]
 
-        self.append(s3_datapipe)
+        # zip again, this time we're searching based on the same keys
+        for meta_dp in meta_datapipes:
+            # here we da
+            main_datapipe = main_datapipe.zip_with_iter(
+                ref_datapipe=meta_dp,
+                key_fn=grouper,
+            )
+
+        if sample_shuffle > 0:
+            main_datapipe = main_datapipe.shuffle(buffer_size=sample_shuffle)
+
+        self.append(main_datapipe)
         self.append(s3dataset2samples(handler=handler))
