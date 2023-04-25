@@ -145,21 +145,55 @@ class SubsetWorker:
         )
         count = 0
         for sample in dataloader:
-            count += 1
-            key = sample["__key__"]
-            caption = sample.get("txt", b"").decode("utf-8")
-            meta = json.loads(sample.get("json", b"{}").decode("utf-8"))
-            streams = {}
-            for mod, fmt in self.encode_formats.items():
-                streams[mod] = sample[fmt]
+            try:
+                count += 1
+                key = sample["__key__"]
+                caption = sample.get("txt", b"").decode("utf-8")
+                meta = json.loads(sample.get("json", b"{}").decode("utf-8"))
+                streams = {}
+                for mod, fmt in self.encode_formats.items():
+                    streams[mod] = sample[fmt]
 
-            if self.captions_are_subtitles:  # create clips
-                subtitles = meta["yt_meta_dict"]["subtitles"]
-                meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
+                if self.captions_are_subtitles:  # create clips
+                    subtitles = meta["yt_meta_dict"]["subtitles"]
+                    meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
 
-            elif self.detect_cuts:  # apply cut detection to get clips
-                video_bytes = streams["video"]
-                downsampled_video_bytes, error_message = self.cut_detector_downsampler([video_bytes])
+                elif self.detect_cuts:  # apply cut detection to get clips
+                    video_bytes = streams["video"]
+                    downsampled_video_bytes, error_message = self.cut_detector_downsampler([video_bytes])
+
+                    if error_message is not None:
+                        failed_to_subsample += 1
+                        status = "failed_to_subsample"
+                        status_dict.increment(error_message)
+                        meta["status"] = status
+                        meta["error_message"] = error_message
+
+                        sample_writer.write(
+                            {},
+                            key,
+                            caption,
+                            meta,
+                        )
+                        continue
+                    meta["cuts"] = self.cut_detector(downsampled_video_bytes[0])
+
+                if self.cuts_are_clips:
+                    cuts = meta["cuts"]
+                    native_fps = cuts["original_fps"]
+                    meta["clips"] = (np.array(cuts["cuts_original_fps"]) / native_fps).tolist()
+
+                # 1 video -> many videos (either clipping or noop which does identity broadcasting)
+                broadcast_subsampler = (
+                    self.clipping_subsampler
+                    if (self.captions_are_subtitles or self.cuts_are_clips)
+                    else self.noop_subsampler
+                )
+                subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
+                for modality in subsampled_streams:
+                    for modality_subsampler in self.subsamplers[modality]:
+                        subsampled_modality, error_message = modality_subsampler(subsampled_streams[modality])
+                        subsampled_streams[modality] = subsampled_modality
 
                 if error_message is not None:
                     failed_to_subsample += 1
@@ -175,67 +209,38 @@ class SubsetWorker:
                         meta,
                     )
                     continue
-                meta["cuts"] = self.cut_detector(downsampled_video_bytes[0])
 
-            if self.cuts_are_clips:
-                cuts = meta["cuts"]
-                native_fps = cuts["original_fps"]
-                meta["clips"] = (np.array(cuts["cuts_original_fps"]) / native_fps).tolist()
+                successes += 1
+                status = "success"
+                status_dict.increment(status)
+                subsampled_streams_list = [dict(zip(subsampled_streams, s)) for s in zip(*subsampled_streams.values())]
+                if len(subsampled_streams_list) == 0:  # no audio or video, just write meta
+                    meta["status"] = status
+                    sample_writer.write(
+                        {},
+                        key,
+                        caption,
+                        meta,
+                    )
+                    continue
 
-            # 1 video -> many videos (either clipping or noop which does identity broadcasting)
-            broadcast_subsampler = (
-                self.clipping_subsampler
-                if (self.captions_are_subtitles or self.cuts_are_clips)
-                else self.noop_subsampler
-            )
-            subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
-            for modality in subsampled_streams:
-                for modality_subsampler in self.subsamplers[modality]:
-                    subsampled_modality, error_message = modality_subsampler(subsampled_streams[modality])
-                    subsampled_streams[modality] = subsampled_modality
+                for subsampled_streams, meta in zip(subsampled_streams_list, metas):
+                    meta["status"] = status
 
-            if error_message is not None:
-                failed_to_subsample += 1
-                status = "failed_to_subsample"
-                status_dict.increment(error_message)
-                meta["status"] = status
-                meta["error_message"] = error_message
+                    text_caption = caption
+                    if self.captions_are_subtitles:
+                        text_caption = meta["yt_meta_dict"].pop("subtitles")
 
-                sample_writer.write(
-                    {},
-                    key,
-                    caption,
-                    meta,
-                )
-                continue
+                    sample_writer.write(
+                        subsampled_streams,
+                        meta["key"],
+                        text_caption,
+                        meta,
+                    )
 
-            successes += 1
-            status = "success"
-            status_dict.increment(status)
-            subsampled_streams_list = [dict(zip(subsampled_streams, s)) for s in zip(*subsampled_streams.values())]
-            if len(subsampled_streams_list) == 0:  # no audio or video, just write meta
-                meta["status"] = status
-                sample_writer.write(
-                    {},
-                    key,
-                    caption,
-                    meta,
-                )
-                continue
-
-            for subsampled_streams, meta in zip(subsampled_streams_list, metas):
-                meta["status"] = status
-
-                text_caption = caption
-                if self.captions_are_subtitles:
-                    text_caption = meta["yt_meta_dict"].pop("subtitles")
-
-                sample_writer.write(
-                    subsampled_streams,
-                    meta["key"],
-                    text_caption,
-                    meta,
-                )
+            except Exception as err:  # pylint: disable=broad-except
+                traceback.print_exc()
+                print(f"Sample {key} failed to download: {err}")
 
         sample_writer.close()
         end_time = time.time()
