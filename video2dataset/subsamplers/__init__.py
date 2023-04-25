@@ -3,7 +3,7 @@ Transform video and audio by reducing fps, extracting videos, changing resolutio
 """
 
 from .audio_rate_subsampler import AudioRateSubsampler
-from .clipping_subsampler import ClippingSubsampler, get_seconds, split_time_frame
+from .clipping_subsampler import ClippingSubsampler, _get_seconds, _split_time_frame
 from .frame_subsampler import FrameSubsampler
 from .noop_subsampler import NoOpSubsampler
 from .resolution_subsampler import ResolutionSubsampler

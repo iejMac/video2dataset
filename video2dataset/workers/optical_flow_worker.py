@@ -195,9 +195,6 @@ class OpticalFlowWorker:
             "return_bytes": True,
         }
 
-        local_rank = os.environ.get("LOCAL_RANK", 0)
-        print(shard, local_rank, flush=True)
-
         dset = get_video_dataset(
             urls=shard,
             batch_size=1,

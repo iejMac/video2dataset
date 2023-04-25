@@ -9,8 +9,8 @@ import cv2
 
 from video2dataset.subsamplers import (
     ClippingSubsampler,
-    get_seconds,
-    split_time_frame,
+    _get_seconds,
+    _split_time_frame,
     ResolutionSubsampler,
     FrameSubsampler,
     AudioRateSubsampler,
@@ -80,12 +80,12 @@ def test_clipping_subsampler(clips):
                 key_ind = 0
 
             s_target, e_target = clips[key_ind]
-            s_target, e_target = get_seconds(s_target), get_seconds(e_target)
-            expected_clips = split_time_frame(s_target, e_target, min_length, max_length)
+            s_target, e_target = _get_seconds(s_target), _get_seconds(e_target)
+            expected_clips = _split_time_frame(s_target, e_target, min_length, max_length)
             assert (s, e) in expected_clips
-            assert get_seconds(e) - get_seconds(s) >= min_length
+            assert _get_seconds(e) - _get_seconds(s) >= min_length
 
-            s_s, e_s = get_seconds(s), get_seconds(e)
+            s_s, e_s = _get_seconds(s), _get_seconds(e)
             probe = ffmpeg.probe(tmp.name)
             video_stream = [stream for stream in probe["streams"] if stream["codec_type"] == "video"][0]
             frag_len = float(video_stream["duration"])
@@ -175,11 +175,10 @@ def test_cut_detection_subsampler(cut_detection_mode, framerates):
     video = os.path.join(current_folder, "test_files/test_video.mp4")
     with open(video, "rb") as vid_f:
         video_bytes = vid_f.read()
-    streams = {"video": video_bytes}
 
     subsampler = CutDetectionSubsampler(cut_detection_mode, framerates, threshold=5)
 
-    cuts = subsampler(streams)
+    cuts = subsampler(video_bytes)
     if cut_detection_mode == "longest":
         assert len(cuts["cuts_original_fps"]) == 1
         assert cuts["cuts_original_fps"][0] == [0, 2096]
