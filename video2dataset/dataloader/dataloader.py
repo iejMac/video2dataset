@@ -103,7 +103,7 @@ def get_video_dataset(
 
     if isinstance(urls, str):
         urls = [urls]
-    use_torchdata = urls[0].replace(" ", "").startswith("s3://")
+    use_torchdata = not urls[0].replace(" ", "").startswith("pipe:")
 
     if not use_torchdata:
         urls = urls[0]
@@ -195,6 +195,6 @@ def get_video_dataset(
         dset = dset.map(CustomTransforms(custom_transforms), handler=wds.warn_and_continue)
 
     if decoder_kwargs != {}:
-        dset = dset.batched(batch_size, partial=drop_last, collation_fn=dict_collation_fn)
+        dset = dset.batched(batch_size, partial=not drop_last, collation_fn=dict_collation_fn)
 
     return dset

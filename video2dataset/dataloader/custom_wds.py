@@ -426,6 +426,8 @@ class S3TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
 
         load_from_s3 = urls[0].replace(" ", "").startswith("s3://")
 
+
+
         # map to (s3-prefix/basefilename/shard_id, [shardfile,]) to have the same format both for with and
         # without metadata shards
         main_datapipe = (
@@ -488,6 +490,9 @@ class S3TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
             main_datapipe = IterableWrapper(raw_tars).map(fn=lambda x: x[1])
         elif resample_prefixes:
             main_datapipe = PrefixResampler(main_datapipe, prefixes=urls, ps=prefix_probs)
+        else:
+            main_datapipe = main_datapipe.map(lambda x: x[1])
+
         main_datapipe = SplitByWorker(main_datapipe, drop_last=drop_last)
         # different syntax than for webdataset
         shardshuffle = max(shardshuffle, 1)
@@ -495,7 +500,8 @@ class S3TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
 
         # unzip before loading, since here we can be sure that all shards are distributed and shuffled
         # aligned with their corresponding metadata shards
-        main_datapipe, *meta_datapipes = main_datapipe.unzip(sequence_length=len(meta_urls) + 1)
+        meta_len = len(meta_urls) if meta_urls else 0
+        main_datapipe, *meta_datapipes = main_datapipe.unzip(sequence_length=meta_len + 1)
 
         # to preserve loading, handle all metadata shards independently
         if load_from_s3:
