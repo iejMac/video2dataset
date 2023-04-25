@@ -426,8 +426,6 @@ class S3TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
 
         load_from_s3 = urls[0].replace(" ", "").startswith("s3://")
 
-
-
         # map to (s3-prefix/basefilename/shard_id, [shardfile,]) to have the same format both for with and
         # without metadata shards
         main_datapipe = (
