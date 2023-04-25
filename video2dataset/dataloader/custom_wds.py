@@ -38,31 +38,31 @@ def dict_collation_fn(samples, combine_tensors=True, combine_scalars=True):
     keys = set.union(*[set(sample.keys()) for sample in samples])
     if "__corrupted__" in keys:
         # set default dummy
-        dummy = {key: None for key in keys if not key.startswith('__')}
+        dummy = {key: None for key in keys if not key.startswith("__")}
         # dummy = {key: None if key != '__corrupted__' else True for key in keys if not key.startswith('__')}
         dummy_set = False
         missed_ids = set()
-        #search for first non-corrupted sample and take that as the dummy
-        for i,sample in enumerate(samples):
+        # search for first non-corrupted sample and take that as the dummy
+        for i, sample in enumerate(samples):
             if not (dummy_set or sample["__corrupted__"]):
                 # set dummy to reasonble output, but keep sample['__corrupted__']=True
                 for key in sample:
                     # keep meta data
-                    if not key.startswith('__'):
+                    if not key.startswith("__"):
                         dummy[key] = copy.deepcopy(sample[key])
                 dummy_set = True
-            elif not dummy_set and sample['__corrupted__']:
+            elif not dummy_set and sample["__corrupted__"]:
                 # add default dummy and remember id
                 missed_ids.add(i)
                 for key in dummy:
                     samples[i][key] = copy.deepcopy(dummy[key])
-            elif sample['__corrupted__']:
+            elif sample["__corrupted__"]:
                 # set corrupted sample to dummy except for metadata
                 for key in dummy:
                     samples[i][key] = copy.deepcopy(dummy[key])
 
         if missed_ids and dummy_set:
-            #this will be only to do if at least one element in the batch is not corrupted and
+            # this will be only to do if at least one element in the batch is not corrupted and
             # if there is at least one missed sample
             for i in missed_ids:
                 for key in dummy:
@@ -223,23 +223,24 @@ def _return_always_map(data, f, return_always=False, handler=wds.reraise_excepti
     for sample in data:
         try:
             result = f(sample)
-        except Exception as exn:
+        except Exception as exn:  # pylint: disable=broad-except
             if handler(exn):
                 if return_always:
-                    result = {'__corrupted__': True}
+                    result = {"__corrupted__": True}
                 else:
                     continue
             else:
                 break
         if result is None:
             if return_always:
-                result = {'__corrupted__': True}
+                result = {"__corrupted__": True}
             else:
                 continue
         if isinstance(sample, dict) and isinstance(result, dict):
             result["__key__"] = sample.get("__key__")
             result["__url__"] = sample.get("__url__")
         yield result
+
 
 return_always_map = wds.pipelinefilter(_return_always_map)
 
@@ -257,7 +258,7 @@ def _s3dataset2samples(data, return_always=False, handler=wds.reraise_exception)
 
             if return_always:
                 # assume sample is heatlthy in the beginning
-                sample['__corrupted__'] = False
+                sample["__corrupted__"] = False
             yield sample
         except Exception as exn:  # pylint: disable=broad-except
             if handler(exn):
@@ -461,7 +462,8 @@ class TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
         handler: Callable = wds.reraise_exception,
     ):
         """
-        :param urls: s3 prefixes to load the shards from, can be a list of different prefoxes for dataset mixing. With shards specified using braceexpand notation
+        :param urls: s3 prefixes to load the shards from, can be a list of different prefoxes for dataset mixing.
+        With shards specified using braceexpand notation
         :param repeat: number of repetitions in the training data. Default is None which means looping perpetually.
         :param shardshuffle: Shuffle buffer size for shard shuffling. size 1 means no shufflin. Default is 10k.
         :param sample_shuffle: Shuffle buffer for sample-level-shuffling. Default is 1 which means no shuffling
@@ -476,14 +478,16 @@ class TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
         :param handler: handler for handling exceptions as in webdataset
         """
         super().__init__()
-        self.return_always =return_always
+        self.return_always = return_always
         if isinstance(urls, (List, list)):
             pass
 
         elif isinstance(urls, str):
             urls = [urls]
         else:
-            raise TypeError("urls need to be path to a [S3 prefix,path on a mounted fs] or list of paths to more than one those")
+            raise TypeError(
+                "urls need to be path to a [S3 prefix,path on a mounted fs] or list of paths to more than one those"
+            )
 
         load_from_s3 = urls[0].replace(" ", "").startswith("s3://")
 
@@ -516,13 +520,12 @@ class TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
         shardshuffle = max(shardshuffle, 1)
         main_datapipe = main_datapipe.shuffle(buffer_size=shardshuffle).cycle(count=repeat)
 
-
         if load_from_s3:
             # Load data with S3FileLoader
             main_datapipe = S3FileLoader(main_datapipe, buffer_size=buffer_size)
         else:
             # regular fileopener
-            main_datapipe = FileOpener(main_datapipe, mode='b')
+            main_datapipe = FileOpener(main_datapipe, mode="b")
         # adapted TarLoader which closes open tarfile handles after exceeding them
         main_datapipe = TarArchiveLoaderAndCloser(datapipe=main_datapipe, handler=handler).groupby(grouper)
         if sample_shuffle > 0:

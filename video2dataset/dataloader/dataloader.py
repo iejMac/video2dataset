@@ -63,8 +63,8 @@ def get_video_dataset(
     original_width_key="original_width",
     keys_to_remove: Union[str, List[str], None] = None,
     enforce_additional_keys=None,
-    return_always:bool=False,
-    handler=wds.reraise_exception
+    return_always: bool = False,
+    handler=wds.reraise_exception,
 ):
 
     """
@@ -119,7 +119,9 @@ def get_video_dataset(
                 nodesplitter=wds.split_by_node,
             )
             if not use_torchdata
-            else partial(TorchDataWebdataset, repeat=repeat, drop_last=drop_last, return_always=return_always, handler=handler)
+            else partial(
+                TorchDataWebdataset, repeat=repeat, drop_last=drop_last, return_always=return_always, handler=handler
+            )
         )
         video_decoder_cls = partial(VideoDecorderWithCutDetection, cuts_key=cuts_key)
         additional_decoder_kwargs = {"passthrough_keys": [video_key]}
@@ -130,7 +132,9 @@ def get_video_dataset(
                 nodesplitter=wds.split_by_node,
             )
             if not use_torchdata
-            else partial(TorchDataWebdataset, repeat=repeat, drop_last=drop_last, return_always=return_always, handler=handler)
+            else partial(
+                TorchDataWebdataset, repeat=repeat, drop_last=drop_last, return_always=return_always, handler=handler
+            )
         )
         video_decoder_cls = None
     else:
@@ -140,7 +144,9 @@ def get_video_dataset(
                 nodesplitter=wds.split_by_node,
             )
             if not use_torchdata
-            else partial(TorchDataWebdataset, repeat=repeat, drop_last=drop_last, return_always=return_always, handler=handler)
+            else partial(
+                TorchDataWebdataset, repeat=repeat, drop_last=drop_last, return_always=return_always, handler=handler
+            )
         )
         video_decoder_cls = VideoDecorder  # type: ignore
 
