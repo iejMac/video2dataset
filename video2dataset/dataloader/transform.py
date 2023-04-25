@@ -75,10 +75,12 @@ class VideoResizer(PRNGMixin):
     def _get_resize_size(self, frame):
         """gets resize size"""
         orig_h, orig_w = frame.shape[:2]
+        scaling_factor = 1
         if self.resize_size is not None:
             if isinstance(self.resize_size, int):
                 f = self.resize_size / min((orig_h, orig_w))
                 resize_size = [int(round(orig_h * f)), int(round(orig_w * f))]
+                scaling_factor = 1/f
             else:
                 resize_size = self.resize_size
             h, w = resize_size
@@ -86,7 +88,7 @@ class VideoResizer(PRNGMixin):
             resize_size = None
             h, w = frame.shape[:2]
 
-        return resize_size, (h, w)
+        return resize_size, (h, w), scaling_factor
 
     def _get_reference_frame(self, resize_size, h, w):
         """gets reference frame"""
@@ -121,7 +123,7 @@ class VideoResizer(PRNGMixin):
         # orig_w = data[self.width_key][0].item()
 
         # resize_size, (h, w) = self._get_resize_size(frames[0], orig_h, orig_w)
-        resize_size, (h, w) = self._get_resize_size(frames[0])
+        resize_size, (h, w), scaling_factor = self._get_resize_size(frames[0])
         reference = self._get_reference_frame(resize_size, h, w)
 
         for frame in frames:
@@ -130,7 +132,7 @@ class VideoResizer(PRNGMixin):
                 frame = cv2.resize(
                     frame,
                     tuple(reversed(resize_size)),
-                    interpolation=cv2.INTER_LANCZOS4,
+                    interpolation=cv2.INTER_AREA, #cv2.INTER_LANCZOS4,
                 )
 
             if self.crop_size is not None:
@@ -144,12 +146,12 @@ class VideoResizer(PRNGMixin):
 
             # TODO: maybe lets add other options for normalization
             # will need for VideoCLIP built on top of CLIP
-            frame = frame.astype(float) / 127.5 - 1.0
 
             frame = torch.from_numpy(frame)
             result.append(frame)
 
         data[vidkey] = torch.stack(result).to(torch.float16)
+        data["rescale_factor"] = scaling_factor
         return data
 
 

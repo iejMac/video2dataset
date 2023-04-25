@@ -125,7 +125,7 @@ class OpticalFlowWorker:
         self.encode_formats = encode_formats
         self.save_caption = True
         self.detector = optical_flow_params.get("detector", "cv2")
-        self.fps = optical_flow_params.get("fps", -1)
+        self.fps = optical_flow_params.get("fps", None)
         self.downsample_size = optical_flow_params.get("downsample_size", None)
         self.dtype = optical_flow_params.get("dtype", "fp16")
         self.detector_args = optical_flow_params.get("detector_args", None)
@@ -133,8 +133,6 @@ class OpticalFlowWorker:
         self.optical_flow_subsampler = OpticalFlowSubsampler(
             detector=self.detector,
             args=self.detector_args,
-            fps=self.fps,
-            downsample_size=self.downsample_size,
             dtype=self.dtype,
             is_slurm_task=is_slurm_task,
         )
@@ -190,8 +188,8 @@ class OpticalFlowWorker:
 
         decoder_kwargs = {
             "n_frames": None,
-            "fps": None,
-            "num_threads": 4,
+            "fps": self.fps,
+            "num_threads": 8,
             "return_bytes": True,
         }
 
@@ -199,22 +197,24 @@ class OpticalFlowWorker:
             urls=shard,
             batch_size=1,
             decoder_kwargs=decoder_kwargs,
-            resize_size=None,
+            resize_size=self.downsample_size,
             crop_size=None,
         )
+        count = 0
         for sample in dset:
+            count += 1
             key = sample["__key__"][0]
             caption = sample.get("txt", b"")[0]
             meta = sample.get("json", {})[0]
 
             streams = {}
-            frames = np.array(sample.get("mp4")[0])
-            native_fps = sample.get("native_fps").item()
+            frames = np.array(sample.get("mp4")[0]).astype(np.float32)
+            rescale_factor = sample.get("rescale_factor")[0]
 
             for mod, fmt in self.encode_formats.items():
                 streams[mod] = sample.get(fmt, b"")
 
-            optical_flow, metrics, error_message = self.optical_flow_subsampler(frames, native_fps)
+            optical_flow, metrics, error_message = self.optical_flow_subsampler(frames, rescale_factor)
 
             if error_message is not None:
                 failed_to_subsample += 1
@@ -267,7 +267,7 @@ class OpticalFlowWorker:
         write_stats(
             self.output_folder,
             shard_id,
-            1,  # count
+            count,  # count
             successes,
             0,  # failed to download
             failed_to_subsample,
