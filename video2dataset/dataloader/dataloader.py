@@ -6,7 +6,7 @@ from typing import List, Union
 from .custom_wds import (
     WebDatasetWithChangedDecoder,
     dict_collation_fn,
-    S3TorchDataWebdataset,
+    TorchDataWebdataset,
 )
 from .transform import VideoResizer, CutsAdder, CustomTransforms
 from .video_decode import VideoDecorder, VideoDecorderWithCutDetection
@@ -61,9 +61,10 @@ def get_video_dataset(
     random_crop=False,
     original_height_key="original_height",
     original_width_key="original_width",
-    keys_to_remove: Union[int, List[int], None] = None,
+    keys_to_remove: Union[str, List[str], None] = None,
     enforce_additional_keys=None,
-    return_always:bool=False
+    return_always:bool=False,
+    handler=wds.reraise_exception
 ):
 
     """
@@ -104,7 +105,8 @@ def get_video_dataset(
 
     if isinstance(urls, str):
         urls = [urls]
-    use_torchdata = urls[0].replace(" ", "").startswith("s3://")
+    # only use webdataset when using pipe
+    use_torchdata = not urls[0].replace(" ", "").startswith("pipe:")
 
     if not use_torchdata:
         urls = urls[0]
@@ -117,7 +119,7 @@ def get_video_dataset(
                 nodesplitter=wds.split_by_node,
             )
             if not use_torchdata
-            else partial(S3TorchDataWebdataset, repeat=repeat, drop_last=drop_last, return_always=return_always)
+            else partial(TorchDataWebdataset, repeat=repeat, drop_last=drop_last, return_always=return_always, handler=handler)
         )
         video_decoder_cls = partial(VideoDecorderWithCutDetection, cuts_key=cuts_key)
         additional_decoder_kwargs = {"passthrough_keys": [video_key]}
@@ -128,7 +130,7 @@ def get_video_dataset(
                 nodesplitter=wds.split_by_node,
             )
             if not use_torchdata
-            else partial(S3TorchDataWebdataset, repeat=repeat, drop_last=drop_last, return_always=return_always)
+            else partial(TorchDataWebdataset, repeat=repeat, drop_last=drop_last, return_always=return_always, handler=handler)
         )
         video_decoder_cls = None
     else:
@@ -138,17 +140,17 @@ def get_video_dataset(
                 nodesplitter=wds.split_by_node,
             )
             if not use_torchdata
-            else partial(S3TorchDataWebdataset, repeat=repeat, drop_last=drop_last, return_always=return_always)
+            else partial(TorchDataWebdataset, repeat=repeat, drop_last=drop_last, return_always=return_always, handler=handler)
         )
         video_decoder_cls = VideoDecorder  # type: ignore
 
-    dset = dataset_cls(urls, shardshuffle=shuffle, handler=wds.warn_and_continue)
+    dset = dataset_cls(urls, shardshuffle=shuffle, handler=handler)
 
     if not use_torchdata:
         dset = dset.repeat(repeat).shuffle(shuffle, initial=shuffle)
 
     unused_key_filter = UnusedKeyFilter(keys=keys_to_remove)
-    dset = dset.map(unused_key_filter, handler=wds.warn_and_continue)
+    dset = dset.map(unused_key_filter, handler=handler)
 
     # TODO: organize this such that you don't always need video.
     # should work with audio-text, just text or whatever you might want
@@ -158,7 +160,7 @@ def get_video_dataset(
 
     if cuts_key:
         cut_adder = CutsAdder(cuts_key=cuts_key, video_key=video_key)
-        dset = dset.map(cut_adder, handler=wds.warn_and_continue)
+        dset = dset.map(cut_adder, handler=handler)
 
     aesthetics_filter = AestheticsFilter(aesthetic_thld=aesthetics_threshold)
     language_filter = LanguageFilter(languages=allowed_languages)
@@ -170,9 +172,9 @@ def get_video_dataset(
     if video_decoder_cls is not None:
         dset = dset.decode(
             video_decoder_cls(**decoder_kwargs),
-            handler=wds.warn_and_continue,
+            handler=handler,
             **additional_decoder_kwargs,
-        ).map(reassemble, handler=wds.warn_and_continue)
+        ).map(reassemble, handler=handler)
 
     # Filters
     for fltr in filters:
@@ -189,13 +191,13 @@ def get_video_dataset(
                 width_key=original_width_key,
                 height_key=original_height_key,
             ),
-            handler=wds.warn_and_continue,
+            handler=handler,
         )
 
     if custom_transforms:
-        dset = dset.map(CustomTransforms(custom_transforms), handler=wds.warn_and_continue)
+        dset = dset.map(CustomTransforms(custom_transforms), handler=handler)
 
     if decoder_kwargs != {}:
-        dset = dset.batched(batch_size, partial=drop_last, collation_fn=dict_collation_fn)
+        dset = dset.batched(batch_size, partial=not drop_last, collation_fn=dict_collation_fn)
 
     return dset
