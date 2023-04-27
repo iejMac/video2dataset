@@ -385,8 +385,8 @@ class S3TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
     def __init__(
         self,
         urls: Union[List[str], str],
-        meta_urls: Optional[Union[List[List[str]], List[str]]] = None,
-        repeat: int = None,
+        meta_urls: Optional[List[str]] = None,
+        repeat: Optional[int] = None,
         shardshuffle: int = 10000,
         sample_shuffle: int = 0,
         buffer_size: int = None,
@@ -442,7 +442,11 @@ class S3TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
         )
 
         if meta_urls:
-            print(f"Chaining together {len(meta_urls)} meta datapipes and zipping the result to ")
+            print(f"Zipping together {len(meta_urls)} meta datapipes with the following suffixes {meta_urls} "
+                  f"and adding this to the main datapipes ")
+
+            meta_urls = [os.path.split(m) for m in urls]
+            meta_urls = [[os.path.join(m[0], os.path.splitext(m[1])[0]+f"_{suffix}"+os.path.splitext(m[1])[1]) for m in meta_urls] for suffix in meta_urls]
 
             def merge_them(u1, u2):
                 # concat lists: these lists should contain all tarfiles from the same prefix but

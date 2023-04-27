@@ -61,7 +61,7 @@ def get_video_dataset(
     random_crop=False,
     original_height_key="original_height",
     original_width_key="original_width",
-    keys_to_remove: Union[int, List[int], None] = None,
+    keys_to_remove: Union[str, List[str], None] = None,
     enforce_additional_keys=None,
 ):
 
