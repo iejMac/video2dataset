@@ -197,7 +197,7 @@ def get_video_dataset(
     if custom_transforms:
         dset = dset.map(CustomTransforms(custom_transforms), handler=wds.warn_and_continue)
 
-    if decoder_kwargs != {}:
+    if decoder_kwargs != {} or video_key in ["mp3", "wav", "flac", "m4a"]:
         dset = dset.batched(batch_size, partial=drop_last, collation_fn=dict_collation_fn)
 
     return dset

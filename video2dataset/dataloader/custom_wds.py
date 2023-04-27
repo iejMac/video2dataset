@@ -39,6 +39,7 @@ def dict_collation_fn(samples, combine_tensors=True, combine_scalars=True):
     result = {}
     for key, values in batched.items():  # Iterate over both key and values
         first_value = values[0]
+  
         if isinstance(first_value, (int, float)):
             if combine_scalars:
                 result[key] = np.array(values)
@@ -48,6 +49,12 @@ def dict_collation_fn(samples, combine_tensors=True, combine_scalars=True):
         elif isinstance(first_value, np.ndarray):
             if combine_tensors:
                 result[key] = np.array(values)
+        elif isinstance(first_value, tuple): # tuple of torch tensor and a dict
+            dict_keys = first_value[1].keys()
+            if combine_tensors:
+                result[key] = torch.stack([v[0] for v in values])
+                for k in dict_keys:
+                    result[k] = torch.stack([torch.tensor(v[1][k]) for v in values])
         else:
             result[key] = values
 
