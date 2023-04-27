@@ -14,7 +14,7 @@ import torch.distributed as dist
 from torch.utils.data import IterableDataset
 from torch.utils.data.datapipes.iter import IterableWrapper, FileOpener
 from torch.utils.data.datapipes.utils.common import StreamWrapper
-from torchdata.datapipes.iter import S3FileLoader, IterDataPipe
+from torchdata.datapipes.iter import S3FileLoader, IterDataPipe, FileOpener
 from torchdata.datapipes.iter import TarArchiveLoader
 from torchdata.datapipes.utils.common import validate_pathname_binary_tuple
 
@@ -34,6 +34,43 @@ def dict_collation_fn(samples, combine_tensors=True, combine_scalars=True):
     :returns: single sample consisting of a batch
     :rtype: dict
     """
+
+    # first, get all keys, for no missing a shared field
+    keys = set.union(*[set(sample.keys()) for sample in samples])
+    if "__corrupted__" in keys:
+        # set default dummy
+        dummy = {key: None for key in keys if not key.startswith("__")}
+        # dummy = {key: None if key != '__corrupted__' else True for key in keys if not key.startswith('__')}
+        dummy_set = False
+        missed_ids = set()
+        # search for first non-corrupted sample and take that as the dummy
+        for i, sample in enumerate(samples):
+            if not (dummy_set or sample["__corrupted__"]):
+                # set dummy to reasonble output, but keep sample['__corrupted__']=True
+                for key in sample:
+                    # keep meta data
+                    if not key.startswith("__"):
+                        dummy[key] = copy.deepcopy(sample[key])
+                dummy_set = True
+            elif not dummy_set and sample["__corrupted__"]:
+                # add default dummy and remember id
+                missed_ids.add(i)
+                for key in dummy:
+                    samples[i][key] = copy.deepcopy(dummy[key])
+            elif sample["__corrupted__"]:
+                # set corrupted sample to dummy except for metadata
+                for key in dummy:
+                    samples[i][key] = copy.deepcopy(dummy[key])
+
+        if missed_ids and dummy_set:
+            # this will be only to do if at least one element in the batch is not corrupted and
+            # if there is at least one missed sample
+            for i in missed_ids:
+                for key in dummy:
+                    samples[i][key] = copy.deepcopy(dummy[key])
+                # samples[i] = copy.deepcopy(dummy)
+
+        # the resorting case if the all samples in the batch are corrupted, then the batch will be
     keys = set.intersection(*[set(sample.keys()) for sample in samples])
     batched = {key: [s[key] for s in samples] for key in keys}
 
@@ -182,7 +219,35 @@ class WebDatasetWithChangedDecoder(DataPipeline, FluidInterfaceWithChangedDecode
 
 
 # pylint: disable=missing-function-docstring
-def _s3dataset2samples(data, handler=wds.reraise_exception):
+def _return_always_map(data, f, return_always=False, handler=wds.reraise_exception):
+    """Map samples."""
+    for sample in data:
+        try:
+            result = f(sample)
+        except Exception as exn:  # pylint: disable=broad-except
+            if handler(exn):
+                if return_always:
+                    result = {"__corrupted__": True}
+                else:
+                    continue
+            else:
+                break
+        if result is None:
+            if return_always:
+                result = {"__corrupted__": True}
+            else:
+                continue
+        if isinstance(sample, dict) and isinstance(result, dict):
+            result["__key__"] = sample.get("__key__")
+            result["__url__"] = sample.get("__url__")
+        yield result
+
+
+return_always_map = wds.pipelinefilter(_return_always_map)
+
+
+# pylint: disable=missing-function-docstring
+def _s3dataset2samples(data, return_always=False, handler=wds.reraise_exception):
     for sample in data:
         try:
             # construct webdataset-style sample
@@ -192,6 +257,9 @@ def _s3dataset2samples(data, handler=wds.reraise_exception):
             sample["__key__"] = key
             sample["__url__"] = url
 
+            if return_always:
+                # assume sample is heatlthy in the beginning
+                sample["__corrupted__"] = False
             yield sample
         except Exception as exn:  # pylint: disable=broad-except
             if handler(exn):
@@ -364,7 +432,7 @@ class TarArchiveLoaderAndCloser(TarArchiveLoader):
                 warnings.warn(f"Unable to extract files from corrupted tarfile stream {pathname} due to: {e}, abort!")
                 if self.handler(e):
                     if hasattr(e, "args") and len(e.args) > 0:
-                        e.args = (e.args[0] + " @ " + str(extracted_fobj),) + e.args[1:]
+                        e.args = (e.args[0] + " @ " + str(pathname),) + e.args[1:]
                 else:
                     raise e
             finally:
@@ -377,7 +445,7 @@ def grouper(x):
     return x[0].split("/")[-1].split(".")[0]
 
 
-class S3TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
+class TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
     """
     Loads tars from s3 directly in memory which reduces failures due to failed downloads
     """
@@ -393,10 +461,10 @@ class S3TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
         resample_prefixes: bool = False,
         prefix_probs: Optional[List[float]] = None,
         drop_last: bool = False,
+        return_always: bool = False,
         handler: Callable = wds.reraise_exception,
     ):
         """
-        :param urls: s3 prefixes to load the shards from, can be a list of different prefoxes for dataset mixing
         :param urls: s3 prefixes to load the shards from, can be a list of different prefoxes for dataset mixing.
         With shards specified using braceexpand notation
         :param meta_urls: A list of lists of metadata tars which are expected to be saved in different
@@ -410,19 +478,22 @@ class S3TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
          This can be useful in combination with prefix probs when training on merged datasets of non-equal size.
         :param prefix_probs: list containing resampling probabilities for every prefix in `urls`
         :param drop_last: whether to drop last samples to prevent hanging (recommended)
-        :param shard_pattern: pattern for identifying the desired shards from with the specified prefixes.
-        Default is taking all shards in all sub-prefixes
+        :param return_always: Flag indicating whether to drop a sample and continue on error (default) or
+        to return a dummy output with a
         :param handler: handler for handling exceptions as in webdataset
         """
         super().__init__()
-
+        self.return_always = return_always
         if isinstance(urls, (List, list)):
             pass
 
         elif isinstance(urls, str):
             urls = [urls]
         else:
-            raise TypeError("urls need to be path to a S3 prefix or list of paths to more than one prefixes")
+            raise TypeError(
+                "urls need to be path to a [S3 prefix,path on a mounted fs] or list of paths to more than one those"
+            )
+
 
         load_from_s3 = urls[0].replace(" ", "").startswith("s3://")
 
@@ -469,7 +540,6 @@ class S3TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
 
         # sharding filter ensures propper splitting for distributed environment
         main_datapipe = main_datapipe.sharding_filter()
-
         try:
             # after this operation datapipes in the distinct processes contain different tars
             global_rank = dist.get_rank()
@@ -534,3 +604,7 @@ class S3TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
 
         self.append(main_datapipe)
         self.append(s3dataset2samples(handler=handler))
+
+
+    def map(self, f, handler=wds.reraise_exception):
+        return self.compose(return_always_map(f, return_always=self.return_always, handler=handler))
