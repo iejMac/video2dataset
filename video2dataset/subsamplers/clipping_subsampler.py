@@ -12,20 +12,23 @@ import tempfile
 from datetime import datetime
 
 
-def get_seconds(t):
+def _get_seconds(t):
     if not isinstance(t, str):
         return float(t)  # already seconds
-    time_format = "%H:%M:%S.%f"  # TODO: maybe paramaterize this?
+    time_format = "%H:%M:%S.%f"  # TODO: maybe parameterize this?
     t_obj = datetime.strptime(t, time_format).time()
     return t_obj.second + t_obj.microsecond / 1e6 + t_obj.minute * 60 + t_obj.hour * 3600
 
 
-def split_time_frame(s, e, min_length, max_length):
+def _split_time_frame(s, e, min_length, max_length):
+    """Filters out cuts by min and max length"""
     time_d = e - s
     time_frames = [
         (s + i * max_length, min(s + (i + 1) * max_length, e))
         for i in range(int(time_d // max_length) + (1 if time_d % max_length > 0 else 0))
     ]
+    if len(time_frames) == 0:
+        return []
     last_time_d = time_frames[-1][1] - time_frames[-1][0]
     time_frames = time_frames if last_time_d >= min_length else time_frames[:-1]
     return time_frames
@@ -79,7 +82,7 @@ class ClippingSubsampler:
 
         filtered_clips = []
         for s, e in clips:
-            max_len_clips = split_time_frame(get_seconds(s), get_seconds(e), self.min_length, self.max_length)
+            max_len_clips = _split_time_frame(_get_seconds(s), _get_seconds(e), self.min_length, self.max_length)
 
             if self.max_length_strategy == "first":
                 max_len_clips = max_len_clips[:1]
@@ -91,18 +94,18 @@ class ClippingSubsampler:
             # return an error
             return {}, [], f"Video had no clips longer than {self.min_length}"
 
-        start_0 = get_seconds(clips[0][0]) == 0.0
+        start_0 = _get_seconds(clips[0][0]) == 0.0
 
         ind = 1 + int(not start_0)
         s_p, e_p = clips[0]
-        s_p, e_p = get_seconds(s_p), get_seconds(e_p)
+        s_p, e_p = _get_seconds(s_p), _get_seconds(e_p)
         splits = (not start_0) * [s_p] + [e_p]
         # list of indicies of clips to take, used to discard non-contiguous sections
         take_inds = [int(not start_0)]
 
         # TODO: make nicer
         for s, e in clips[1:]:
-            s, e = get_seconds(s), get_seconds(e)
+            s, e = _get_seconds(s), _get_seconds(e)
 
             if s == e_p:  # situations like [0, 1], [1, 2], [2, 3] -> 1, 2
                 splits += [e]
@@ -176,9 +179,9 @@ class ClippingSubsampler:
 
                     if "subtitles" in meta_clip.get("yt_meta_dict", {}):
                         clip_subtitles = []
-                        s_c, e_c = get_seconds(clip_span[0]), get_seconds(clip_span[1])
+                        s_c, e_c = _get_seconds(clip_span[0]), _get_seconds(clip_span[1])
                         for line in meta_clip["yt_meta_dict"]["subtitles"]:
-                            s, e = get_seconds(line["start"]), get_seconds(line["end"])
+                            s, e = _get_seconds(line["start"]), _get_seconds(line["end"])
                             if max(s_c, s) < min(e_c, e):
                                 clip_subtitles.append(line)
                             elif s > e_c:
