@@ -13,7 +13,7 @@ import torch.distributed as dist
 from torch.utils.data import IterableDataset
 from torch.utils.data.datapipes.iter import IterableWrapper
 from torch.utils.data.datapipes.utils.common import StreamWrapper
-from torchdata.datapipes.iter import S3FileLoader, IterDataPipe
+from torchdata.datapipes.iter import S3FileLoader, IterDataPipe, FileOpener
 from torchdata.datapipes.iter import TarArchiveLoader
 from torchdata.datapipes.utils.common import validate_pathname_binary_tuple
 
@@ -33,6 +33,43 @@ def dict_collation_fn(samples, combine_tensors=True, combine_scalars=True):
     :returns: single sample consisting of a batch
     :rtype: dict
     """
+
+    # first, get all keys, for no missing a shared field
+    keys = set.union(*[set(sample.keys()) for sample in samples])
+    if "__corrupted__" in keys:
+        # set default dummy
+        dummy = {key: None for key in keys if not key.startswith("__")}
+        # dummy = {key: None if key != '__corrupted__' else True for key in keys if not key.startswith('__')}
+        dummy_set = False
+        missed_ids = set()
+        # search for first non-corrupted sample and take that as the dummy
+        for i, sample in enumerate(samples):
+            if not (dummy_set or sample["__corrupted__"]):
+                # set dummy to reasonble output, but keep sample['__corrupted__']=True
+                for key in sample:
+                    # keep meta data
+                    if not key.startswith("__"):
+                        dummy[key] = copy.deepcopy(sample[key])
+                dummy_set = True
+            elif not dummy_set and sample["__corrupted__"]:
+                # add default dummy and remember id
+                missed_ids.add(i)
+                for key in dummy:
+                    samples[i][key] = copy.deepcopy(dummy[key])
+            elif sample["__corrupted__"]:
+                # set corrupted sample to dummy except for metadata
+                for key in dummy:
+                    samples[i][key] = copy.deepcopy(dummy[key])
+
+        if missed_ids and dummy_set:
+            # this will be only to do if at least one element in the batch is not corrupted and
+            # if there is at least one missed sample
+            for i in missed_ids:
+                for key in dummy:
+                    samples[i][key] = copy.deepcopy(dummy[key])
+                # samples[i] = copy.deepcopy(dummy)
+
+        # the resorting case if the all samples in the batch are corrupted, then the batch will be
     keys = set.intersection(*[set(sample.keys()) for sample in samples])
     batched = {key: [s[key] for s in samples] for key in keys}
 
@@ -181,7 +218,35 @@ class WebDatasetWithChangedDecoder(DataPipeline, FluidInterfaceWithChangedDecode
 
 
 # pylint: disable=missing-function-docstring
-def _s3dataset2samples(data, handler=wds.reraise_exception):
+def _return_always_map(data, f, return_always=False, handler=wds.reraise_exception):
+    """Map samples."""
+    for sample in data:
+        try:
+            result = f(sample)
+        except Exception as exn:  # pylint: disable=broad-except
+            if handler(exn):
+                if return_always:
+                    result = {"__corrupted__": True}
+                else:
+                    continue
+            else:
+                break
+        if result is None:
+            if return_always:
+                result = {"__corrupted__": True}
+            else:
+                continue
+        if isinstance(sample, dict) and isinstance(result, dict):
+            result["__key__"] = sample.get("__key__")
+            result["__url__"] = sample.get("__url__")
+        yield result
+
+
+return_always_map = wds.pipelinefilter(_return_always_map)
+
+
+# pylint: disable=missing-function-docstring
+def _s3dataset2samples(data, return_always=False, handler=wds.reraise_exception):
     for sample in data:
         try:
             # construct webdataset-style sample
@@ -191,6 +256,9 @@ def _s3dataset2samples(data, handler=wds.reraise_exception):
             sample["__key__"] = key
             sample["__url__"] = url
 
+            if return_always:
+                # assume sample is heatlthy in the beginning
+                sample["__corrupted__"] = False
             yield sample
         except Exception as exn:  # pylint: disable=broad-except
             if handler(exn):
@@ -362,7 +430,7 @@ class TarArchiveLoaderAndCloser(TarArchiveLoader):
                 warnings.warn(f"Unable to extract files from corrupted tarfile stream {pathname} due to: {e}, abort!")
                 if self.handler(e):
                     if hasattr(e, "args") and len(e.args) > 0:
-                        e.args = (e.args[0] + " @ " + str(extracted_fobj),) + e.args[1:]
+                        e.args = (e.args[0] + " @ " + str(pathname),) + e.args[1:]
                 else:
                     raise e
             finally:
@@ -375,7 +443,7 @@ def grouper(x):
     return x[0].split("/")[-1].split(".")[0]
 
 
-class S3TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
+class TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
     """
     Loads tars from s3 directly in memory which reduces failures due to failed downloads
     """
@@ -390,10 +458,12 @@ class S3TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
         resample_prefixes: bool = False,
         prefix_probs: Optional[List[float]] = None,
         drop_last: bool = False,
+        return_always: bool = False,
         handler: Callable = wds.reraise_exception,
     ):
         """
-        :param urls: s3 prefixes to load the shards from, can be a list of different prefoxes for dataset mixing
+        :param urls: s3 prefixes to load the shards from, can be a list of different prefoxes for dataset mixing.
+        With shards specified using braceexpand notation
         :param repeat: number of repetitions in the training data. Default is None which means looping perpetually.
         :param shardshuffle: Shuffle buffer size for shard shuffling. size 1 means no shufflin. Default is 10k.
         :param sample_shuffle: Shuffle buffer for sample-level-shuffling. Default is 1 which means no shuffling
@@ -403,57 +473,66 @@ class S3TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
          This can be useful in combination with prefix probs when training on merged datasets of non-equal size.
         :param prefix_probs: list containing resampling probabilities for every prefix in `urls`
         :param drop_last: whether to drop last samples to prevent hanging (recommended)
-        :param shard_pattern: pattern for identifying the desired shards from with the specified prefixes.
-        Default is taking all shards in all sub-prefixes
+        :param return_always: Flag indicating whether to drop a sample and continue on error (default) or
+        to return a dummy output with a
         :param handler: handler for handling exceptions as in webdataset
         """
         super().__init__()
-
+        self.return_always = return_always
         if isinstance(urls, (List, list)):
             pass
 
         elif isinstance(urls, str):
             urls = [urls]
         else:
-            raise TypeError("urls need to be path to a S3 prefix or list of paths to more than one prefixes")
+            raise TypeError(
+                "urls need to be path to a [S3 prefix,path on a mounted fs] or list of paths to more than one those"
+            )
+
+        load_from_s3 = urls[0].replace(" ", "").startswith("s3://")
 
         # sharding filter ensures propper splitting for distributed environment
-        s3_datapipe = IterableWrapper(urls).shard_expand().sharding_filter()
+        main_datapipe = IterableWrapper(urls).shard_expand().sharding_filter()
 
         try:
             # after this operation datapipes in the distinct processes contain different tars
             global_rank = dist.get_rank()
             world_size = dist.get_world_size()
-            s3_datapipe.apply_sharding(world_size, global_rank)
+            main_datapipe.apply_sharding(world_size, global_rank)
             # synchronize data across processes to prevent hanging if sharding is uneven (which is likely)
-            s3_datapipe = s3_datapipe.fullsync()
+            main_datapipe = main_datapipe.fullsync()
         except RuntimeError:
             print("torch distributed not used, not applying sharding in dataloader")
             pass
         # start shuffling accross shards for the first time to mix different datasets
         # (can be the same for all workers, just as an additional shuffled initialization)
         if shardshuffle > 1 and not resample_prefixes:
-            raw_tars = list(s3_datapipe)
+            raw_tars = list(main_datapipe)
             random.shuffle(raw_tars)
             print("Loader got the following concrete shards (first 25 are shown)")
             print(raw_tars[:25])
             # back to datapipes
-            s3_datapipe = IterableWrapper(raw_tars)
+            main_datapipe = IterableWrapper(raw_tars)
         elif resample_prefixes:
-            s3_datapipe = PrefixResampler(s3_datapipe, prefixes=urls, ps=prefix_probs)
-        s3_datapipe = SplitByWorker(s3_datapipe, drop_last=drop_last)
+            main_datapipe = PrefixResampler(main_datapipe, prefixes=urls, ps=prefix_probs)
+        main_datapipe = SplitByWorker(main_datapipe, drop_last=drop_last)
         # different syntax than for webdataset
         shardshuffle = max(shardshuffle, 1)
-        s3_datapipe = s3_datapipe.shuffle(buffer_size=shardshuffle).cycle(count=repeat)
+        main_datapipe = main_datapipe.shuffle(buffer_size=shardshuffle).cycle(count=repeat)
 
-        # s3_datapipe = s3_datapipe.sharding_filter()
-
-        # Load data with S3FileLoader
-        s3_datapipe = S3FileLoader(s3_datapipe, buffer_size=buffer_size)
+        if load_from_s3:
+            # Load data with S3FileLoader
+            main_datapipe = S3FileLoader(main_datapipe, buffer_size=buffer_size)
+        else:
+            # regular fileopener
+            main_datapipe = FileOpener(main_datapipe, mode="b")
         # adapted TarLoader which closes open tarfile handles after exceeding them
-        s3_datapipe = TarArchiveLoaderAndCloser(datapipe=s3_datapipe, handler=handler).groupby(grouper)
+        main_datapipe = TarArchiveLoaderAndCloser(datapipe=main_datapipe, handler=handler).groupby(grouper)
         if sample_shuffle > 0:
-            s3_datapipe = s3_datapipe.shuffle(buffer_size=sample_shuffle)
+            main_datapipe = main_datapipe.shuffle(buffer_size=sample_shuffle)
 
-        self.append(s3_datapipe)
-        self.append(s3dataset2samples(handler=handler))
+        self.append(main_datapipe)
+        self.append(s3dataset2samples(return_always=self.return_always, handler=handler))
+
+    def map(self, f, handler=wds.reraise_exception):
+        return self.compose(return_always_map(f, return_always=self.return_always, handler=handler))
