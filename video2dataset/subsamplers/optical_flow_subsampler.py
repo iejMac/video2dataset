@@ -64,6 +64,7 @@ def resize_image_with_aspect_ratio(image, target_shortest_side=16):
 
     return resized_image, scaling_factor
 
+
 class RAFTDetector:
     """
     Optical flow detection using RAFT. Steps to setup RAFT:
@@ -205,7 +206,8 @@ class Cv2Detector:
                 self.poly_n,
                 self.poly_sigma,
                 self.flags,
-            ) * rescale_factor
+            )
+            * rescale_factor
         )
 
 
@@ -254,7 +256,7 @@ class OpticalFlowSubsampler:
         dtypes = {"fp16": np.float16, "fp32": np.float32}
         self.dtype = dtypes[dtype]
 
-    def __call__(self, frames, rescale_factor):
+    def __call__(self, frames, rescale_factor=1):
         optical_flow = []
 
         try:

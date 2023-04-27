@@ -98,10 +98,9 @@ class VideoDecorder(AbstractVideoDecoder):
         if n_frames * stride > len(reader):
             if not self.pad_frames:
                 raise ValueError("video clip not long enough for decoding")
-            n_frames = len(reader) // stride
-
+            n_frames = len(reader)
         # sample frame start and choose scene
-        if n_frames == len(reader):
+        if n_frames == len(reader) or n_frames == len(reader) // stride:
             frame_start = 0
         else:
             frame_start = self.prng.choice(int(len(reader)) - int(n_frames * stride), 1).item()
@@ -127,8 +126,6 @@ class VideoDecorder(AbstractVideoDecoder):
             with open(fname, "wb") as stream:
                 stream.write(data)
             reader = decord.VideoReader(fname, num_threads=self.num_threads)
-
-        
 
         native_fps = int(np.round(reader.get_avg_fps()))
         if isinstance(self.fps, list):

@@ -80,7 +80,7 @@ class VideoResizer(PRNGMixin):
             if isinstance(self.resize_size, int):
                 f = self.resize_size / min((orig_h, orig_w))
                 resize_size = [int(round(orig_h * f)), int(round(orig_w * f))]
-                scaling_factor = 1/f
+                scaling_factor = 1 / f
             else:
                 resize_size = self.resize_size
             h, w = resize_size
@@ -132,7 +132,7 @@ class VideoResizer(PRNGMixin):
                 frame = cv2.resize(
                     frame,
                     tuple(reversed(resize_size)),
-                    interpolation=cv2.INTER_AREA, #cv2.INTER_LANCZOS4,
+                    interpolation=cv2.INTER_AREA,  # cv2.INTER_LANCZOS4,
                 )
 
             if self.crop_size is not None:
