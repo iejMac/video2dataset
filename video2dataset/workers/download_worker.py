@@ -102,6 +102,7 @@ class DownloadWorker:
             )
         self.cuts_are_clips = cuts_are_clips
         self.noop_subsampler = NoOpSubsampler()
+        self.cut_detector_downsampler = ResolutionSubsampler(video_size=64, resize_mode="scale")
 
         video_subsamplers: List[Any] = []
         if resize_mode is not None:
@@ -223,7 +224,24 @@ class DownloadWorker:
                         subtitles = meta["yt_meta_dict"]["subtitles"]
                         meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
                     elif self.detect_cuts:  # apply cut detection to get clips
-                        meta["cuts"] = self.cut_detector(streams)
+                        video_bytes = streams["video"]
+                        downsampled_video_bytes, error_message = self.cut_detector_downsampler([video_bytes])
+
+                        if error_message is not None:
+                            failed_to_subsample += 1
+                            status = "failed_to_subsample"
+                            status_dict.increment(error_message)
+                            meta["status"] = status
+                            meta["error_message"] = error_message
+
+                            sample_writer.write(
+                                {},
+                                key,
+                                caption,
+                                meta,
+                            )
+                            continue
+                        meta["cuts"] = self.cut_detector(downsampled_video_bytes[0])
 
                     if self.cuts_are_clips:
                         cuts = meta["cuts"]["cuts_original_fps"]
