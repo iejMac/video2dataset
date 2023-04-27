@@ -86,7 +86,7 @@ def dict_collation_fn(samples, combine_tensors=True, combine_scalars=True):
         elif isinstance(first_value, np.ndarray):
             if combine_tensors:
                 result[key] = np.array(values)
-        elif isinstance(first_value, tuple): # tuple of torch tensor and a dict
+        elif isinstance(first_value, tuple):  # tuple of torch tensor and a dict
             dict_keys = first_value[1].keys()
             if combine_tensors:
                 result[key] = torch.stack([v[0] for v in values])

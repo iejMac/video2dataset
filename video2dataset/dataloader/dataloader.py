@@ -113,7 +113,11 @@ def get_video_dataset(
             )
             if not use_torchdata
             else partial(
-                TorchDataWebdataset, repeat=repeat, drop_last=drop_last, return_always=return_always, handler=wds.warn_and_continue
+                TorchDataWebdataset,
+                repeat=repeat,
+                drop_last=drop_last,
+                return_always=return_always,
+                handler=wds.warn_and_continue,
             )
         )
         video_decoder_cls = partial(VideoDecorderWithCutDetection, cuts_key=cuts_key)
