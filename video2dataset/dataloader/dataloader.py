@@ -126,7 +126,7 @@ def get_video_dataset(
         additional_decoder_kwargs = {"passthrough_keys": [video_key]}
     elif video_key in ["mp3", "wav", "flac", "m4a"]:
         dataset_cls = wds.WebDataset
-        video_decoder_cls = AudioDecoder
+        video_decoder_cls = AudioDecoder # type: ignore
         decoder_kwargs["extension"] = video_key
     elif decoder_kwargs == {}:  # nothing means just read the bytes
         dataset_cls = (
