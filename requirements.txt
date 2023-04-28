@@ -16,3 +16,5 @@ decord
 torch>=2
 langdetect
 torchdata==0.6.0
+torchaudio>=2
+soundfile
