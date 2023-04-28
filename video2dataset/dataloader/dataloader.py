@@ -10,6 +10,7 @@ from .custom_wds import (
 )
 from .transform import VideoResizer, CutsAdder, CustomTransforms
 from .video_decode import VideoDecorder, VideoDecorderWithCutDetection
+from .audio_decode import AudioDecoder
 from .filters import (
     KeyFilter,
     LanguageFilter,
@@ -69,7 +70,6 @@ def get_video_dataset(
 
     """
     Generates a webdataset given the specified parameters.
-
     Parameters:
         urls (str, list(str)): The path to the dataset or a list of paths to the different locations of the dataset.
         batch_size (int): The number of samples per batch.
@@ -91,7 +91,6 @@ def get_video_dataset(
         keys_to_remove ((list, int), optional): Keys which, for the sake of speed, will be
         removed before decoding. Default is None which means nothing will be removed.
         enforce_additional_keys (list, optional): Which keys must be in each sample
-        return_always (bool): return all samples also when corrupted
     Returns:
         WebDataset: The processed webdataset.
     """
@@ -125,6 +124,10 @@ def get_video_dataset(
         )
         video_decoder_cls = partial(VideoDecorderWithCutDetection, cuts_key=cuts_key)
         additional_decoder_kwargs = {"passthrough_keys": [video_key]}
+    elif video_key in ["mp3", "wav", "flac", "m4a"]:
+        dataset_cls = wds.WebDataset
+        video_decoder_cls = AudioDecoder  # type: ignore
+        decoder_kwargs["extension"] = video_key
     elif decoder_kwargs == {}:  # nothing means just read the bytes
         dataset_cls = (
             partial(
