@@ -154,7 +154,10 @@ class OpticalFlowWorker:
             meta = sample["json"][0]
             streams = {}
             frames = np.array(sample.get("mp4")[0]).astype(np.float32)
-            rescale_factor = sample.get("rescale_factor")[0]
+
+            orig_h, orig_w = sample["original_height"][0][0].item(), sample["original_width"][0][0].item()
+
+            rescale_factor = min(orig_h, orig_w) / self.downsample_size
 
             optical_flow, metrics, error_message = self.optical_flow_subsampler(frames, rescale_factor)
 
