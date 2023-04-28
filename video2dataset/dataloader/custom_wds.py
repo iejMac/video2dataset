@@ -76,7 +76,7 @@ def dict_collation_fn(samples, combine_tensors=True, combine_scalars=True):
     result = {}
     for key, values in batched.items():  # Iterate over both key and values
         first_value = values[0]
-  
+
         if isinstance(first_value, (int, float)):
             if combine_scalars:
                 result[key] = np.array(values)
