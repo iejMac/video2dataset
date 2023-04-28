@@ -62,18 +62,16 @@ def get_video_dataset(
     random_crop=False,
     original_height_key="original_height",
     original_width_key="original_width",
-    keys_to_remove: Union[str, List[str], None] = None,
+    keys_to_remove: Union[int, List[int], None] = None,
     enforce_additional_keys=None,
-    return_always: bool = False,
-    handler=wds.reraise_exception,
 ):
     """
     Generates a webdataset given the specified parameters.
     Parameters:
         urls (str, list(str)): The path to the dataset or a list of paths to the different locations of the dataset.
         batch_size (int): The number of samples per batch.
-        shuffle (int, optional): Shuffle buffer size. Default is 0 means no shuffling.
-        repeat (int, optional): Whether to repeat the dataset. Default is 1. -1 means repeating infinitely
+        shuffle (bool, optional): Whether to shuffle the dataset. Default is False.
+        repeat (bool, optional): Whether to repeat the dataset. Default is False.
         drop_last (bool, optional): Whether to drop the last incomplete batch. Default is False.
         video_key (str, optional): The key for video files. Default is 'mp4'.
         cuts_key (str, optional): The key for cut detection. Default is None.
@@ -87,10 +85,8 @@ def get_video_dataset(
         random_crop (bool, optional): Whether to apply random cropping. Default is False.
         original_height_key (str, optional): The key for the original video height. Default is 'original_height'.
         original_width_key (str, optional): The key for the original video width. Default is 'original_width'.
-        keys_to_remove ((list, int), optional): Keys which, for the sake of speed, will be
-        removed before decoding. Default is None which means nothing will be removed.
         enforce_additional_keys (list, optional): Which keys must be in each sample
-        return_always (bool): return all samples also when corrupted
+
     Returns:
         WebDataset: The processed webdataset.
     """
@@ -99,8 +95,6 @@ def get_video_dataset(
         decoder_kwargs = {}
     if enforce_additional_keys is None:
         enforce_additional_keys = ["txt"]
-    if keys_to_remove is None:
-        keys_to_remove = []
 
     if isinstance(urls, str):
         urls = [urls]
@@ -119,16 +113,14 @@ def get_video_dataset(
             )
             if not use_torchdata
             else partial(
-                TorchDataWebdataset, repeat=repeat, drop_last=drop_last, return_always=return_always, handler=handler
+                TorchDataWebdataset, repeat=repeat, drop_last=drop_last, return_always=return_always, handler=wds.warn_and_continue
             )
         )
         video_decoder_cls = partial(VideoDecorderWithCutDetection, cuts_key=cuts_key)
         additional_decoder_kwargs = {"passthrough_keys": [video_key]}
     elif video_key in ["mp3", "wav", "flac", "m4a"]:
         dataset_cls = wds.WebDataset
-        video_decoder_cls = AudioDecoder  # type: ignore
-        if decoder_kwargs == {}:
-            decoder_kwargs = {"sample_rate": None}
+        video_decoder_cls = AudioDecoder
         decoder_kwargs["extension"] = video_key
     elif decoder_kwargs == {}:  # nothing means just read the bytes
         dataset_cls = (
@@ -143,25 +135,14 @@ def get_video_dataset(
         )
         video_decoder_cls = None
     else:
-        dataset_cls = (
-            partial(
-                wds.WebDataset,
-                nodesplitter=wds.split_by_node,
-            )
-            if not use_torchdata
-            else partial(
-                TorchDataWebdataset, repeat=repeat, drop_last=drop_last, return_always=return_always, handler=handler
-            )
-        )
-        video_decoder_cls = VideoDecorder  # type: ignore
+        dataset_cls = wds.WebDataset
+        video_decoder_cls = VideoDecorder
 
-    dset = dataset_cls(urls, shardshuffle=shuffle, handler=handler)
-
-    if not use_torchdata:
-        dset = dset.repeat(repeat).shuffle(shuffle, initial=shuffle)
+    dset = dataset_cls(urls, nodesplitter=wds.split_by_node, shardshuffle=shuffle, handler=wds.warn_and_continue)
+    dset = dset.repeat(repeat).shuffle(shuffle, initial=shuffle)
 
     unused_key_filter = UnusedKeyFilter(keys=keys_to_remove)
-    dset = dset.map(unused_key_filter, handler=handler)
+    dset = dset.map(unused_key_filter, handler=wds.warn_and_continue)
 
     # TODO: organize this such that you don't always need video.
     # should work with audio-text, just text or whatever you might want
@@ -171,7 +152,7 @@ def get_video_dataset(
 
     if cuts_key:
         cut_adder = CutsAdder(cuts_key=cuts_key, video_key=video_key)
-        dset = dset.map(cut_adder, handler=handler)
+        dset = dset.map(cut_adder, handler=wds.warn_and_continue)
 
     aesthetics_filter = AestheticsFilter(aesthetic_thld=aesthetics_threshold)
     language_filter = LanguageFilter(languages=allowed_languages)
@@ -180,12 +161,12 @@ def get_video_dataset(
     filters = [aesthetics_filter, language_filter, unsafe_filter]
 
     # Decoding
-    if video_decoder_cls is not None:
+    if decoder_kwargs != {}:
         dset = dset.decode(
             video_decoder_cls(**decoder_kwargs),
-            handler=handler,
+            handler=wds.warn_and_continue,
             **additional_decoder_kwargs,
-        ).map(reassemble, handler=handler)
+        ).map(reassemble, handler=wds.warn_and_continue)
 
     # Filters
     for fltr in filters:
@@ -202,11 +183,11 @@ def get_video_dataset(
                 width_key=original_width_key,
                 height_key=original_height_key,
             ),
-            handler=handler,
+            handler=wds.warn_and_continue,
         )
 
     if custom_transforms:
-        dset = dset.map(CustomTransforms(custom_transforms), handler=handler)
+        dset = dset.map(CustomTransforms(custom_transforms), handler=wds.warn_and_continue)
 
     if decoder_kwargs != {}:
         dset = dset.batched(batch_size, partial=not drop_last, collation_fn=dict_collation_fn)
