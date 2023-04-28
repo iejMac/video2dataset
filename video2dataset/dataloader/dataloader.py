@@ -200,7 +200,7 @@ def get_video_dataset(
                 width_key=original_width_key,
                 height_key=original_height_key,
             ),
-            handler=wds.warn_and_continue,
+            handler=handler,
         )
 
     if custom_transforms:
