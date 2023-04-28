@@ -87,10 +87,10 @@ class UnsafeFilter:
 class UnusedKeyFilter:
     """Removes keys specified keys which are not used during loading and by that speeds up sampling"""
 
-    def __init__(self, keys: Union[int, List[int], None] = None) -> None:
+    def __init__(self, keys: Union[str, List[str], None] = None) -> None:
         if keys is None:
             self.unused_keys = set()
-        elif isinstance(keys, int):
+        elif isinstance(keys, str):
             self.unused_keys = {keys}
         else:
             self.unused_keys = set(keys)
