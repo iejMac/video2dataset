@@ -70,7 +70,7 @@ def main():
 
     for subsampler, benchmarkers in benchmarks.items():
         for sample in ds:
-            # TODO: parallelize this in a safe way i.e. each benchmarker gets certain amount of cores
+            # TODO: parallelize this in a safe way i.e. each benchmarker gets certain amount of cores (no interference)
             # TODO: report per-core metrics
             [bm(sample) for bm in benchmarkers]
 
