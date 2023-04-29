@@ -144,7 +144,6 @@ class VideoResizer(PRNGMixin):
 
             # TODO: maybe lets add other options for normalization
             # will need for VideoCLIP built on top of CLIP
-            frame = frame.astype(float) / 127.5 - 1.0
 
             frame = torch.from_numpy(frame)
             result.append(frame)
