@@ -122,11 +122,6 @@ class RAFTDetector:
                 frames while maintaining the aspect ratio. If no resizing is performed,
                 the scaling factor is 1.
         """
-        scaling_factor = 1
-        if self.downsample_size:
-            frame1, scaling_factor = resize_image_with_aspect_ratio(frame1, self.downsample_size)
-            frame2, _ = resize_image_with_aspect_ratio(frame2, self.downsample_size)
-
         frame1 = frame1.astype(np.uint8)
         frame1 = torch.from_numpy(frame1).permute(2, 0, 1).float()
         frame1 = frame1[None].to(self.device)
@@ -138,13 +133,13 @@ class RAFTDetector:
         padder = InputPadder(frame1.shape)
 
         frame1, frame2 = padder.pad(frame1, frame2)
-        return frame1, frame2, scaling_factor
+        return frame1, frame2
 
-    def __call__(self, frame1, frame2):
-        frame1, frame2, scaling_factor = self.preprocess(frame1, frame2)
+    def __call__(self, frame1, frame2, rescale_factor=1):
+        frame1, frame2 = self.preprocess(frame1, frame2)
         with torch.no_grad():
             _, flow_up = self.model(frame1, frame2, iters=20, test_mode=True)
-        return flow_up[0].permute(1, 2, 0).cpu().numpy() * scaling_factor
+        return flow_up[0].permute(1, 2, 0).cpu().numpy() * rescale_factor
 
 
 class Cv2Detector:
@@ -183,13 +178,9 @@ class Cv2Detector:
 
     def preprocess(self, frame):
         out = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        scaling_factor = 1
-        if self.downsample_size:
-            out, scaling_factor = resize_image_with_aspect_ratio(out, self.downsample_size)
+        return out
 
-        return out, scaling_factor
-
-    def __call__(self, frame1, frame2):
+    def __call__(self, frame1, frame2, rescale_factor=1):
         """
         Calculate optical flow between two frames using Farneback method.
 
@@ -200,8 +191,8 @@ class Cv2Detector:
         Returns:
             numpy.ndarray: The computed optical flow.
         """
-        frame1, scaling_factor = self.preprocess(frame1)
-        frame2, _ = self.preprocess(frame2)
+        frame1 = self.preprocess(frame1)
+        frame2 = self.preprocess(frame2)
 
         return (
             cv2.calcOpticalFlowFarneback(
@@ -216,7 +207,7 @@ class Cv2Detector:
                 self.poly_sigma,
                 self.flags,
             )
-            * scaling_factor
+            * rescale_factor
         )
 
 
@@ -232,9 +223,7 @@ class OpticalFlowSubsampler:
     def __init__(
         self,
         detector="cv2",
-        fps=-1,
         args=None,
-        downsample_size=None,
         dtype="fp16",
         is_slurm_task=False,
     ):
@@ -249,10 +238,9 @@ class OpticalFlowSubsampler:
                     poly_n,
                     poly_sigma,
                     flags,
-                    downsample_size=downsample_size,
                 )
             else:
-                self.detector = Cv2Detector(downsample_size=downsample_size)
+                self.detector = Cv2Detector()
         elif detector == "raft":
             assert args is not None
             if is_slurm_task:
@@ -261,41 +249,23 @@ class OpticalFlowSubsampler:
                 args["device"] = device
             if not isinstance(args, AttrDict):
                 args = AttrDict(args)
-            self.detector = RAFTDetector(args, downsample_size=downsample_size)
+            self.detector = RAFTDetector(args)
         else:
             raise NotImplementedError()
 
         dtypes = {"fp16": np.float16, "fp32": np.float32}
-
-        self.fps = fps
-        self.downsample_size = downsample_size
         self.dtype = dtypes[dtype]
 
-    def __call__(self, frames, original_fps):
+    def __call__(self, frames, rescale_factor=1):
         optical_flow = []
-
-        if self.fps == -1:
-            self.fps = original_fps
-            take_every_nth = 1
-        elif self.fps > original_fps:
-            take_every_nth = 1
-        else:
-            take_every_nth = int(round(original_fps / self.fps))
 
         try:
             frame1 = frames[0]
             prvs = frame1
-            fc = 0
 
             for frame2 in frames[1:]:
-                fc += 1
-                if fc % take_every_nth != 0:
-                    continue
-
                 next_frame = frame2
-
-                flow = self.detector(prvs, next_frame)
-
+                flow = self.detector(prvs, next_frame, rescale_factor)
                 optical_flow.append(flow)
                 prvs = next_frame
 

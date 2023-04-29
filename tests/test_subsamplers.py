@@ -210,12 +210,12 @@ def test_optical_flow_subsampler(detector, fps, params):
             break
         frames.append(frame)
     cap.release()
+    step = int(native_fps / fps)
+    raw_frames = np.array(frames)[::step]
 
-    raw_frames = np.array(frames)
+    subsampler = OpticalFlowSubsampler(detector, args=params)
 
-    subsampler = OpticalFlowSubsampler(detector, fps, params)
-
-    optical_flow, metrics, error_message = subsampler(raw_frames, native_fps)
+    optical_flow, metrics, error_message = subsampler(raw_frames)
     mean_magnitude, _ = metrics
     assert error_message is None
 
