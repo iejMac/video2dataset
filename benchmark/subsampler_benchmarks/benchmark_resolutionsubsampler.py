@@ -8,6 +8,7 @@ class BenchmarkResolutionSubsampler(ResolutionSubsampler):
         super().__init__(**subsampler_args)
 
         self.subsampler_args = subsampler_args
+        self.subsampler_name = "ResolutionSubsampler"
         # TODO: maybe add "video seconds"
         # TODO: maybe add frames
         self.metrics = {
@@ -25,4 +26,3 @@ class BenchmarkResolutionSubsampler(ResolutionSubsampler):
 
         self.metrics["time"] += tf-t0
         self.metrics["samples"] += 1
-        print(self.metrics)

@@ -2,6 +2,7 @@ import os
 import itertools
 import platform
 import psutil
+import json
 import yaml
 from omegaconf import OmegaConf
 from webdataset import WebLoader
@@ -76,6 +77,17 @@ def main():
 
     # TODO: Normalize metrics for core count, sample count, bytes count etc.
     # TODO: visualize in nice way - visual repr but also raw numbers in some json or something
+    # For now just output JSON
+    data = {
+        "system_info": system_info,
+        "configs_and_metrics": [
+            {"name": bm.subsampler_name, "config": bm.subsampler_args, "metrics": bm.metrics}
+            for bm in benchmarkers
+        ],
+    }
+    with open("results.json", "w") as f:
+        json.dump(data, f, indent=4)
+
 
 if __name__ == "__main__":
     main()
