@@ -5,4 +5,3 @@ subsamplers:
     parameters:
       - video_size: [360, 60]
         resize_mode: ["scale"]
-        
