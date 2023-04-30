@@ -166,14 +166,25 @@ class MetaDataScore:
         self,
         meta_key: Optional[str] = None,
         encoded_fps: Optional[Union[int, float]] = None,
+        encoded_stride: Optional[int] = None,
         video_key: Optional[str] = "mp4",
+        always_include_last: Optional[bool] = False,
     ):
         self.meta_key = meta_key
         self.video_key = video_key
         self.encoded_fps = encoded_fps
+        self.encoded_stride = encoded_stride
+        self.always_include_last = always_include_last
 
         if self.meta_key is not None:
-            assert self.encoded_fps is not None, "If meta key is not None, encoded_fps also needs to be specified"
+            assert (
+                self.encoded_fps is not None or self.encoded_stride is not None
+            ), "If meta key is not None, encoded_fps also needs to be specified"
+
+        if self.encoded_stride is not None and self.encoded_fps is not None:
+            raise ValueError(
+                f"Attributes encoded_stride and encoded_fps of {self.__class__.__name__} are mutually exclusive"
+            )
 
     @abstractmethod
     def compute_score(self, metaseq: np.ndarray):
@@ -196,15 +207,20 @@ class MetaDataScore:
         Extracts the sub sequence from the metadata sequence which has the same timespan
         than the loaded video clip
         """
-        assert (
-            self.encoded_fps <= native_fps
-        ), "Encoded fps of metadata must not be larger than native fps, this can only be an error"
-        # get strides for meta data and video frames
-        meta_stride = int(np.round(native_fps / self.encoded_fps))
+        if self.encoded_fps:
+            assert (
+                self.encoded_fps <= native_fps
+            ), "Encoded fps of metadata must not be larger than native fps, this can only be an error"
+            # get strides for meta data and video frames
+            meta_stride = int(np.round(native_fps / self.encoded_fps))
+        else:
+            meta_stride = self.encoded_stride
         video_stride = int(np.round(native_fps / video_fps))
 
         # extract meta frames
         available_meta_frames = np.arange(start=0, stop=original_n_frames, step=meta_stride)
+        if self.always_include_last and original_n_frames - 1 not in available_meta_frames:
+            available_meta_frames = np.append(available_meta_frames, original_n_frames - 1)
         # start and end of video
         end_frame = start_frame + video_stride * n_video_frames
 
