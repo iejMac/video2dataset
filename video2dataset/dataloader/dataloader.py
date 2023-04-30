@@ -1,14 +1,16 @@
 """video dataset creation"""
+import importlib
 import webdataset as wds
 from functools import partial
-from typing import List, Union
+from typing import List, Union, Optional, Dict
+
 
 from .custom_wds import (
     WebDatasetWithChangedDecoder,
     dict_collation_fn,
     TorchDataWebdataset,
 )
-from .transform import VideoResizer, CutsAdder, CustomTransforms
+from .transform import VideoResizer, CutsAdder
 from .video_decode import VideoDecorder, VideoDecorderWithCutDetection
 from .filters import (
     KeyFilter,
@@ -17,6 +19,26 @@ from .filters import (
     UnsafeFilter,
     UnusedKeyFilter,
 )  # pylint: disable=unused-import
+
+
+def instantiate_from_config(config):
+    if not "target" in config:
+        if config == "__is_first_stage__":
+            return None
+        elif config == "__is_unconditional__":
+            return None
+        raise KeyError("Expected key `target` to instantiate.")
+    return get_obj_from_str(config["target"])(**config.get("params", {}))
+
+
+def get_obj_from_str(string, reload=False, invalidate_cache=True):
+    module, cls = string.rsplit(".", 1)
+    if invalidate_cache:
+        importlib.invalidate_caches()
+    if reload:
+        module_imp = importlib.import_module(module)
+        importlib.reload(module_imp)
+    return getattr(importlib.import_module(module, package=None), cls)
 
 
 def reassemble(x):
@@ -48,11 +70,13 @@ def get_video_dataset(
     batch_size,
     shuffle=0,
     repeat=1,
+    meta_urls: Optional[List[str]] = None,
+    meta_keys: Optional[Dict] = None,
     drop_last=False,
     video_key="mp4",
     cuts_key=None,
     decoder_kwargs=None,
-    custom_transforms=None,
+    custom_transforms: List[Dict] = None,
     aesthetics_threshold=None,
     allowed_languages=None,
     p_unsafe_threshold=None,
@@ -75,11 +99,15 @@ def get_video_dataset(
         batch_size (int): The number of samples per batch.
         shuffle (int, optional): Shuffle buffer size. Default is 0 means no shuffling.
         repeat (int, optional): Whether to repeat the dataset. Default is 1. -1 means repeating infinitely
+        meta_urls (list(str), optional): suffixes to prefixes/directories wjere the meta shards are expected to
+        live in e.g. if we have base shard /some/directory/0000.tar the corresponding
+        meta shards should be /some/directory_<suffix>/0000.tar
+        meta_keys (dict, optional): mapping metadata keys to the fps they have been extracted with
         drop_last (bool, optional): Whether to drop the last incomplete batch. Default is False.
         video_key (str, optional): The key for video files. Default is 'mp4'.
         cuts_key (str, optional): The key for cut detection. Default is None.
         decoder_kwargs (dict, optional): Keyword arguments for the video decoder. Default is an empty dictionary.
-        custom_transforms (dict, optional): Pairs of additional custom transforms to apply to samples.
+        custom_transforms (list(dict), optional): List of additional custom transforms to apply to samples.
         aesthetics_threshold (float, optional): Aesthetic threshold for filtering. Default is None.
         allowed_languages (list, optional): List of allowed languages. Default is None.
         p_unsafe_threshold (float, optional): Probability threshold for unsafe content filtering. Default is None.
@@ -106,6 +134,9 @@ def get_video_dataset(
     if isinstance(urls, str):
         urls = [urls]
 
+    if meta_urls is not None and meta_keys is None:
+        print("WARNING: meta shards are used but no meta keys are specified in get_video_dataset(). Is this intended?")
+
     # only use webdataset when using pipe
     use_torchdata = not urls[0].replace(" ", "").startswith("pipe:")
 
@@ -121,7 +152,12 @@ def get_video_dataset(
             )
             if not use_torchdata
             else partial(
-                TorchDataWebdataset, repeat=repeat, drop_last=drop_last, return_always=return_always, handler=handler
+                TorchDataWebdataset,
+                meta_urls=meta_urls,
+                repeat=repeat,
+                drop_last=drop_last,
+                return_always=return_always,
+                handler=handler,
             )
         )
         video_decoder_cls = partial(VideoDecorderWithCutDetection, cuts_key=cuts_key)
@@ -134,7 +170,12 @@ def get_video_dataset(
             )
             if not use_torchdata
             else partial(
-                TorchDataWebdataset, repeat=repeat, drop_last=drop_last, return_always=return_always, handler=handler
+                TorchDataWebdataset,
+                meta_urls=meta_urls,
+                repeat=repeat,
+                drop_last=drop_last,
+                return_always=return_always,
+                handler=handler,
             )
         )
         video_decoder_cls = None
@@ -146,7 +187,12 @@ def get_video_dataset(
             )
             if not use_torchdata
             else partial(
-                TorchDataWebdataset, repeat=repeat, drop_last=drop_last, return_always=return_always, handler=handler
+                TorchDataWebdataset,
+                meta_urls=meta_urls,
+                repeat=repeat,
+                drop_last=drop_last,
+                return_always=return_always,
+                handler=handler,
             )
         )
         video_decoder_cls = VideoDecorder  # type: ignore
@@ -189,6 +235,7 @@ def get_video_dataset(
 
     # Resizing
     if decoder_kwargs != {}:  # bytes
+        # TODO MetaDataAligner should not be necessary anymore once more general tranforms are available
         dset = dset.map(
             VideoResizer(
                 size=resize_size,
@@ -201,8 +248,13 @@ def get_video_dataset(
             handler=handler,
         )
 
+    # TODO make this more general with config files from which arbitrary transforms can be applied
     if custom_transforms:
-        dset = dset.map(CustomTransforms(custom_transforms), handler=handler)
+        for transform in custom_transforms:
+            assert (
+                "target" in transform
+            ), 'custom transform has to have a key "target" which is a class to be instantiated'
+            dset = dset.map(instantiate_from_config(transform), handler=handler)
 
     if decoder_kwargs != {}:
         dset = dset.batched(batch_size, partial=not drop_last, collation_fn=dict_collation_fn)

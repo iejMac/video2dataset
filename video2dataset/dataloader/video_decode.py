@@ -167,8 +167,14 @@ class VideoDecorder(AbstractVideoDecoder):
             raise ValueError("Decoded video not long enough, skipping")
 
         # return compatible with torchvisioin API
-        additional_info.update({"native_fps": chosen_fps if chosen_fps is not None else native_fps})
-        additional_info.update({"start_frame": start_frame})
+        additional_info.update(
+            {
+                "fps": chosen_fps if chosen_fps is not None else native_fps,
+                "native_fps": native_fps,
+                "start_frame": start_frame,
+                "original_n_frames": len(reader),
+            }
+        )
 
         if self.return_bytes:
             additional_info.update({"video_bytes": data})

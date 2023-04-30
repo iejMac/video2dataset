@@ -5,7 +5,7 @@ import random
 import tarfile
 import warnings
 import copy
-from io import BufferedIOBase
+from io import BufferedIOBase, BytesIO
 from operator import itemgetter
 from typing import Callable, Iterator, Tuple, cast, Optional, IO, Union, List, Iterable, Dict
 
@@ -14,7 +14,7 @@ import torch.distributed as dist
 from torch.utils.data import IterableDataset
 from torch.utils.data.datapipes.iter import IterableWrapper, FileOpener
 from torch.utils.data.datapipes.utils.common import StreamWrapper
-from torchdata.datapipes.iter import S3FileLoader, IterDataPipe, FileOpener
+from torchdata.datapipes.iter import S3FileLoader, IterDataPipe
 from torchdata.datapipes.iter import TarArchiveLoader
 from torchdata.datapipes.utils.common import validate_pathname_binary_tuple
 
@@ -441,8 +441,31 @@ class TarArchiveLoaderAndCloser(TarArchiveLoader):
                 del data_stream
 
 
+class S3FileLoaderWithErrorHandling(S3FileLoader):
+    """
+    Wraps an error handler around S3FileLoader
+    """
+
+    def __init__(self, *args, handler: Optional[Callable] = wds.reraise_exception, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.error_handler = handler
+
+    def __iter__(self) -> Iterator[Tuple[str, StreamWrapper]]:
+        for url in self.source_datapipe:
+            try:
+                yield url, StreamWrapper(BytesIO(self.handler.s3_read(url)))
+            except Exception as exn:  # pylint: disable=broad-except
+                if self.error_handler(exn):
+                    continue
+                raise exn
+
+
 def grouper(x):
     return x[0].split("/")[-1].split(".")[0]
+
+
+def tuple_grouper(x):
+    return x[0][0].split("/")[-1].split(".")[0]
 
 
 class TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
@@ -453,7 +476,7 @@ class TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
     def __init__(
         self,
         urls: Union[List[str], str],
-        meta_urls: Optional[List[str]] = None,
+        meta_urls: Optional[Union[List[str], str]] = None,
         repeat: Optional[int] = None,
         shardshuffle: int = 10000,
         sample_shuffle: int = 0,
@@ -494,7 +517,6 @@ class TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
                 "urls need to be path to a [S3 prefix,path on a mounted fs] or list of paths to more than one those"
             )
 
-
         load_from_s3 = urls[0].replace(" ", "").startswith("s3://")
 
         # map to (s3-prefix/basefilename/shard_id, [shardfile,]) to have the same format both for with and
@@ -504,7 +526,7 @@ class TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
             .shard_expand()
             .map(
                 fn=lambda x: (
-                    os.path.join(os.path.split(x)[0], os.path.split(x)[1].split(".")[0]),
+                    os.path.join(os.path.split(x)[0], os.path.splitext(os.path.split(x)[1])[0]),
                     [
                         x,
                     ],
@@ -513,11 +535,17 @@ class TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
         )
 
         if meta_urls:
-            print(f"Zipping together {len(meta_urls)} meta datapipes with the following suffixes {meta_urls} "
-                  f"and adding this to the main datapipes ")
+            print(
+                f"Zipping together {len(meta_urls)} meta datapipes with the following suffixes {meta_urls} "
+                f"and adding this to the main datapipes "
+            )
 
-            meta_urls = [os.path.split(m) for m in urls]
-            meta_urls = [[os.path.join(m[0], os.path.splitext(m[1])[0]+f"_{suffix}"+os.path.splitext(m[1])[1]) for m in meta_urls] for suffix in meta_urls]
+            if isinstance(meta_urls, str):
+                meta_urls = [meta_urls]
+
+            meta_urls_base = [os.path.split(m) for m in urls]
+            # meta_urls = [[os.path.join(m[0], os.path.splitext(m[1])[0]+f"_{suffix}"+os.path.splitext(m[1])[1]) for m in meta_urls_base] for suffix in meta_urls]
+            meta_files = [[os.path.join(m[0] + f"_{suffix}", m[1]) for m in meta_urls_base] for suffix in meta_urls]
 
             def merge_them(u1, u2):
                 # concat lists: these lists should contain all tarfiles from the same prefix but
@@ -526,14 +554,18 @@ class TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
                     u2,
                 ]
 
-            for meta_url_collection in meta_urls:
-                # merging always based on filenames where the metadata shards are expected to have <main_shard_id>_<metaspec>.tar,
-                # e.g. for a main shard "0000.tar" and an optical flow metadatashard we'd have "0000_flow.tar" for the metadata shard
+            for suffix, meta_url_collection in zip(meta_urls, meta_files):
+                # merging always based on filenames where the metadata shards are expected to have <main_shard_id>.tar,
+                # e.g. for a main shard "0000.tar" and an optical flow metadatashard we'd have "0000.tar" for the metadata shard
                 # and the resulting key would be s3://path/to/prefix/0000
                 main_datapipe = main_datapipe.zip_with_iter(
                     ref_datapipe=IterableWrapper(meta_url_collection).shard_expand(),
                     key_fn=itemgetter(0),
-                    ref_key_fn=lambda x: os.path.join(os.path.split(x)[0], os.path.split(x)[1].split("_")[0]),
+                    ref_key_fn=lambda x: os.path.join(
+                        # pylint: disable=cell-var-from-loop
+                        os.path.split(x)[0].split("_" + suffix)[0],
+                        os.path.splitext(os.path.split(x)[1])[0],
+                    ),
                     keep_key=True,
                     merge_fn=merge_them,
                 )
@@ -578,7 +610,7 @@ class TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
         # to preserve loading, handle all metadata shards independently
         if load_from_s3:
             # Load data with S3FileLoader
-            main_datapipe = S3FileLoader(main_datapipe, buffer_size=buffer_size)
+            main_datapipe = S3FileLoaderWithErrorHandling(main_datapipe, buffer_size=buffer_size, handler=handler)
             meta_datapipes = [S3FileLoader(m, buffer_size=buffer_size) for m in meta_datapipes]
         else:
             # regular fileopener
@@ -591,12 +623,14 @@ class TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
             TarArchiveLoaderAndCloser(datapipe=m, handler=handler).groupby(grouper) for m in meta_datapipes
         ]
 
+        def merge_samples(s1, s2):
+            return list(s1) + list(s2)
+
         # zip again, this time we're searching based on the same keys
         for meta_dp in meta_datapipes:
             # here we da
             main_datapipe = main_datapipe.zip_with_iter(
-                ref_datapipe=meta_dp,
-                key_fn=grouper,
+                ref_datapipe=meta_dp, key_fn=tuple_grouper, merge_fn=merge_samples
             )
 
         if sample_shuffle > 0:
@@ -604,7 +638,6 @@ class TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
 
         self.append(main_datapipe)
         self.append(s3dataset2samples(handler=handler))
-
 
     def map(self, f, handler=wds.reraise_exception):
         return self.compose(return_always_map(f, return_always=self.return_always, handler=handler))

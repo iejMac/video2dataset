@@ -2,6 +2,9 @@
 Transformations you might want to apply to data during loading
 """
 import math
+from abc import abstractmethod
+from typing import Optional, Dict, Any, Union
+
 import cv2
 import torch
 import numpy as np
@@ -124,6 +127,9 @@ class VideoResizer(PRNGMixin):
         resize_size, (h, w) = self._get_resize_size(frames[0])
         reference = self._get_reference_frame(resize_size, h, w)
 
+        if isinstance(frames, torch.Tensor):
+            frames = frames.numpy()
+
         for frame in frames:
 
             if resize_size is not None:
@@ -151,6 +157,95 @@ class VideoResizer(PRNGMixin):
 
         data[vidkey] = torch.stack(result).to(torch.float16)
         return data
+
+
+class MetaDataScore:
+    """Computes a scalar score based on a given metadata key"""
+
+    def __init__(
+        self,
+        meta_key: Optional[str] = None,
+        encoded_fps: Optional[Union[int, float]] = None,
+        video_key: Optional[str] = "mp4",
+    ):
+        self.meta_key = meta_key
+        self.video_key = video_key
+        self.encoded_fps = encoded_fps
+
+        if self.meta_key is not None:
+            assert self.encoded_fps is not None, "If meta key is not None, encoded_fps also needs to be specified"
+
+    @abstractmethod
+    def compute_score(self, metaseq: np.ndarray):
+        raise NotImplementedError("Abstract method must not be called")
+
+    @abstractmethod
+    def _convert_to_np(self, meta_sequence: Any) -> np.ndarray:
+        raise NotImplementedError("Abstract method must not be called")
+
+    def _get_meta_sequence(
+        self,
+        metadata: np.ndarray,
+        start_frame: int,
+        native_fps: float,
+        video_fps: Union[float, int],
+        n_video_frames: int,
+        original_n_frames: int,
+    ) -> np.ndarray:
+        """
+        Extracts the sub sequence from the metadata sequence which has the same timespan
+        than the loaded video clip
+        """
+        assert (
+            self.encoded_fps <= native_fps
+        ), "Encoded fps of metadata must not be larger than native fps, this can only be an error"
+        # get strides for meta data and video frames
+        meta_stride = int(np.round(native_fps / self.encoded_fps))
+        video_stride = int(np.round(native_fps / video_fps))
+
+        # extract meta frames
+        available_meta_frames = np.arange(start=0, stop=original_n_frames, step=meta_stride)
+        # start and end of video
+        end_frame = start_frame + video_stride * n_video_frames
+
+        used_meta_frames = np.logical_and(available_meta_frames >= start_frame, available_meta_frames <= end_frame)
+
+        if not np.any(used_meta_frames):
+            used_idx = (np.abs(available_meta_frames - (start_frame + end_frame) / 2)).argmin()
+            used_meta_frames = np.asarray(
+                [
+                    used_idx,
+                ]
+            )
+
+        return metadata[used_meta_frames]
+
+    def __call__(self, sample: Dict):
+        if self.meta_key is None:
+            return sample
+
+        start_frame = sample["start_frame"]
+        native_fps = sample["native_fps"]
+        fps = sample["fps"]
+        original_n_frames = sample["original_n_frames"]
+        n_frames = len(sample[self.video_key])
+        meta_sequence = self._convert_to_np(sample[self.meta_key])
+
+        meta_sequence = self._get_meta_sequence(
+            meta_sequence, start_frame, native_fps, fps, n_frames, original_n_frames
+        )
+        # overwrite metadata sequence with score (since sequence might
+        # cause trouble during batching due to varying lengths
+        sample[self.meta_key] = self.compute_score(meta_sequence)
+        return sample
+
+
+class MotionScore(MetaDataScore):
+    def _convert_to_np(self, meta_sequence: Any) -> np.ndarray:
+        return meta_sequence
+
+    def compute_score(self, metaseq: np.ndarray):
+        return torch.Tensor([np.mean(metaseq)])
 
 
 class CutsAdder:
