@@ -50,7 +50,6 @@ def create_parameter_grid(params):
 def main():
     # Gather system information
     system_info = gather_system_info()
-    print(f"System Info: {system_info}")
 
     # Load config
     benchmark_config = load_config('subsamplers_config.yaml')
