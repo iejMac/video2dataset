@@ -146,19 +146,34 @@ class OpticalFlowWorker:
             decoder_kwargs=decoder_kwargs,
             resize_size=self.downsample_size,
             crop_size=None,
+            enforce_additional_keys=[],
+            return_always=True,
         )
         count = 0
         for sample in dset:
             count += 1
+            corrupted = sample["__corrupted__"][0]
             key = sample["__key__"][0]
             meta = sample["json"][0]
+            if corrupted:
+                error_message = "corrupted sample"
+                failed_to_subsample += 1
+                status = "failed_to_subsample"
+                status_dict.increment(error_message)
+                meta["status"] = status
+                meta["error_message"] = error_message
+                sample_writer.write(
+                    {},
+                    key,
+                    None,
+                    meta,
+                )
+                continue
             streams = {}
             frames = np.array(sample.get("mp4")[0]).astype(np.float32)
 
             orig_h, orig_w = sample["original_height"][0][0].item(), sample["original_width"][0][0].item()
-
             rescale_factor = min(orig_h, orig_w) / self.downsample_size
-
             optical_flow, metrics, error_message = self.optical_flow_subsampler(frames, rescale_factor)
 
             if error_message is not None:
