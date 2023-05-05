@@ -7,6 +7,7 @@ import traceback
 import io
 import numpy as np
 import fsspec
+import webdataset as wds
 
 from video2dataset.logger import CappedCounter, write_stats
 from video2dataset.subsamplers import OpticalFlowSubsampler
@@ -148,15 +149,19 @@ class OpticalFlowWorker:
             crop_size=None,
             enforce_additional_keys=[],
             return_always=True,
+            handler=wds.warn_and_continue,
         )
         count = 0
         for sample in dset:
             count += 1
             corrupted = sample["__corrupted__"][0]
             key = sample["__key__"][0]
-            meta = sample["json"][0]
             dummy_npy = numpy_npy_dumps(np.array([]))
             if corrupted:
+                url = sample["__url__"][0]
+                meta = {}
+                meta["url"] = url
+                meta["key"] = key
                 error_message = "corrupted sample"
                 failed_to_subsample += 1
                 status = "failed_to_subsample"
@@ -171,6 +176,7 @@ class OpticalFlowWorker:
                     meta,
                 )
                 continue
+            meta = sample["json"][0]
             streams = {}
             frames = np.array(sample.get("mp4")[0]).astype(np.float32)
 
