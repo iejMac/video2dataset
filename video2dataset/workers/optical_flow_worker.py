@@ -155,6 +155,7 @@ class OpticalFlowWorker:
             corrupted = sample["__corrupted__"][0]
             key = sample["__key__"][0]
             meta = sample["json"][0]
+            dummy_npy = numpy_npy_dumps(np.array([]))
             if corrupted:
                 error_message = "corrupted sample"
                 failed_to_subsample += 1
@@ -162,8 +163,9 @@ class OpticalFlowWorker:
                 status_dict.increment(error_message)
                 meta["status"] = status
                 meta["error_message"] = error_message
+                meta["__corrupted__"] = True
                 sample_writer.write(
-                    {},
+                    {"optical_flow": dummy_npy},
                     key,
                     None,
                     meta,
@@ -182,8 +184,9 @@ class OpticalFlowWorker:
                 status_dict.increment(error_message)
                 meta["status"] = status
                 meta["error_message"] = error_message
+                meta["__corrupted__"] = True
                 sample_writer.write(
-                    {},
+                    {"optical_flow": dummy_npy},
                     key,
                     None,
                     meta,
@@ -194,6 +197,7 @@ class OpticalFlowWorker:
             status = "success"
             status_dict.increment(status)
             meta["status"] = status
+            meta["__corrupted__"] = False
 
             mean_magnitude, mean_magnitude_per_frame = metrics
             meta["mean_optical_flow_magnitude"] = mean_magnitude
