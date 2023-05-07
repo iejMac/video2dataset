@@ -56,7 +56,7 @@ def test_clipping_subsampler(clips):
         "clips": clips,
     }
 
-    streams = {"video": video_bytes, "audio": audio_bytes}
+    streams = {"video": [video_bytes], "audio": [audio_bytes]}
     stream_fragments, meta_fragments, error_message = subsampler(streams, metadata)
     video_fragments = stream_fragments["video"]
     audio_fragments = stream_fragments["audio"]
