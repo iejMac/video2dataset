@@ -18,7 +18,8 @@ class FrameSubsampler:
     def __init__(self, frame_rate):
         self.frame_rate = frame_rate
 
-    def __call__(self, video_bytes):
+    def __call__(self, streams):
+        video_bytes = streams["video"]
         subsampled_bytes = []
         for vid_bytes in video_bytes:
             with tempfile.TemporaryDirectory() as tmpdir:
@@ -33,4 +34,5 @@ class FrameSubsampler:
 
                 with open(f"{tmpdir}/output.mp4", "rb") as f:
                     subsampled_bytes.append(f.read())
-        return subsampled_bytes, None
+        streams["video"] = subsampled_bytes
+        return streams, None

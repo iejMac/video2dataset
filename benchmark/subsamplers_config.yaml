@@ -5,3 +5,11 @@ subsamplers:
     parameters:
       - video_size: [360, 60]
         resize_mode: ["scale"]
+  - name: FrameSubsampler
+    parameters:
+      - frame_rate: [1, 5]
+  - name: CutDetectionSubsampler
+    parameters:
+      - cut_detection_mode: ["all"]
+        threshold: [27, 15]
+        min_scene_len: [2, 10]

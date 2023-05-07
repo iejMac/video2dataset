@@ -88,7 +88,6 @@ def main():
         for sample in ds:
             # TODO: parallelize this in a safe way i.e. each benchmarker gets certain amount of cores (no interference)
             # TODO: report per-core metrics
-
             # Update size metrics:
             with tempfile.NamedTemporaryFile(delete=True, suffix='.mp4') as temp_vid:
                 temp_vid.write(sample["mp4"])
@@ -96,6 +95,7 @@ def main():
                 size_metrics["samples"] += 1
                 size_metrics["bytes"] += len(sample["mp4"])
                 size_metrics["frames"] += int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
+                fps = int(vid.get(cv2.CAP_PROP_FPS))
 
             # TODO: construct streams based on subsampler (maybe we want audio or sth
             streams = {"video": [sample["mp4"]]}
