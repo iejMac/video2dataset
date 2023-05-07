@@ -7,6 +7,7 @@ import traceback
 import io
 import numpy as np
 import fsspec
+import webdataset as wds
 
 from video2dataset.logger import CappedCounter, write_stats
 from video2dataset.subsamplers import OpticalFlowSubsampler
@@ -146,19 +147,41 @@ class OpticalFlowWorker:
             decoder_kwargs=decoder_kwargs,
             resize_size=self.downsample_size,
             crop_size=None,
+            enforce_additional_keys=[],
+            return_always=True,
+            handler=wds.warn_and_continue,
         )
         count = 0
         for sample in dset:
             count += 1
+            corrupted = sample["__corrupted__"][0]
             key = sample["__key__"][0]
+            dummy_npy = numpy_npy_dumps(np.array([]))
+            if corrupted:
+                url = sample["__url__"][0]
+                meta = {}
+                meta["url"] = url
+                meta["key"] = key
+                error_message = "corrupted sample"
+                failed_to_subsample += 1
+                status = "failed_to_subsample"
+                status_dict.increment(error_message)
+                meta["status"] = status
+                meta["error_message"] = error_message
+                meta["__corrupted__"] = True
+                sample_writer.write(
+                    {"optical_flow": dummy_npy},
+                    key,
+                    None,
+                    meta,
+                )
+                continue
             meta = sample["json"][0]
             streams = {}
             frames = np.array(sample.get("mp4")[0]).astype(np.float32)
 
             orig_h, orig_w = sample["original_height"][0][0].item(), sample["original_width"][0][0].item()
-
             rescale_factor = min(orig_h, orig_w) / self.downsample_size
-
             optical_flow, metrics, error_message = self.optical_flow_subsampler(frames, rescale_factor)
 
             if error_message is not None:
@@ -167,8 +190,9 @@ class OpticalFlowWorker:
                 status_dict.increment(error_message)
                 meta["status"] = status
                 meta["error_message"] = error_message
+                meta["__corrupted__"] = True
                 sample_writer.write(
-                    {},
+                    {"optical_flow": dummy_npy},
                     key,
                     None,
                     meta,
@@ -179,6 +203,7 @@ class OpticalFlowWorker:
             status = "success"
             status_dict.increment(status)
             meta["status"] = status
+            meta["__corrupted__"] = False
 
             mean_magnitude, mean_magnitude_per_frame = metrics
             meta["mean_optical_flow_magnitude"] = mean_magnitude
