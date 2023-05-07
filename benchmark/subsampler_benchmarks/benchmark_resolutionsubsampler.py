@@ -19,6 +19,7 @@ class BenchmarkResolutionSubsampler(ResolutionSubsampler):
     def __call__(self, sample):
         video_bytes = [sample["mp4"]]
         self.metrics["bytes"] += len(video_bytes[0])
+        print(self.metrics)
 
         t0 = time.time()
         out = super().__call__(video_bytes)

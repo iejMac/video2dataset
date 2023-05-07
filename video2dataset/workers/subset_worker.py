@@ -192,8 +192,7 @@ class SubsetWorker:
                 subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
                 for modality in subsampled_streams:
                     for modality_subsampler in self.subsamplers[modality]:
-                        subsampled_modality, error_message = modality_subsampler(subsampled_streams[modality])
-                        subsampled_streams[modality] = subsampled_modality
+                        subsampled_streams, error_message = modality_subsampler(subsampled_streams)
 
                 if error_message is not None:
                     failed_to_subsample += 1

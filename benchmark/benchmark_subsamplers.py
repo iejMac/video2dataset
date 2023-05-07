@@ -60,6 +60,7 @@ def main():
         batch_size=1,
         decoder_kwargs={}, # load bytes
     )
+    ds = WebLoader(ds, batch_size=None, num_workers=12)
 
     # Initialize all benchmarkers
     benchmarks = {}
@@ -79,11 +80,12 @@ def main():
     # For now just output JSON
     data = {
         "system_info": system_info,
-        "configs_and_metrics": [
-            {"name": bm.subsampler_name, "config": bm.subsampler_args, "metrics": bm.metrics}
-            for bm in benchmarkers
-        ],
+        "subsamplers": {},
     }
+
+    for ss, bms in benchmarks.items():
+        data["subsamplers"][ss] = [{"config": bm.subsampler_args, "metrics": bm.metrics} for bm in bms]
+
     with open("results.json", "w") as f:
         json.dump(data, f, indent=4)
 
