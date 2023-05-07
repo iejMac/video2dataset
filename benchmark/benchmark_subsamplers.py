@@ -53,7 +53,6 @@ def make_fake_clips(time, n):
     return [(i * clip_duration, (i + 1) * clip_duration) for i in range(n)]
 
 
-
 def main():
     # Gather system information
     system_info = gather_system_info()
