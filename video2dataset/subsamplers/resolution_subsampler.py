@@ -22,7 +22,7 @@ class ResolutionSubsampler:
         self.video_size = video_size
         self.resize_mode = resize_mode
 
-    def __call__(self, streams):
+    def __call__(self, streams, metadata=None):
         video_bytes = streams["video"]
         subsampled_bytes = []
         for vid_bytes in video_bytes:

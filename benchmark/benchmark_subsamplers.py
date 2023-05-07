@@ -48,6 +48,11 @@ def create_parameter_grid(params):
     combinations = list(itertools.product(*values))
     return [dict(zip(keys, combination)) for combination in combinations]
 
+def make_fake_clips(time, n):
+    clip_duration = time / n
+    return [(i * clip_duration, (i + 1) * clip_duration) for i in range(n)]
+
+
 
 def main():
     # Gather system information
@@ -80,6 +85,7 @@ def main():
 
 
     for subsampler, bm_cfgs in benchmarks.items():
+        print(subsampler)
         size_metrics = {
             "samples": 0,
             "frames": 0,
@@ -88,6 +94,10 @@ def main():
         for sample in ds:
             # TODO: parallelize this in a safe way i.e. each benchmarker gets certain amount of cores (no interference)
             # TODO: report per-core metrics
+
+            if size_metrics["samples"] > 2:
+                break
+
             # Update size metrics:
             with tempfile.NamedTemporaryFile(delete=True, suffix='.mp4') as temp_vid:
                 temp_vid.write(sample["mp4"])
@@ -95,17 +105,23 @@ def main():
                 size_metrics["samples"] += 1
                 size_metrics["bytes"] += len(sample["mp4"])
                 size_metrics["frames"] += int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
-                fps = int(vid.get(cv2.CAP_PROP_FPS))
+                seconds = int(vid.get(cv2.CAP_PROP_FRAME_COUNT)) / int(vid.get(cv2.CAP_PROP_FPS))
 
             # TODO: construct streams based on subsampler (maybe we want audio or sth
             streams = {"video": [sample["mp4"]]}
+            metadata = {
+                "key": sample["__key__"],
+                "clips": make_fake_clips(seconds, 5),  # TODO: parameterize this, dense/sparse
+            }
 
             for cfg in bm_cfgs:
                 t0 = time.time()
-                cfg["subsampler"](streams)
+                cfg["subsampler"](streams, metadata)
                 tf = time.time()
 
                 cfg["metrics"]["time"] += tf-t0
+
+                metadata["clips"] = make_fake_clips(seconds, 5)  # gets popped
 
         # TODO: Normalize metrics for core count
         # Update and normalize cfg metrics

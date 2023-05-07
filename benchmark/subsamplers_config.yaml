@@ -1,6 +1,13 @@
 video_set:
   - path: "dataset/mp4/{00000..00009}.tar"
 subsamplers:
+  - name: ClippingSubsampler
+    parameters:
+      - oom_clip_count: [5]
+        encode_formats: [{"video": "mp4"}]
+        min_length: [1]
+        max_length: [20]
+        precise: [True, False]
   - name: ResolutionSubsampler
     parameters:
       - video_size: [360, 60]

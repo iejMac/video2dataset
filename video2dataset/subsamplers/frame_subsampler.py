@@ -18,7 +18,7 @@ class FrameSubsampler:
     def __init__(self, frame_rate):
         self.frame_rate = frame_rate
 
-    def __call__(self, streams):
+    def __call__(self, streams, metadata=None):
         video_bytes = streams["video"]
         subsampled_bytes = []
         for vid_bytes in video_bytes:
