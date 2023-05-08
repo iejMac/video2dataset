@@ -84,7 +84,7 @@ def main():
 
 
     for subsampler, bm_cfgs in benchmarks.items():
-        print(subsampler)
+        print(f"Benchmarking {subsampler}...")
         size_metrics = {
             "samples": 0,
             "frames": 0,
@@ -93,10 +93,6 @@ def main():
         for sample in ds:
             # TODO: parallelize this in a safe way i.e. each benchmarker gets certain amount of cores (no interference)
             # TODO: report per-core metrics
-
-            if size_metrics["samples"] > 2:
-                break
-
             # Update size metrics:
             with tempfile.NamedTemporaryFile(delete=True, suffix='.mp4') as temp_vid:
                 temp_vid.write(sample["mp4"])
@@ -140,7 +136,7 @@ def main():
     for ss, bm_cfgs in benchmarks.items():
         data["subsamplers"][ss] = [{"config": bm["config"], "metrics": bm["metrics"]} for bm in bm_cfgs]
 
-    with open("results.json", "w") as f:
+    with open("subsampler_results.json", "w") as f:
         json.dump(data, f, indent=4)
 
 
