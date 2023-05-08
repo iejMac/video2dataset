@@ -121,7 +121,7 @@ class ClippingSubsampler:
         streams_clips = {}
 
         for k in streams.keys():
-            stream_bytes = streams[k]
+            stream_bytes = streams[k][0]  # pre-broadcast so only one
             if stream_bytes is None:
                 continue
             encode_format = self.encode_formats[k]
