@@ -152,15 +152,15 @@ class SubsetWorker:
                 meta = json.loads(sample.get("json", b"{}").decode("utf-8"))
                 streams = {}
                 for mod, fmt in self.encode_formats.items():
-                    streams[mod] = sample[fmt]
+                    streams[mod] = [sample[fmt]]
 
                 if self.captions_are_subtitles:  # create clips
                     subtitles = meta["yt_meta_dict"]["subtitles"]
                     meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
 
                 elif self.detect_cuts:  # apply cut detection to get clips
-                    video_bytes = streams["video"]
-                    downsampled_video_bytes, error_message = self.cut_detector_downsampler([video_bytes])
+                    cd_stream = {"video": streams["video"]}
+                    cd_stream, error_message = self.cut_detector_downsampler(cd_stream)
 
                     if error_message is not None:
                         failed_to_subsample += 1
@@ -176,7 +176,8 @@ class SubsetWorker:
                             meta,
                         )
                         continue
-                    meta["cuts"] = self.cut_detector(downsampled_video_bytes[0])
+                    cd_stream = self.cut_detector(cd_stream)
+                    meta["cuts"] = cd_stream.pop("cuts")
 
                 if self.cuts_are_clips:
                     cuts = meta["cuts"]
@@ -192,8 +193,7 @@ class SubsetWorker:
                 subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
                 for modality in subsampled_streams:
                     for modality_subsampler in self.subsamplers[modality]:
-                        subsampled_modality, error_message = modality_subsampler(subsampled_streams[modality])
-                        subsampled_streams[modality] = subsampled_modality
+                        subsampled_streams, error_message = modality_subsampler(subsampled_streams)
 
                 if error_message is not None:
                     failed_to_subsample += 1

@@ -217,6 +217,8 @@ class DownloadWorker:
 
                     for stream in streams.values():
                         bytes_downloaded += len(stream)
+                    for mod in streams:
+                        streams[mod] = [streams[mod]]
 
                     metas = [meta]
 
@@ -224,8 +226,8 @@ class DownloadWorker:
                         subtitles = meta["yt_meta_dict"]["subtitles"]
                         meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
                     elif self.detect_cuts:  # apply cut detection to get clips
-                        video_bytes = streams["video"]
-                        downsampled_video_bytes, error_message = self.cut_detector_downsampler([video_bytes])
+                        cd_stream = {"video": streams["video"]}
+                        cd_stream, error_message = self.cut_detector_downsampler(cd_stream)
 
                         if error_message is not None:
                             failed_to_subsample += 1
@@ -241,7 +243,8 @@ class DownloadWorker:
                                 meta,
                             )
                             continue
-                        meta["cuts"] = self.cut_detector(downsampled_video_bytes[0])
+                        cd_stream = self.cut_detector(cd_stream)
+                        meta["cuts"] = cd_stream.pop("cuts")
 
                     if self.cuts_are_clips:
                         cuts = meta["cuts"]["cuts_original_fps"]
@@ -258,8 +261,7 @@ class DownloadWorker:
 
                     for modality in subsampled_streams:
                         for modality_subsampler in self.subsamplers[modality]:
-                            subsampled_modality, error_message = modality_subsampler(subsampled_streams[modality])
-                            subsampled_streams[modality] = subsampled_modality
+                            subsampled_streams, error_message = modality_subsampler(subsampled_streams)
 
                     if error_message is not None:
                         failed_to_subsample += 1
