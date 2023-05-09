@@ -119,11 +119,6 @@ def main(config_file="subsamplers_config.yaml"):
                 out = cfg["subsampler"](streams, metadata)
                 tf = time.time()
 
-                # TODO: might not work for all subsamplers (it should)
-                out, err_msg = out
-                if err_msg is not None:
-                    print(err_msg)
-
                 cfg["metrics"]["time"] += tf-t0
 
                 metadata["clips"] = make_fake_clips(seconds, 5)  # gets popped
