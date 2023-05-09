@@ -182,7 +182,6 @@ def test_cut_detection_subsampler(cut_detection_mode, framerates):
 
     subsampler = CutDetectionSubsampler(cut_detection_mode, framerates, threshold=5)
 
-    
     streams = {"video": [video_bytes]}
     streams, err_msg = subsampler(streams)
     cuts = streams.pop("cuts")
