@@ -105,7 +105,7 @@ def test_resolution_subsampler(size, resize_mode):
     subsampler = ResolutionSubsampler(size, resize_mode)
 
     streams = {"video": [video_bytes]}
-    subsampled_streams, error_message = subsampler(streams)
+    subsampled_streams, _, error_message = subsampler(streams)
     assert error_message is None
     subsampled_videos = subsampled_streams["video"]
 
@@ -134,7 +134,7 @@ def test_frame_rate_subsampler(target_frame_rate):
     subsampler = FrameSubsampler(target_frame_rate)
 
     streams = {"video": [video_bytes]}
-    subsampled_streams, error_message = subsampler(streams)
+    subsampled_streams, _, error_message = subsampler(streams)
     assert error_message is None
     subsampled_videos = subsampled_streams["video"]
 
@@ -157,7 +157,7 @@ def test_audio_rate_subsampler(sample_rate):
 
     subsampler = AudioRateSubsampler(sample_rate, {"audio": "mp3"})
 
-    subsampled_audios, error_message = subsampler([audio_bytes])
+    subsampled_audios, _, error_message = subsampler([audio_bytes])
 
     with tempfile.NamedTemporaryFile(suffix=".mp3") as tmp:
         tmp.write(subsampled_audios[0])
@@ -183,7 +183,7 @@ def test_cut_detection_subsampler(cut_detection_mode, framerates):
     subsampler = CutDetectionSubsampler(cut_detection_mode, framerates, threshold=5)
 
     streams = {"video": [video_bytes]}
-    streams, err_msg = subsampler(streams)
+    streams, _, err_msg = subsampler(streams)
     cuts = streams.pop("cuts")
     if cut_detection_mode == "longest":
         assert len(cuts["cuts_original_fps"]) == 1
