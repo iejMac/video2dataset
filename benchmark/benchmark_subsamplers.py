@@ -1,4 +1,5 @@
 import os
+import sys
 import cv2
 import time
 import tempfile
@@ -53,12 +54,12 @@ def make_fake_clips(time, n):
     return [(i * clip_duration, (i + 1) * clip_duration) for i in range(n)]
 
 
-def main():
+def main(config_file="subsamplers_config.yaml"):
     # Gather system information
     system_info = gather_system_info()
 
     # Load config
-    benchmark_config = load_config('subsamplers_config.yaml')
+    benchmark_config = load_config(config_file)
 
     # Dataloader
     ds = get_video_dataset(
@@ -93,6 +94,10 @@ def main():
         for sample in ds:
             # TODO: parallelize this in a safe way i.e. each benchmarker gets certain amount of cores (no interference)
             # TODO: report per-core metrics
+
+            if size_metrics["samples"] > 2:
+                break
+
             # Update size metrics:
             with tempfile.NamedTemporaryFile(delete=True, suffix='.mp4') as temp_vid:
                 temp_vid.write(sample["mp4"])
@@ -141,4 +146,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) == 2:
+        main(sys.argv[1])
+    elif len(sys.argv) == 1:
+        main()
+    else:
+        print("Usage: python yourscript.py [config_file]")
