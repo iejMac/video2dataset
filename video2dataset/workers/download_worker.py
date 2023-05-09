@@ -225,7 +225,7 @@ class DownloadWorker:
                         subtitles = meta["yt_meta_dict"]["subtitles"]
                         meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
                     elif self.detect_cuts:  # apply cut detection to get clips
-                        streams, error_message = self.cut_detector(streams)
+                        streams, cuts, error_message = self.cut_detector(streams)
 
                         if error_message is not None:
                             failed_to_subsample += 1
@@ -242,7 +242,7 @@ class DownloadWorker:
                             )
                             continue
 
-                        meta["cuts"] = streams.pop("cuts")
+                        meta["cuts"] = cuts
 
                     if self.cuts_are_clips:
                         cuts = meta["cuts"]["cuts_original_fps"]
@@ -259,7 +259,7 @@ class DownloadWorker:
 
                     for modality in subsampled_streams:
                         for modality_subsampler in self.subsamplers[modality]:
-                            subsampled_streams, error_message = modality_subsampler(subsampled_streams)
+                            subsampled_streams, _, error_message = modality_subsampler(subsampled_streams)
 
                     if error_message is not None:
                         failed_to_subsample += 1
