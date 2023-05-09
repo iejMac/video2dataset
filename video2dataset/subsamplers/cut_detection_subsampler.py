@@ -6,7 +6,10 @@ from scenedetect import ContentDetector, SceneManager, open_video
 import os
 import tempfile
 
-from .resolution_subsampler import ResolutionSubsampler
+# TODO: this can be done more elegantly:
+# from scenedetect import scene_manager and set that in correct namespace
+# best solution is just figure out best value for them and submit PR
+DEFAULT_MIN_WIDTH = 64
 
 
 def get_scenes_from_scene_manager(scene_manager, cut_detection_mode):
@@ -41,14 +44,8 @@ class CutDetectionSubsampler:
         self.threshold = threshold
         self.min_scene_len = min_scene_len
 
-        self.resolution_downsampler = ResolutionSubsampler(video_size=64, resize_mode="scale")
-
     def __call__(self, streams, metadata=None):
-        vid_stream = {"video": streams["video"]}
-        downsampled_video, error_message = self.resolution_downsampler(vid_stream)
-        if error_message is not None:
-            return {}, error_message
-        video_bytes = downsampled_video["video"][0]
+        video_bytes = streams["video"][0]
 
         try:
             with tempfile.TemporaryDirectory() as tmpdir:
@@ -61,6 +58,8 @@ class CutDetectionSubsampler:
                 detector = ContentDetector(threshold=self.threshold, min_scene_len=self.min_scene_len)
                 scene_manager = SceneManager()
                 scene_manager.add_detector(detector)
+                scene_manager.auto_downscale = False
+                scene_manager.downscale = video.frame_size[0] // DEFAULT_MIN_WIDTH
 
                 cuts = {}
                 original_fps = video.frame_rate
