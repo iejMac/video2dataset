@@ -10,7 +10,7 @@ subsamplers:
       - frame_rate: [1, 10]
   - name: CutDetectionSubsampler
     parameters:
-      - cut_detection_mode: ["all", "longest"]
+      - cut_detection_mode: ["all"]
         threshold: [27, 12, 8]
         min_scene_len: [2, 15]
   - name: ClippingSubsampler
