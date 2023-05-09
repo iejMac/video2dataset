@@ -114,53 +114,14 @@
             {
                 "config": {
                     "cut_detection_mode": "all",
-                    "threshold": 27,
-                    "min_scene_len": 2
-                },
-                "metrics": {
-                    "time": 25.60795021057129,
-                    "samples/s": 3.9050372707581538,
-                    "frames/s": 2230.0105838391514,
-                    "bytes/s": 9217653.582540844
-                }
-            },
-            {
-                "config": {
-                    "cut_detection_mode": "all",
-                    "threshold": 27,
-                    "min_scene_len": 15
-                },
-                "metrics": {
-                    "time": 25.099686861038208,
-                    "samples/s": 3.9841134494481762,
-                    "frames/s": 2275.1678264418756,
-                    "bytes/s": 9404309.117752729
-                }
-            },
-            {
-                "config": {
-                    "cut_detection_mode": "all",
-                    "threshold": 12,
-                    "min_scene_len": 2
-                },
-                "metrics": {
-                    "time": 25.060476303100586,
-                    "samples/s": 3.990347142269901,
-                    "frames/s": 2278.72763906465,
-                    "bytes/s": 9419023.451313872
-                }
-            },
-            {
-                "config": {
-                    "cut_detection_mode": "all",
                     "threshold": 12,
                     "min_scene_len": 15
                 },
                 "metrics": {
-                    "time": 25.094457864761353,
-                    "samples/s": 3.9849436293431157,
-                    "frames/s": 2275.6419089726796,
-                    "bytes/s": 9406268.717662325
+                    "time": 15.451006174087524,
+                    "samples/s": 6.47207041879948,
+                    "frames/s": 3695.9405333596314,
+                    "bytes/s": 15277012.47028593
                 }
             },
             {
@@ -170,10 +131,23 @@
                     "min_scene_len": 2
                 },
                 "metrics": {
-                    "time": 25.268199920654297,
-                    "samples/s": 3.957543486042301,
-                    "frames/s": 2259.9947831393165,
-                    "bytes/s": 9341591.99077161
+                    "time": 15.451342105865479,
+                    "samples/s": 6.471929707778526,
+                    "frames/s": 3695.860178924005,
+                    "bytes/s": 15276680.328655396
+                }
+            },
+            {
+                "config": {
+                    "cut_detection_mode": "all",
+                    "threshold": 12,
+                    "min_scene_len": 2
+                },
+                "metrics": {
+                    "time": 15.480078220367432,
+                    "samples/s": 6.459915678489796,
+                    "frames/s": 3688.9994473583833,
+                    "bytes/s": 15248321.787510792
                 }
             },
             {
@@ -183,91 +157,39 @@
                     "min_scene_len": 15
                 },
                 "metrics": {
-                    "time": 25.17369794845581,
-                    "samples/s": 3.972400090155771,
-                    "frames/s": 2268.4787954843546,
-                    "bytes/s": 9376660.293744382
+                    "time": 15.529819011688232,
+                    "samples/s": 6.439225075626242,
+                    "frames/s": 3677.1838716871216,
+                    "bytes/s": 15199482.609703623
                 }
             },
             {
                 "config": {
-                    "cut_detection_mode": "longest",
-                    "threshold": 27,
-                    "min_scene_len": 2
-                },
-                "metrics": {
-                    "time": 25.222895622253418,
-                    "samples/s": 3.9646518582812096,
-                    "frames/s": 2264.0540901900677,
-                    "bytes/s": 9358370.963234859
-                }
-            },
-            {
-                "config": {
-                    "cut_detection_mode": "longest",
+                    "cut_detection_mode": "all",
                     "threshold": 27,
                     "min_scene_len": 15
                 },
                 "metrics": {
-                    "time": 25.15690517425537,
-                    "samples/s": 3.9750517524840947,
-                    "frames/s": 2269.993053773567,
-                    "bytes/s": 9382919.415761832
+                    "time": 15.553856611251831,
+                    "samples/s": 6.429273620001029,
+                    "frames/s": 3671.5009934377877,
+                    "bytes/s": 15175992.674976977
                 }
             },
             {
                 "config": {
-                    "cut_detection_mode": "longest",
-                    "threshold": 12,
+                    "cut_detection_mode": "all",
+                    "threshold": 27,
                     "min_scene_len": 2
                 },
                 "metrics": {
-                    "time": 25.11572504043579,
-                    "samples/s": 3.981569309227669,
-                    "frames/s": 2273.7149697275527,
-                    "bytes/s": 9398303.796524772
-                }
-            },
-            {
-                "config": {
-                    "cut_detection_mode": "longest",
-                    "threshold": 12,
-                    "min_scene_len": 15
-                },
-                "metrics": {
-                    "time": 25.1639883518219,
-                    "samples/s": 3.973932852053633,
-                    "frames/s": 2269.3540944937477,
-                    "bytes/s": 9380278.304846302
-                }
-            },
-            {
-                "config": {
-                    "cut_detection_mode": "longest",
-                    "threshold": 8,
-                    "min_scene_len": 2
-                },
-                "metrics": {
-                    "time": 25.201066732406616,
-                    "samples/s": 3.9680859965902857,
-                    "frames/s": 2266.0151892128483,
-                    "bytes/s": 9366477.082355572
-                }
-            },
-            {
-                "config": {
-                    "cut_detection_mode": "longest",
-                    "threshold": 8,
-                    "min_scene_len": 15
-                },
-                "metrics": {
-                    "time": 25.156577348709106,
-                    "samples/s": 3.9751035529931276,
-                    "frames/s": 2270.022634972255,
-                    "bytes/s": 9383041.688384231
+                    "time": 15.701493978500366,
+                    "samples/s": 6.368820708203137,
+                    "frames/s": 3636.9787536264835,
+                    "bytes/s": 15033296.46995441
                 }
             }
-        ],
+	],
         "ClippingSubsampler": [
             {
                 "config": {
