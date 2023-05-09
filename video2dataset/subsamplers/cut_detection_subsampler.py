@@ -85,7 +85,6 @@ class CutDetectionSubsampler:
                         )
                         scene_manager.clear()
         except Exception as err:  # pylint: disable=broad-except
-            return {}, str(err)
+            return {}, None, str(err)
 
-        streams["cuts"] = cuts
-        return streams, None
+        return streams, cuts, None
