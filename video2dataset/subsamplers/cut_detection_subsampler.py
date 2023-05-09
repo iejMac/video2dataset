@@ -6,6 +6,11 @@ from scenedetect import ContentDetector, SceneManager, open_video
 import os
 import tempfile
 
+# TODO: this can be done more elegantly:
+# from scenedetect import scene_manager and set that in correct namespace
+# best solution is just figure out best value for them and submit PR
+DEFAULT_MIN_WIDTH = 64
+
 
 def get_scenes_from_scene_manager(scene_manager, cut_detection_mode):
     """
@@ -41,39 +46,46 @@ class CutDetectionSubsampler:
 
     def __call__(self, streams, metadata=None):
         video_bytes = streams["video"][0]
-        with tempfile.TemporaryDirectory() as tmpdir:
-            video_path = os.path.join(tmpdir, "input.mp4")
-            with open(video_path, "wb") as f:
-                f.write(video_bytes)
 
-            video = open_video(video_path)
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                video_path = os.path.join(tmpdir, "input.mp4")
+                with open(video_path, "wb") as f:
+                    f.write(video_bytes)
 
-            detector = ContentDetector(threshold=self.threshold, min_scene_len=self.min_scene_len)
-            scene_manager = SceneManager()
-            scene_manager.add_detector(detector)
+                video = open_video(video_path)
 
-            cuts = {}
-            original_fps = video.frame_rate
-            cuts["original_fps"] = original_fps
+                detector = ContentDetector(threshold=self.threshold, min_scene_len=self.min_scene_len)
+                scene_manager = SceneManager()
+                scene_manager.add_detector(detector)
+                scene_manager.auto_downscale = False
+                scene_manager.downscale = video.frame_size[0] // DEFAULT_MIN_WIDTH
 
-            scene_manager.detect_scenes(video=video)
-            cuts["cuts_original_fps"] = get_scenes_from_scene_manager(scene_manager, self.cut_detection_mode)
-            if self.framerates is not None:
-                for target_fps in self.framerates:
-                    video.reset()
+                cuts = {}
+                original_fps = video.frame_rate
+                cuts["original_fps"] = original_fps
 
-                    detector = ContentDetector(threshold=self.threshold, min_scene_len=self.min_scene_len)
-                    scene_manager = SceneManager()
-                    scene_manager.add_detector(detector)
-                    frame_skip = max(
-                        int(original_fps // target_fps) - 1, 0
-                    )  # if we take 1 frame and skip N frames we're sampling 1/N+1 % of the video
-                    # so if we desire to sample 1/N of the video, we need to subtract one when doing frame skipping
+                scene_manager.detect_scenes(video=video)
+                cuts["cuts_original_fps"] = get_scenes_from_scene_manager(scene_manager, self.cut_detection_mode)
+                if self.framerates is not None:
+                    for target_fps in self.framerates:
+                        video.reset()
 
-                    scene_manager.detect_scenes(video=video, frame_skip=frame_skip)
-                    cuts[f"cuts_{target_fps}"] = get_scenes_from_scene_manager(scene_manager, self.cut_detection_mode)
-                    scene_manager.clear()
+                        detector = ContentDetector(threshold=self.threshold, min_scene_len=self.min_scene_len)
+                        scene_manager = SceneManager()
+                        scene_manager.add_detector(detector)
+                        frame_skip = max(
+                            int(original_fps // target_fps) - 1, 0
+                        )  # if we take 1 frame and skip N frames we're sampling 1/N+1 % of the video
+                        # so if we desire to sample 1/N of the video, we need to subtract one when doing frame skipping
 
-        # TODO: pop this out of here into metadata
+                        scene_manager.detect_scenes(video=video, frame_skip=frame_skip)
+                        cuts[f"cuts_{target_fps}"] = get_scenes_from_scene_manager(
+                            scene_manager, self.cut_detection_mode
+                        )
+                        scene_manager.clear()
+        except Exception as err:  # pylint: disable=broad-except
+            return {}, str(err)
+
         streams["cuts"] = cuts
-        return streams
+        return streams, None

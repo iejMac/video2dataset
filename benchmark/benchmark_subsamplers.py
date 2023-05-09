@@ -29,17 +29,17 @@ def gather_system_info():
             pass
 
     return {
-        'platform': platform.system(),
-        'cpu_count': cpu_count,
-        'cpu_info': cpu_info,
-        'gpu_info': gpu_info[0],
-        'gpu_count': len(gpu_info),
+        "platform": platform.system(),
+        "cpu_count": cpu_count,
+        "cpu_info": cpu_info,
+        "gpu_info": gpu_info[0],
+        "gpu_count": len(gpu_info),
     }
 
 
 # Add this function to load and parse the config file
 def load_config(filepath):
-    with open(filepath, 'r') as f:
+    with open(filepath, "r") as f:
         config = yaml.safe_load(f)
     return OmegaConf.create(config)
 
@@ -48,6 +48,7 @@ def create_parameter_grid(params):
     keys, values = zip(*params.items())
     combinations = list(itertools.product(*values))
     return [dict(zip(keys, combination)) for combination in combinations]
+
 
 def make_fake_clips(time, n):
     clip_duration = time / n
@@ -65,7 +66,7 @@ def main(config_file="subsamplers_config.yaml"):
     ds = get_video_dataset(
         urls=benchmark_config.video_set[0].path,
         batch_size=1,
-        decoder_kwargs={}, # load bytes
+        decoder_kwargs={},  # load bytes
     )
     ds = WebLoader(ds, batch_size=None, num_workers=12)
 
@@ -83,7 +84,6 @@ def main(config_file="subsamplers_config.yaml"):
             for cfg in params_grid
         ]
 
-
     for subsampler, bm_cfgs in benchmarks.items():
         print(f"Benchmarking {subsampler}...")
         size_metrics = {
@@ -94,8 +94,12 @@ def main(config_file="subsamplers_config.yaml"):
         for sample in ds:
             # TODO: parallelize this in a safe way i.e. each benchmarker gets certain amount of cores (no interference)
             # TODO: report per-core metrics
+
+            if size_metrics["samples"] > 2:
+                break
+
             # Update size metrics:
-            with tempfile.NamedTemporaryFile(delete=True, suffix='.mp4') as temp_vid:
+            with tempfile.NamedTemporaryFile(delete=True, suffix=".mp4") as temp_vid:
                 temp_vid.write(sample["mp4"])
                 vid = cv2.VideoCapture(temp_vid.name)
                 size_metrics["samples"] += 1
@@ -112,10 +116,10 @@ def main(config_file="subsamplers_config.yaml"):
 
             for cfg in bm_cfgs:
                 t0 = time.time()
-                cfg["subsampler"](streams, metadata)
+                out = cfg["subsampler"](streams, metadata)
                 tf = time.time()
 
-                cfg["metrics"]["time"] += tf-t0
+                cfg["metrics"]["time"] += tf - t0
 
                 metadata["clips"] = make_fake_clips(seconds, 5)  # gets popped
 
@@ -124,7 +128,6 @@ def main(config_file="subsamplers_config.yaml"):
         for cfg in bm_cfgs:
             for m in size_metrics:
                 cfg["metrics"][m + "/s"] = size_metrics[m] / cfg["metrics"]["time"]
-
 
     # TODO: visualize in nice way - visual repr but also raw numbers in some json or something
     # For now just output JSON
@@ -135,7 +138,8 @@ def main(config_file="subsamplers_config.yaml"):
     }
 
     for ss, bm_cfgs in benchmarks.items():
-        data["subsamplers"][ss] = [{"config": bm["config"], "metrics": bm["metrics"]} for bm in bm_cfgs]
+        cfg_metrics = [{"config": bm["config"], "metrics": bm["metrics"]} for bm in bm_cfgs]
+        data["subsamplers"][ss] = sorted(cfg_metrics, key=lambda cfg: cfg["metrics"]["time"])
 
     with open("subsampler_results.json", "w") as f:
         json.dump(data, f, indent=4)
