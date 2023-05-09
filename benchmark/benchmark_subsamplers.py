@@ -94,10 +94,6 @@ def main(config_file="subsamplers_config.yaml"):
         for sample in ds:
             # TODO: parallelize this in a safe way i.e. each benchmarker gets certain amount of cores (no interference)
             # TODO: report per-core metrics
-
-            if size_metrics["samples"] > 2:
-                break
-
             # Update size metrics:
             with tempfile.NamedTemporaryFile(delete=True, suffix='.mp4') as temp_vid:
                 temp_vid.write(sample["mp4"])
