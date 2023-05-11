@@ -39,9 +39,9 @@ class ResolutionSubsampler:
                         _ = _.filter("pad", w=self.video_size, h=self.video_size)
                     _ = _.output(f"{tmpdir}/output.mp4", reset_timestamps=1).run(capture_stdout=True, quiet=True)
                 except Exception as err:  # pylint: disable=broad-except
-                    return [], str(err)
+                    return [], None, str(err)
 
                 with open(f"{tmpdir}/output.mp4", "rb") as f:
                     subsampled_bytes.append(f.read())
         streams["video"] = subsampled_bytes
-        return streams, None
+        return streams, None, None

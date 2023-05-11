@@ -32,8 +32,8 @@ class AudioRateSubsampler:
                     _ = ffmpeg.input(f"{tmpdir}/input.m4a")
                     _ = _.output(f"{tmpdir}/output.{ext}", **ffmpeg_args).run(capture_stdout=True, quiet=True)
                 except Exception as err:  # pylint: disable=broad-except
-                    return [], str(err)
+                    return [], None, str(err)
 
                 with open(f"{tmpdir}/output.{ext}", "rb") as f:
                     subsampled_bytes.append(f.read())
-        return subsampled_bytes, None
+        return subsampled_bytes, None, None
