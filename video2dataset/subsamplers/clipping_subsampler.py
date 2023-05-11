@@ -1,7 +1,5 @@
 """
 clipping subsampler turns full videos into clips of videos according to clip_col
-
-TODO: implement subtitle splitting (can be done just by indexing subtitle dict during clipping
 """
 import os
 import copy

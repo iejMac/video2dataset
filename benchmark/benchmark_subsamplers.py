@@ -112,8 +112,11 @@ def main(config_file="subsamplers_config.yaml"):
 
             for cfg in bm_cfgs:
                 t0 = time.time()
-                out = cfg["subsampler"](streams, metadata)
+                strm, md, err_msg = cfg["subsampler"](streams, metadata)
                 tf = time.time()
+
+                if err_msg is not None:
+                    print(err_msg)
 
                 cfg["metrics"]["time"] += tf - t0
 
