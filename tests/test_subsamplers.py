@@ -183,8 +183,7 @@ def test_cut_detection_subsampler(cut_detection_mode, framerates):
     subsampler = CutDetectionSubsampler(cut_detection_mode, framerates, threshold=5)
 
     streams = {"video": [video_bytes]}
-    streams, _, err_msg = subsampler(streams)
-    cuts = streams.pop("cuts")
+    streams, cuts, err_msg = subsampler(streams)
     if cut_detection_mode == "longest":
         assert len(cuts["cuts_original_fps"]) == 1
         assert cuts["cuts_original_fps"][0] == [0, 2096]
