@@ -1,3 +1,4 @@
+"""extracts basic video compression metadata."""
 import os
 import json
 import subprocess
@@ -35,7 +36,7 @@ class MetadataSubsampler:
                 if self.extract_keyframes:
                     command.extend(["-select_streams", "v:0", "-show_entries", "packet=pts_time,flags"])
 
-                process = subprocess.run(command, capture_output=True, text=True)
+                process = subprocess.run(command, capture_output=True, text=True)  # pylint: subprocess-run-check
                 video_metadata = json.loads(process.stdout)
 
                 if self.extract_keyframes:
@@ -48,7 +49,7 @@ class MetadataSubsampler:
 
                 metadata["video_metadata"] = video_metadata
 
-            except Exception as err:
+            except Exception as err:  # pylint: disable=broad-except
                 return streams, None, str(err)
 
         return streams, metadata, None
