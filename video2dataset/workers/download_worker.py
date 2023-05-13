@@ -83,7 +83,7 @@ class DownloadWorker:
         self.data_reader = VideoDataReader(video_size, audio_rate, timeout, tmp_dir, yt_metadata_args, encode_formats)
         # TODO: or clipping_precision=="keyframe_adjusted"
         # TODO: clipping_precision=="keyframe_adjusted"
-        self.metadata_subsampler = MetadataSubsampler(False) if extract_compression_metadata else NoOpSubsampler()
+        self.metadata_subsampler = MetadataSubsampler(False) if extract_compression_metadata else None
         self.clipping_subsampler = ClippingSubsampler(
             oom_clip_count,
             encode_formats,
@@ -223,21 +223,22 @@ class DownloadWorker:
                     for mod in streams:
                         streams[mod] = [streams[mod]]
 
-                    streams, meta, error_message = self.metadata_subsampler(streams, meta)
-                    if error_message is not None:
-                        failed_to_subsample += 1
-                        status = "failed_to_subsample"
-                        status_dict.increment(error_message)
-                        meta["status"] = status
-                        meta["error_message"] = error_message
+                    if self.metadata_subsampler is not None:
+                        streams, meta, error_message = self.metadata_subsampler(streams, meta)
+                        if error_message is not None:
+                            failed_to_subsample += 1
+                            status = "failed_to_subsample"
+                            status_dict.increment(error_message)
+                            meta["status"] = status
+                            meta["error_message"] = error_message
 
-                        sample_writer.write(
-                            {},
-                            key,
-                            caption,
-                            meta,
-                        )
-                        continue
+                            sample_writer.write(
+                                {},
+                                key,
+                                caption,
+                                meta,
+                            )
+                            continue
 
                     if self.captions_are_subtitles:  # create clips
                         subtitles = meta["yt_meta_dict"]["subtitles"]
@@ -302,6 +303,7 @@ class DownloadWorker:
                         dict(zip(subsampled_streams, s)) for s in zip(*subsampled_streams.values())
                     ]
                     for subsampled_streams, meta in zip(subsampled_streams_list, metas):
+                        print(meta)
                         meta["status"] = status
 
                         text_caption = sample_data[caption_indice] if caption_indice is not None else None
