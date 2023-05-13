@@ -115,7 +115,7 @@ This module exposes a single function `download` which takes the same arguments 
 * **min_clip_length** Minimum length in seconds of a clip. Below this the subsampler will reject the clips (default *0.0*)
 * **max_clip_length** Maximum length in seconds of a clip. Above this the ClippingSubsampler cuts up the long clip according to the max_clip_length_strategy (default *999999.0*)
 * **max_clip_length_strategy** Tells the ClippingSubsampler how to resolve clips that are too long. "first" means take the first max_clip_length clip, "all" means take all contiguous max_clip_length clips (default *"all"*)
-* **precise_clipping** If True, provides more precise clipping at the expense of processing speed (default *False*)
+* **clipping_precision** informs the ClippingSubsampler how to clip the videos (see docstring for options (default *"low"*)
 * **extract_compression_metadata** If True, extracts information about codec and puts in metadata (default *False*)
 ## Downloading YouTube Metadata
 
