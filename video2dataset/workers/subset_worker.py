@@ -157,22 +157,21 @@ class SubsetWorker:
                 for mod, fmt in self.encode_formats.items():
                     streams[mod] = [sample[fmt]]
 
-		streams, meta, error_message = self.metadata_subsampler(streams, meta)
-		if error_message is not None:
-		    failed_to_subsample += 1
-		    status = "failed_to_subsample"
-		    status_dict.increment(error_message)
-		    meta["status"] = status
-		    meta["error_message"] = error_message
+                streams, meta, error_message = self.metadata_subsampler(streams, meta)
+                if error_message is not None:
+                    failed_to_subsample += 1
+                    status = "failed_to_subsample"
+                    status_dict.increment(error_message)
+                    meta["status"] = status
+                    meta["error_message"] = error_message
 
-		    sample_writer.write(
-			{},
-			key,
-			caption,
-			meta,
-		    )
-		    continue
-
+                    sample_writer.write(
+                        {},
+                        key,
+                        caption,
+                        meta,
+                    )
+                    continue
 
                 if self.captions_are_subtitles:  # create clips
                     subtitles = meta["yt_meta_dict"]["subtitles"]
