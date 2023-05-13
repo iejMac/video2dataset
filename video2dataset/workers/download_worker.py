@@ -77,7 +77,6 @@ class DownloadWorker:
         self.oom_shard_count = oom_shard_count
         self.thread_count = thread_count
         self.captions_are_subtitles = captions_are_subtitles
-        self.extract_compression_metadata = extract_compression_metadata
 
         self.encode_formats = encode_formats
 
@@ -224,9 +223,7 @@ class DownloadWorker:
                     for mod in streams:
                         streams[mod] = [streams[mod]]
 
-                    metas = [meta]
-
-                    streams, metas, error_message = self.metadata_subsampler(streams, metas)
+                    streams, meta, error_message = self.metadata_subsampler(streams, meta)
                     if error_message is not None:
                         failed_to_subsample += 1
                         status = "failed_to_subsample"

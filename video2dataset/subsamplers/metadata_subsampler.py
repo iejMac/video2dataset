@@ -18,7 +18,6 @@ class MetadataSubsampler:
     def __call__(self, streams, metadata):
         # TODO: this should also work for audio (maybe others)
         video_bytes = streams["video"][0]
-        metadata = metadata[0]
         with tempfile.TemporaryDirectory() as tmpdir:
             with open(os.path.join(tmpdir, "input.mp4"), "wb") as f:
                 f.write(video_bytes)
@@ -52,4 +51,4 @@ class MetadataSubsampler:
             except Exception as err:  # pylint: disable=broad-except
                 return streams, None, str(err)
 
-        return streams, [metadata], None
+        return streams, metadata, None
