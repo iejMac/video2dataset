@@ -3,7 +3,7 @@ import json
 import subprocess
 import tempfile
 
-
+# TODO: figuer out why this is so slow (12 samples/s)
 class MetadataSubsampler:
     """
     Extracts metadata from bytes.
@@ -43,7 +43,7 @@ class MetadataSubsampler:
                     keyframe_timestamps = [float(entry['pts_time']) for entry in keyframe_info]
                     duration = float(video_metadata['format']['duration'])
                     keyframe_timestamps.append(duration)
-                    video_metadata["keyframes_timestamps"] = keyframe_timestamps
+                    video_metadata["keyframe_timestamps"] = keyframe_timestamps
                     video_metadata.pop("packets") # Don't need it anymore
 
                 metadata["video_metadata"] = video_metadata
