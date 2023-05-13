@@ -46,7 +46,7 @@ class SubsetWorker:
         min_clip_length,
         max_clip_length,
         max_clip_length_strategy,
-        precise_clipping,
+        clipping_precision,
         extract_compression_metadata,
         oom_clip_count=5,
     ) -> None:
@@ -69,7 +69,7 @@ class SubsetWorker:
             min_length=min_clip_length,
             max_length=max_clip_length,
             max_length_strategy=max_clip_length_strategy,
-            precise=precise_clipping,
+            precision=clipping_precision,
         )
         self.cut_detection_mode = cut_detection_mode
         self.cut_framerates = cut_framerates
