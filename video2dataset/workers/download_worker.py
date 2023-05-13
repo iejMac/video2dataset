@@ -19,6 +19,7 @@ from video2dataset.subsamplers import (
     ClippingSubsampler,
     CutDetectionSubsampler,
     FrameSubsampler,
+    MetadataSubsampler,
     NoOpSubsampler,
     ResolutionSubsampler,
     AudioRateSubsampler,
@@ -65,6 +66,7 @@ class DownloadWorker:
         max_clip_length,
         max_clip_length_strategy,
         precise_clipping,
+        extract_compression_metadata,
         oom_clip_count=5,
     ) -> None:
         self.sample_writer_class = sample_writer_class
@@ -75,11 +77,14 @@ class DownloadWorker:
         self.oom_shard_count = oom_shard_count
         self.thread_count = thread_count
         self.captions_are_subtitles = captions_are_subtitles
+        self.extract_compression_metadata = extract_compression_metadata
 
         self.encode_formats = encode_formats
 
         self.data_reader = VideoDataReader(video_size, audio_rate, timeout, tmp_dir, yt_metadata_args, encode_formats)
-
+        # TODO: or clipping_precision=="keyframe_adjusted"
+        # TODO: clipping_precision=="keyframe_adjusted"
+        self.metadata_subsampler = MetadataSubsampler(False) if extract_compression_metadata else NoOpSubsampler()
         self.clipping_subsampler = ClippingSubsampler(
             oom_clip_count,
             encode_formats,
@@ -220,6 +225,22 @@ class DownloadWorker:
                         streams[mod] = [streams[mod]]
 
                     metas = [meta]
+
+                    streams, metas, error_message = self.metadata_subsampler(streams, metas)
+                    if error_message is not None:
+                        failed_to_subsample += 1
+                        status = "failed_to_subsample"
+                        status_dict.increment(error_message)
+                        meta["status"] = status
+                        meta["error_message"] = error_message
+
+                        sample_writer.write(
+                            {},
+                            key,
+                            caption,
+                            meta,
+                        )
+                        continue
 
                     if self.captions_are_subtitles:  # create clips
                         subtitles = meta["yt_meta_dict"]["subtitles"]
