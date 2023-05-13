@@ -85,6 +85,7 @@ class ClippingSubsampler:
         self.encode_formats = encode_formats
         self.min_length = min_length
         self.max_length, self.max_length_strategy = max_length, max_length_strategy
+        assert precision in ["exact", "low", "keyframe_adjusted"]
         self.precision = precision
 
     def __call__(self, streams, metadata):
