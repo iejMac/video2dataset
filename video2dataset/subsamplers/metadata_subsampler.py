@@ -36,7 +36,7 @@ class MetadataSubsampler:
                 if self.extract_keyframes:
                     command.extend(["-select_streams", "v:0", "-show_entries", "packet=pts_time,flags"])
 
-                process = subprocess.run(command, capture_output=True, text=True)  # pylint: subprocess-run-check
+                process = subprocess.run(command, capture_output=True, text=True, check=True)
                 video_metadata = json.loads(process.stdout)
 
                 if self.extract_keyframes:
