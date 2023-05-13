@@ -51,6 +51,7 @@ class ClippingSubsampler:
     precision: str, optional (default="low")
         "low" - splits can be imprecise in any direction
         "keyframe_adjusted" - translates cuts into the vocab of existing keyframes (a good middlepoint)
+            useful if you need to do fast clipping but information can't cross cut boundries
         "exact" - keyframes are inserted to get exact splits (warning, slow)
 
     expects:
