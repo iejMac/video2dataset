@@ -20,3 +20,6 @@ subsamplers:
         precise: [True, False]
         min_length: [0, 4, 10]
         max_length: [20, 9999]
+  - name: MetadataSubsampler
+    parameters:
+      - extract_keyframes: [False, True]

@@ -395,6 +395,30 @@
                     "bytes/s": 581640954.3767979
                 }
             }
+        ],
+        "MetadataSubsampler": [
+            {
+                "config": {
+                    "extract_keyframes": false
+                },
+                "metrics": {
+                    "time": 7.498495101928711,
+                    "samples/s": 13.336009244612121,
+                    "frames/s": 7615.661439228198,
+                    "bytes/s": 31479011.560504466
+                }
+            },
+            {
+                "config": {
+                    "extract_keyframes": true
+                },
+                "metrics": {
+                    "time": 7.5574257373809814,
+                    "samples/s": 13.232018874545355,
+                    "frames/s": 7556.276698497871,
+                    "bytes/s": 31233547.268940978
+                }
+            }
         ]
     }
 }
