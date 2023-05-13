@@ -48,9 +48,10 @@ class ClippingSubsampler:
     max_length_strategy: str optional (defaul="all")
         "all" - cut up long clip into as many clips of max_length as possible
         "first" - take the first max_length clip from the long clip
-    precise: bool, optional (default=False)
-        If True, provides more precise clipping at the expense of processing speed.
-        If False, prioritizes speed over precision.
+    precision: str, optional (default="low")
+        "low" - splits can be imprecise in any direction
+        "keyframe_adjusted" - translates cuts into the vocab of existing keyframes (a good middlepoint)
+        "exact" - keyframes are inserted to get exact splits (warning, slow)
 
     expects:
     - clips to be sorted in increasing order and non-overlapping
@@ -64,13 +65,13 @@ class ClippingSubsampler:
         min_length=0.0,
         max_length=999999.0,
         max_length_strategy="all",
-        precise=False,
+        precision="low",
     ):
         self.oom_clip_count = oom_clip_count
         self.encode_formats = encode_formats
         self.min_length = min_length
         self.max_length, self.max_length_strategy = max_length, max_length_strategy
-        self.precise = precise
+        self.precision = precision
 
     def __call__(self, streams, metadata):
         clips = metadata.pop("clips")
@@ -115,6 +116,9 @@ class ClippingSubsampler:
                 ind += 2
             e_p = e
 
+        print(splits) 
+
+
         segment_times = ",".join([str(spl) for spl in splits])
         streams_clips = {}
 
@@ -138,7 +142,7 @@ class ClippingSubsampler:
                     }
 
                     # Precision things, tradeoff for speed
-                    if not self.precise:
+                    if self.precision != "exact":
                         kwargs["c"] = "copy"
                     else:
                         kwargs["force_key_frames"] = segment_times
