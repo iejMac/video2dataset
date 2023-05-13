@@ -46,7 +46,7 @@ class SubsetWorker:
         max_clip_length,
         max_clip_length_strategy,
         precise_clipping,
-        extract_compression_metadata=extract_compression_metadata,
+        extract_compression_metadata,
         oom_clip_count=5,
     ) -> None:
         self.sample_writer_class = sample_writer_class
