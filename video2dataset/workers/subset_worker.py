@@ -14,6 +14,7 @@ from video2dataset.subsamplers import (
     ClippingSubsampler,
     CutDetectionSubsampler,
     FrameSubsampler,
+    MetadataSubsampler,
     NoOpSubsampler,
     ResolutionSubsampler,
     AudioRateSubsampler,
