@@ -116,6 +116,7 @@ This module exposes a single function `download` which takes the same arguments 
 * **max_clip_length** Maximum length in seconds of a clip. Above this the ClippingSubsampler cuts up the long clip according to the max_clip_length_strategy (default *999999.0*)
 * **max_clip_length_strategy** Tells the ClippingSubsampler how to resolve clips that are too long. "first" means take the first max_clip_length clip, "all" means take all contiguous max_clip_length clips (default *"all"*)
 * **precise_clipping** If True, provides more precise clipping at the expense of processing speed (default *False*)
+* **extract_compression_metadata** If True, extracts information about codec and puts in metadata (default *False*)
 ## Downloading YouTube Metadata
 
 If we want to download a large amount of YouTube videos with video2dataset we can specify some parameters and also extract useful metadata as well. For directions on how to do so please see this [example](https://github.com/iejMac/video2dataset/blob/main/examples/yt_metadata.md).

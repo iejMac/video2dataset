@@ -11,6 +11,7 @@ from video2dataset.subsamplers import (
     ClippingSubsampler,
     _get_seconds,
     _split_time_frame,
+    MetadataSubsampler,
     ResolutionSubsampler,
     FrameSubsampler,
     AudioRateSubsampler,
@@ -236,3 +237,40 @@ def test_optical_flow_subsampler(detector, fps, params):
             )  # np.isclose due to potential numerical precision issues
     elif fps == 2:  # fps = 2, params = None
         assert np.isclose(mean_magnitude, 0.0011257734728123598, rtol=1e-3)
+
+
+@pytest.mark.parametrize("extract_keyframes", [False, True])
+def test_metadata_subsampler(extract_keyframes):
+    current_folder = os.path.dirname(__file__)
+    # video length - 2:02, 1080x1920, 30 fps
+    video = os.path.join(current_folder, "test_files/test_video.mp4")
+    with open(video, "rb") as vid_f:
+        video_bytes = vid_f.read()
+
+    subsampler = MetadataSubsampler(extract_keyframes)
+
+    streams = {"video": [video_bytes]}
+    metadata = {}
+    subsampled_streams, metadata, error_message = subsampler(streams, metadata)
+    assert error_message is None
+    assert metadata is not None
+    assert "video_metadata" in metadata
+
+    video_metadata = metadata["video_metadata"]
+
+    # check some basic metadata
+    assert "format" in video_metadata
+    assert "duration" in video_metadata["format"]
+    assert "streams" in video_metadata
+    video_stream_info = next(stream for stream in video_metadata["streams"] if stream["codec_type"] == "video")
+
+    assert "width" in video_stream_info
+    assert "height" in video_stream_info
+    assert "r_frame_rate" in video_stream_info
+
+    if extract_keyframes:
+        assert "keyframe_timestamps" in video_metadata
+        assert isinstance(video_metadata["keyframe_timestamps"], list)
+        assert len(video_metadata["keyframe_timestamps"]) > 0
+    else:
+        assert "keyframe_timestamps" not in metadata
