@@ -32,6 +32,19 @@ def _split_time_frame(s, e, min_length, max_length):
     return time_frames
 
 
+def _adjust_ranges_to_keyframes(ranges, keyframes):
+    """Translates ranges into keyframe vocab"""
+    adjusted_ranges = []
+    for start, end in ranges:
+        keyframes_in_range = [k for k in keyframes if start <= k <= end]
+        if keyframes_in_range:
+            adjusted_start = min(keyframes_in_range)
+            adjusted_end = max(keyframes_in_range)
+            if adjusted_start != adjusted_end:
+                adjusted_ranges.append((adjusted_start, adjusted_end))
+    return adjusted_ranges
+
+
 class ClippingSubsampler:
     """
     Cuts videos up into segments according to the 'clips' metadata
@@ -48,9 +61,11 @@ class ClippingSubsampler:
     max_length_strategy: str optional (defaul="all")
         "all" - cut up long clip into as many clips of max_length as possible
         "first" - take the first max_length clip from the long clip
-    precise: bool, optional (default=False)
-        If True, provides more precise clipping at the expense of processing speed.
-        If False, prioritizes speed over precision.
+    precision: str, optional (default="low")
+        "low" - splits can be imprecise in any direction
+        "keyframe_adjusted" - translates cuts into the vocab of existing keyframes (a good middlepoint)
+            useful if you need to do fast clipping but information can't cross cut boundries
+        "exact" - keyframes are inserted to get exact splits (warning, slow)
 
     expects:
     - clips to be sorted in increasing order and non-overlapping
@@ -64,19 +79,26 @@ class ClippingSubsampler:
         min_length=0.0,
         max_length=999999.0,
         max_length_strategy="all",
-        precise=False,
+        precision="low",
     ):
         self.oom_clip_count = oom_clip_count
         self.encode_formats = encode_formats
         self.min_length = min_length
         self.max_length, self.max_length_strategy = max_length, max_length_strategy
-        self.precise = precise
+        assert precision in ["exact", "low", "keyframe_adjusted"]
+        self.precision = precision
 
     def __call__(self, streams, metadata):
         clips = metadata.pop("clips")
 
         if isinstance(clips[0], float):  # make sure clips looks like [[start, end]] and not [start, end]
             clips = [clips]
+
+        if self.precision == "keyframe_adjusted":
+            # TODO: make it so if not present, get it yourself
+            keyframe_timestamps = metadata["video_metadata"].pop("keyframe_timestamps")
+            s_clips = [[_get_seconds(s), _get_seconds(e)] for (s, e) in clips]
+            clips = _adjust_ranges_to_keyframes(s_clips, keyframe_timestamps)
 
         filtered_clips = []
         for s, e in clips:
@@ -138,7 +160,7 @@ class ClippingSubsampler:
                     }
 
                     # Precision things, tradeoff for speed
-                    if not self.precise:
+                    if self.precision != "exact":
                         kwargs["c"] = "copy"
                     else:
                         kwargs["force_key_frames"] = segment_times
@@ -175,7 +197,8 @@ class ClippingSubsampler:
                     meta_clip["clips"] = [clip_span]
                     meta_clip["key"] = f"{meta_clip['key']}_{clip_key}"
 
-                    if "subtitles" in meta_clip.get("yt_meta_dict", {}):
+                    yt_md_dict = meta_clip.get("yt_meta_dict", {})
+                    if (yt_md_dict is not None) and ("subtitles" in yt_md_dict):
                         clip_subtitles = []
                         s_c, e_c = _get_seconds(clip_span[0]), _get_seconds(clip_span[1])
                         for line in meta_clip["yt_meta_dict"]["subtitles"]:

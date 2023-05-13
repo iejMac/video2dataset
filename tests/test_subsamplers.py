@@ -49,7 +49,7 @@ def test_clipping_subsampler(clips):
         min_length=min_length,
         max_length=max_length,
         max_length_strategy="all",
-        precise=False,
+        precision="low",
     )
 
     metadata = {

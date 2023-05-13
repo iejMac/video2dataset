@@ -72,7 +72,7 @@ def video2dataset(
     min_clip_length: float = 0.0,
     max_clip_length: float = 999999.0,
     max_clip_length_strategy: str = "all",
-    precise_clipping: bool = False,
+    clipping_precision: str = "low",
     extract_compression_metadata: bool = False,
     sampler=None,
     slurm_cpus_per_task: int = 1,
@@ -206,7 +206,7 @@ def video2dataset(
             min_clip_length=min_clip_length,
             max_clip_length=max_clip_length,
             max_clip_length_strategy=max_clip_length_strategy,
-            precise_clipping=precise_clipping,
+            clipping_precision=clipping_precision,
             extract_compression_metadata=extract_compression_metadata,
         )
     elif stage == "subset":
@@ -232,7 +232,7 @@ def video2dataset(
             min_clip_length=min_clip_length,
             max_clip_length=max_clip_length,
             max_clip_length_strategy=max_clip_length_strategy,
-            precise_clipping=precise_clipping,
+            clipping_precision=clipping_precision,
             extract_compression_metadata=extract_compression_metadata,
         )
     elif stage == "optical_flow":
