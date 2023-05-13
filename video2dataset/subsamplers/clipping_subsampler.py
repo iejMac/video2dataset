@@ -32,6 +32,19 @@ def _split_time_frame(s, e, min_length, max_length):
     return time_frames
 
 
+def _adjust_ranges_to_keyframes(ranges, keyframes):
+    """Translates ranges into keyframe vocab"""
+    adjusted_ranges = []
+    for start, end in ranges:
+        keyframes_in_range = [k for k in keyframes if start <= k <= end]
+        if keyframes_in_range:
+            adjusted_start = min(keyframes_in_range)
+            adjusted_end = max(keyframes_in_range)
+            if adjusted_start != adjusted_end:
+                adjusted_ranges.append((adjusted_start, adjusted_end))
+    return adjusted_ranges
+
+
 class ClippingSubsampler:
     """
     Cuts videos up into segments according to the 'clips' metadata
@@ -80,6 +93,12 @@ class ClippingSubsampler:
         if isinstance(clips[0], float):  # make sure clips looks like [[start, end]] and not [start, end]
             clips = [clips]
 
+        if self.precision == "keyframe_adjusted":
+            # TODO: make it so if not present, get it yourself
+            keyframe_timestamps = metadata["video_metadata"].pop("keyframe_timestamps")
+            s_clips = [[_get_seconds(s), _get_seconds(e)] for (s, e) in clips]
+            clips = _adjust_ranges_to_keyframes(s_clips, keyframe_timestamps)
+
         filtered_clips = []
         for s, e in clips:
             max_len_clips = _split_time_frame(_get_seconds(s), _get_seconds(e), self.min_length, self.max_length)
@@ -116,9 +135,6 @@ class ClippingSubsampler:
                 take_inds.append(ind + 1)
                 ind += 2
             e_p = e
-
-        print(splits) 
-
 
         segment_times = ",".join([str(spl) for spl in splits])
         streams_clips = {}
@@ -180,7 +196,8 @@ class ClippingSubsampler:
                     meta_clip["clips"] = [clip_span]
                     meta_clip["key"] = f"{meta_clip['key']}_{clip_key}"
 
-                    if "subtitles" in meta_clip.get("yt_meta_dict", {}):
+                    yt_md_dict = meta_clip.get("yt_meta_dict", {})
+                    if (yt_md_dict is not None) and ("subtitles" in yt_md_dict):
                         clip_subtitles = []
                         s_c, e_c = _get_seconds(clip_span[0]), _get_seconds(clip_span[1])
                         for line in meta_clip["yt_meta_dict"]["subtitles"]:

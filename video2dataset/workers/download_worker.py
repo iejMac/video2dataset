@@ -81,9 +81,8 @@ class DownloadWorker:
         self.encode_formats = encode_formats
 
         self.data_reader = VideoDataReader(video_size, audio_rate, timeout, tmp_dir, yt_metadata_args, encode_formats)
-        # TODO: or clipping_precision=="keyframe_adjusted"
-        # TODO: clipping_precision=="keyframe_adjusted"
-        self.metadata_subsampler = MetadataSubsampler(False) if extract_compression_metadata else None
+        need_keyframes = (clipping_precision=="keyframe_adjusted")
+        self.metadata_subsampler = MetadataSubsampler(extract_keyframes=need_keyframes) if (extract_compression_metadata or need_keyframes) else None
         self.clipping_subsampler = ClippingSubsampler(
             oom_clip_count,
             encode_formats,
