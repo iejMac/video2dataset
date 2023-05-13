@@ -259,14 +259,14 @@ def test_metadata_subsampler(extract_keyframes):
     video_metadata = metadata["video_metadata"]
 
     # check some basic metadata
-    assert 'format' in video_metadata
-    assert 'duration' in video_metadata['format']
-    assert 'streams' in video_metadata
-    video_stream_info = next(stream for stream in video_metadata['streams'] if stream['codec_type'] == 'video')
+    assert "format" in video_metadata
+    assert "duration" in video_metadata["format"]
+    assert "streams" in video_metadata
+    video_stream_info = next(stream for stream in video_metadata["streams"] if stream["codec_type"] == "video")
 
-    assert 'width' in video_stream_info
-    assert 'height' in video_stream_info
-    assert 'r_frame_rate' in video_stream_info
+    assert "width" in video_stream_info
+    assert "height" in video_stream_info
+    assert "r_frame_rate" in video_stream_info
 
     if extract_keyframes:
         assert "keyframe_timestamps" in video_metadata
@@ -274,4 +274,3 @@ def test_metadata_subsampler(extract_keyframes):
         assert len(video_metadata["keyframe_timestamps"]) > 0
     else:
         assert "keyframe_timestamps" not in metadata
-
