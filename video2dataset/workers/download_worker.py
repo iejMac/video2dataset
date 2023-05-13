@@ -303,7 +303,6 @@ class DownloadWorker:
                         dict(zip(subsampled_streams, s)) for s in zip(*subsampled_streams.values())
                     ]
                     for subsampled_streams, meta in zip(subsampled_streams_list, metas):
-                        print(meta)
                         meta["status"] = status
 
                         text_caption = sample_data[caption_indice] if caption_indice is not None else None
