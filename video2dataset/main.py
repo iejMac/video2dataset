@@ -73,6 +73,7 @@ def video2dataset(
     max_clip_length: float = 999999.0,
     max_clip_length_strategy: str = "all",
     precise_clipping: bool = False,
+    extract_compression_metadata: bool = False,
     sampler=None,
     slurm_cpus_per_task: int = 1,
     slurm_job_name: str = "video2dataset",
@@ -206,6 +207,7 @@ def video2dataset(
             max_clip_length=max_clip_length,
             max_clip_length_strategy=max_clip_length_strategy,
             precise_clipping=precise_clipping,
+            extract_compression_metadata=extract_compression_metadata,
         )
     elif stage == "subset":
         shard_iterator = OutputSharder(url_list, input_format, done_shards, sampler=sampler)  # type: ignore
@@ -231,6 +233,7 @@ def video2dataset(
             max_clip_length=max_clip_length,
             max_clip_length_strategy=max_clip_length_strategy,
             precise_clipping=precise_clipping,
+            extract_compression_metadata=extract_compression_metadata,
         )
     elif stage == "optical_flow":
         shard_iterator = OutputSharder(url_list, input_format, done_shards, sampler=sampler)  # type: ignore
