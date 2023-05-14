@@ -164,13 +164,17 @@ class YtDlpDownloader:
         self.audio_rate = audio_rate
         self.encode_formats = encode_formats
 
+        # TODO: figure out when to do this
+        # was relevant with HD videos for loading with decord
+        self.specify_codec = False
+
     def __call__(self, url):
         modality_paths = {}
 
         video_format_string = (
-            f"wv*[height>={self.video_size}][ext=mp4][codec=avc1]/"
-            f"w[height>={self.video_size}][ext=mp4][codec=avc1]/"
-            f"bv/b[ext=mp4][codec=avc1]"
+            f"wv*[height>={self.video_size}][ext=mp4]{'[codec=avc1]' if self.specify_codec else ''}/"
+            f"w[height>={self.video_size}][ext=mp4]{'[codec=avc1]' if self.specify_codec else ''}/"
+            f"bv/b[ext=mp4]{'[codec=avc1]' if self.specify_codec else ''}"
         )
         audio_fmt_string = (
             f"wa[asr>={self.audio_rate}][ext=m4a] / ba[ext=m4a]" if self.audio_rate > 0 else "ba[ext=m4a]"
