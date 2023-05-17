@@ -61,7 +61,7 @@ def video2dataset(
     yt_metadata_args: dict = None,
     captions_are_subtitles: bool = False,
     detect_cuts: bool = False,
-    cut_detection_mode: str = "longest",
+    cut_detection_mode: str = "all",
     cut_framerates: list = None,
     cuts_are_clips: bool = False,
     cut_detector_threshold: int = 27,
