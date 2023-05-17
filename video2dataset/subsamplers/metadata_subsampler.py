@@ -49,6 +49,6 @@ class MetadataSubsampler:
                 metadata["video_metadata"] = video_metadata
 
             except Exception as err:  # pylint: disable=broad-except
-                return streams, None, str(err)
+                return streams, metadata, str(err)
 
         return streams, metadata, None
