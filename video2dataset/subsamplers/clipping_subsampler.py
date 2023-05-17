@@ -198,7 +198,7 @@ class ClippingSubsampler:
                     meta_clip["key"] = f"{meta_clip['key']}_{clip_key}"
 
                     yt_md_dict = meta_clip.get("yt_meta_dict", {})
-                    if (yt_md_dict is not None) and ("subtitles" in yt_md_dict):
+                    if (yt_md_dict is not None) and (yt_md_dict.get("subtitles", None) is not None):
                         clip_subtitles = []
                         s_c, e_c = _get_seconds(clip_span[0]), _get_seconds(clip_span[1])
                         for line in meta_clip["yt_meta_dict"]["subtitles"]:

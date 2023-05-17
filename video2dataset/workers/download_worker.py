@@ -238,7 +238,7 @@ class DownloadWorker:
                             sample_writer.write(
                                 {},
                                 key,
-                                caption,
+                                sample_data[caption_indice] if caption_indice is not None else None,
                                 meta,
                             )
                             continue
@@ -259,7 +259,7 @@ class DownloadWorker:
                             sample_writer.write(
                                 {},
                                 key,
-                                caption,
+                                sample_data[caption_indice] if caption_indice is not None else None,
                                 meta,
                             )
                             continue
