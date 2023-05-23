@@ -1,5 +1,6 @@
 """Reader is module to read the url list and return shards"""
 import braceexpand
+import fsspec
 
 
 class OutputSharder:
@@ -18,7 +19,16 @@ class OutputSharder:
 
         self.input_format = input_format
         self.done_shards = done_shards
-        self.shard_list = list(braceexpand.braceexpand(shard_list))
+        fs, url_path = fsspec.core.url_to_fs(shard_list)
+
+        if fs.isdir(url_path):
+            self.shard_list = sorted(fs.glob(url_path + "/*.tar"))
+            if "s3://" in shard_list:
+                self.shard_list = ["s3://" + s for s in self.shard_list]
+            if len(self.shard_list) == 0:
+                raise Exception(f"No file found at path {url_path} with extension {input_format}")
+        else:
+            self.shard_list = list(braceexpand.braceexpand(shard_list))
 
         if self.input_format == "webdataset":
             self.shard_ids = [s.split("/")[-1][: -len(".tar")] for s in self.shard_list]
