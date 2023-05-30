@@ -8,6 +8,7 @@ import ffmpeg
 import tempfile
 
 from datetime import datetime
+from .subsampler import Subsampler
 
 
 def _get_seconds(t):
@@ -45,7 +46,7 @@ def _adjust_ranges_to_keyframes(ranges, keyframes):
     return adjusted_ranges
 
 
-class ClippingSubsampler:
+class ClippingSubsampler(Subsampler):
     """
     Cuts videos up into segments according to the 'clips' metadata
 
