@@ -5,8 +5,10 @@ import os
 import ffmpeg
 import tempfile
 
+from .subsampler import Subsampler
 
-class ResolutionSubsampler:
+
+class ResolutionSubsampler(Subsampler):
     """
     Adjusts the resolution of the videos to the specified height and width.
 

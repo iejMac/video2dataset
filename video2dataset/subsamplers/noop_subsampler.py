@@ -1,7 +1,9 @@
 """No operation subsampler"""
 
+from .subsampler import Subsampler
 
-class NoOpSubsampler:
+
+class NoOpSubsampler(Subsampler):
     def __init__(self):
         pass
 

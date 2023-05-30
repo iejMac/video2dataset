@@ -4,8 +4,10 @@ import json
 import subprocess
 import tempfile
 
+from .subsampler import Subsampler
+
 # TODO: figuer out why this is so slow (12 samples/s)
-class MetadataSubsampler:
+class MetadataSubsampler(Subsampler):
     """
     Extracts metadata from bytes.
     Args:
