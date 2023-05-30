@@ -6,6 +6,7 @@ import traceback
 
 import fsspec
 import numpy as np
+import webdataset as wds
 from typing import List, Any
 
 from video2dataset.dataloader import get_video_dataset
@@ -122,10 +123,19 @@ class SubsetWorker:
         shard, shard_id = row
         start_time = time.time()
 
-        fs, shard_path = fsspec.core.url_to_fs(shard[: -len(".tar")] + ".parquet")
-        with fs.open(shard_path, "rb") as f:
-            df = pa.parquet.read_table(f)
-            schema = df.schema
+        try:
+            fs, shard_path = fsspec.core.url_to_fs(shard[: -len(".tar")] + ".parquet")
+
+            with fs.open(shard_path, "rb") as f:
+                df = pa.parquet.read_table(f)
+                schema = df.schema
+        except Exception as e:  # pylint: disable=broad-except,unused-variable
+            fields = [
+                pa.field("key", pa.string()),
+                pa.field("status", pa.string()),
+                pa.field("error_message", pa.string()),
+            ]
+            schema = pa.schema(fields)
 
         status_dict = CappedCounter()
 
@@ -148,7 +158,7 @@ class SubsetWorker:
             batch_size=1,
             decoder_kwargs={},
             enforce_additional_keys=[],
-            keys_to_remove=["m4a"],
+            handler=wds.warn_and_continue,
         )
         count = 0
         for sample in dataloader:
