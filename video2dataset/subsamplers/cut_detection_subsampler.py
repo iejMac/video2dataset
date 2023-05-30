@@ -6,6 +6,8 @@ from scenedetect import ContentDetector, SceneManager, open_video
 import os
 import tempfile
 
+from .subsampler import Subsampler
+
 # TODO: this can be done more elegantly:
 # from scenedetect import scene_manager and set that in correct namespace
 # best solution is just figure out best value for them and submit PR
@@ -29,7 +31,7 @@ def get_scenes_from_scene_manager(scene_manager, cut_detection_mode):
     return scene
 
 
-class CutDetectionSubsampler:
+class CutDetectionSubsampler(Subsampler):
     """
     Detects cuts in input videos and returns contiguous segments in a video as metadata.
 
