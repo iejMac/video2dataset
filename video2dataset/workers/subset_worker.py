@@ -123,12 +123,6 @@ class SubsetWorker:
         shard, shard_id = row
         start_time = time.time()
 
-        '''
-        fs, shard_path = fsspec.core.url_to_fs(shard[: -len(".tar")] + ".parquet")
-        with fs.open(shard_path, "rb") as f:
-            df = pa.parquet.read_table(f)
-            schema = df.schema
-        '''
         try:
             fs, shard_path = fsspec.core.url_to_fs(shard[: -len(".tar")] + ".parquet")
 
@@ -142,7 +136,6 @@ class SubsetWorker:
                 pa.field("error_message", pa.string()),
             ]
             schema = pa.schema(fields)
-
 
         status_dict = CappedCounter()
 
