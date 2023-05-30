@@ -12,6 +12,8 @@ try:
 except:  # pylint: disable=broad-except,bare-except
     pass
 
+from .subsampler import Subsampler
+
 
 class AttrDict(dict):
     """
@@ -211,7 +213,7 @@ class Cv2Detector:
         )
 
 
-class OpticalFlowSubsampler:
+class OpticalFlowSubsampler(Subsampler):
     """
     A class to detect optical flow in video frames.
 
