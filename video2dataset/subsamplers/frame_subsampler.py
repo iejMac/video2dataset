@@ -7,8 +7,10 @@ import tempfile
 import os
 import ffmpeg
 
+from .subsampler import Subsampler
 
-class FrameSubsampler:
+
+class FrameSubsampler(Subsampler):
     """
     Adjusts the frame rate of the videos to the specified frame rate.
     Args:
