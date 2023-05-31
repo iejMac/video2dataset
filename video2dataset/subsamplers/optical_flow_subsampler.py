@@ -194,19 +194,17 @@ class Cv2Detector:
         frame1 = self.preprocess(frame1)
         frame2 = self.preprocess(frame2)
 
-        return (
-            cv2.calcOpticalFlowFarneback(
-                frame1,
-                frame2,
-                None,
-                self.pyr_scale,
-                self.levels,
-                self.winsize,
-                self.iterations,
-                self.poly_n,
-                self.poly_sigma,
-                self.flags,
-            )
+        return cv2.calcOpticalFlowFarneback(
+            frame1,
+            frame2,
+            None,
+            self.pyr_scale,
+            self.levels,
+            self.winsize,
+            self.iterations,
+            self.poly_n,
+            self.poly_sigma,
+            self.flags,
         )
 
 
