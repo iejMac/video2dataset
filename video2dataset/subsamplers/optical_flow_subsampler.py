@@ -137,11 +137,11 @@ class RAFTDetector:
         frame1, frame2 = padder.pad(frame1, frame2)
         return frame1, frame2
 
-    def __call__(self, frame1, frame2, rescale_factor=1):
+    def __call__(self, frame1, frame2):
         frame1, frame2 = self.preprocess(frame1, frame2)
         with torch.no_grad():
             _, flow_up = self.model(frame1, frame2, iters=20, test_mode=True)
-        return flow_up[0].permute(1, 2, 0).cpu().numpy() * rescale_factor
+        return flow_up[0].permute(1, 2, 0).cpu().numpy()
 
 
 class Cv2Detector:
@@ -182,7 +182,7 @@ class Cv2Detector:
         out = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         return out
 
-    def __call__(self, frame1, frame2, rescale_factor=1):
+    def __call__(self, frame1, frame2):
         """
         Calculate optical flow between two frames using Farneback method.
 
@@ -196,20 +196,17 @@ class Cv2Detector:
         frame1 = self.preprocess(frame1)
         frame2 = self.preprocess(frame2)
 
-        return (
-            cv2.calcOpticalFlowFarneback(
-                frame1,
-                frame2,
-                None,
-                self.pyr_scale,
-                self.levels,
-                self.winsize,
-                self.iterations,
-                self.poly_n,
-                self.poly_sigma,
-                self.flags,
-            )
-            * rescale_factor
+        return cv2.calcOpticalFlowFarneback(
+            frame1,
+            frame2,
+            None,
+            self.pyr_scale,
+            self.levels,
+            self.winsize,
+            self.iterations,
+            self.poly_n,
+            self.poly_sigma,
+            self.flags,
         )
 
 
@@ -258,7 +255,7 @@ class OpticalFlowSubsampler(Subsampler):
         dtypes = {"fp16": np.float16, "fp32": np.float32}
         self.dtype = dtypes[dtype]
 
-    def __call__(self, frames, rescale_factor=1):
+    def __call__(self, frames):
         optical_flow = []
 
         try:
@@ -267,7 +264,7 @@ class OpticalFlowSubsampler(Subsampler):
 
             for frame2 in frames[1:]:
                 next_frame = frame2
-                flow = self.detector(prvs, next_frame, rescale_factor)
+                flow = self.detector(prvs, next_frame)
                 optical_flow.append(flow)
                 prvs = next_frame
 

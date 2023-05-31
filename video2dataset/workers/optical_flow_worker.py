@@ -137,7 +137,7 @@ class OpticalFlowWorker:
         decoder_kwargs = {
             "n_frames": None,
             "fps": self.fps,
-            "num_threads": 8,
+            "num_threads": 4,
             "return_bytes": True,
         }
 
@@ -179,10 +179,7 @@ class OpticalFlowWorker:
             meta = sample["json"][0]
             streams = {}
             frames = np.array(sample.get("mp4")[0]).astype(np.float32)
-
-            orig_h, orig_w = sample["original_height"][0][0].item(), sample["original_width"][0][0].item()
-            rescale_factor = min(orig_h, orig_w) / self.downsample_size
-            optical_flow, metrics, error_message = self.optical_flow_subsampler(frames, rescale_factor)
+            optical_flow, metrics, error_message = self.optical_flow_subsampler(frames)
 
             if error_message is not None:
                 failed_to_subsample += 1
