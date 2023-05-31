@@ -5,6 +5,7 @@ import signal
 import fire
 import fsspec
 
+from omegaconf import OmegaConf
 from typing import List, Optional
 import numpy as np  # pylint: disable=unused-import
 
@@ -24,6 +25,7 @@ from .distributor import (
     SlurmDistributor,
 )
 from .workers import DownloadWorker, SubsetWorker, OpticalFlowWorker
+from .configs import CONFIGS
 
 
 def identity(x):
@@ -49,25 +51,28 @@ def video2dataset(
     incremental_mode: str = "incremental",
     max_shard_retry: int = 1,
     tmp_dir: str = "/tmp",
-    config: str = None
+    config: str = "default"
 ):
     """
     create video dataset from video links
     """
     local_args = dict(locals())
 
-    if sampler is None:
-        sampler = identity
+    args = CONFIGS[config] if config in CONFIGS else OmegaConf.load(config)
+    args = OmegaConf.to_container(args)
+    for arg_type in ["subsampling", "reading", "storage", "distribution"]:
+        assert arg_type in args
+
+    if args['reading']['sampler'] is None:
+        args['reading']['sampler'] = identity
 
     # TODO: find better location for this code
     # TODO: figure out minimum yt_meta_args for subtitles to be added to metadata
-    if captions_are_subtitles:
+    if args['storage']['captions_are_subtitles']:
         assert clip_col is None  # no weird double-clipping
-        if yt_metadata_args is None:
-            yt_metadata_args = {}
-        yt_metadata_args["writesubtitles"] = True
-
-    config_parameters = dict(locals())
+        if args['reading']['yt_args']['yt_metadata_args'] is None:
+            args['reading']['yt_args']['yt_metadata_args'] = {}
+        args['reading']['yt_args']['yt_metadata_args']["writesubtitles"] = True
 
     if encode_formats is None:
         encode_formats = {"video": "mp4"}
@@ -81,7 +86,7 @@ def video2dataset(
     output_folder = make_path_absolute(output_folder)
     url_list = make_path_absolute(url_list)
 
-    logger_process = LoggerProcess(output_folder, enable_wandb, wandb_project, config_parameters)
+    logger_process = LoggerProcess(output_folder, enable_wandb, wandb_project, local_args)
     tmp_path = output_folder + "/_tmp"
     fs, run_tmp_dir = fsspec.core.url_to_fs(tmp_path)
     if not fs.exists(run_tmp_dir):
@@ -141,7 +146,7 @@ def video2dataset(
             number_sample_per_shard,
             done_shards,
             tmp_path,
-            sampler,
+            args['reading']['sampler'],
         )
         worker = DownloadWorker(
             sample_writer_class=sample_writer_class,
@@ -173,7 +178,12 @@ def video2dataset(
             extract_compression_metadata=extract_compression_metadata,
         )
     elif stage == "subset":
-        shard_iterator = OutputSharder(url_list, input_format, done_shards, sampler=sampler)  # type: ignore
+        shard_iterator = OutputSharder(
+            url_list,
+            input_format,
+            done_shards,
+            sampler=args['reading']['sampler']  # type: ignore
+        )
         worker = SubsetWorker(  # type: ignore
             sample_writer_class=sample_writer_class,
             output_folder=output_folder,
