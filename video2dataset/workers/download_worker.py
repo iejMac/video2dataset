@@ -54,7 +54,6 @@ class DownloadWorker:
         self.output_folder = output_folder
         self.column_list = column_list
         self.encode_formats = encode_formats
-
         self.config = config
 
         self.data_reader = VideoDataReader(encode_formats, tmp_dir, config['reading'])

@@ -156,27 +156,6 @@ def video2dataset(
             tmp_dir=tmp_dir,
             encode_formats=encode_formats,
             config=config,
-            # thread_count=thread_count,  DISTRIBUTION
-            # timeout=timeout,  READING
-            # number_sample_per_shard=number_sample_per_shard,  STORAGE
-            # oom_shard_count=oom_shard_count, STORAGE
-            # video_size=video_size, SUBSAMPLING
-            # resize_mode=resize_mode,
-            # video_fps=video_fps,
-            # audio_rate=audio_rate,
-            # yt_metadata_args=yt_metadata_args, READING
-            # captions_are_subtitles=captions_are_subtitles, SUBSAMPLING
-            # detect_cuts=detect_cuts, SUBSAMPLINg
-            # cut_detection_mode=cut_detection_mode,
-            # cut_framerates=cut_framerates,
-            # cuts_are_clips=cuts_are_clips,
-            # cut_detector_threshold=cut_detector_threshold,
-            # cut_detector_min_scene_len=cut_detector_min_scene_len,
-            # min_clip_length=min_clip_length,
-            # max_clip_length=max_clip_length,
-            # max_clip_length_strategy=max_clip_length_strategy,
-            # clipping_precision=clipping_precision,
-            # extract_compression_metadata=extract_compression_metadata,
         )
     elif stage == "subset":
         shard_iterator = OutputSharder(
@@ -191,25 +170,6 @@ def video2dataset(
             output_folder=output_folder,
             encode_formats=encode_formats,
             config=config,
-            # thread_count=thread_count, DIST
-            # number_sample_per_shard=number_sample_per_shard, STORAGE
-            # oom_shard_count=oom_shard_count, STORAGE
-            # captions_are_subtitles=captions_are_subtitles, READ
-            # video_size=video_size, SUB
-            # resize_mode=resize_mode,
-            # video_fps=video_fps,
-            # audio_rate=audio_rate,
-            # detect_cuts=detect_cuts,
-            # cut_detection_mode=cut_detection_mode,
-            # cut_framerates=cut_framerates,
-            # cuts_are_clips=cuts_are_clips,
-            # cut_detector_threshold=cut_detector_threshold,
-            # cut_detector_min_scene_len=cut_detector_min_scene_len,
-            # min_clip_length=min_clip_length,
-            # max_clip_length=max_clip_length,
-            # max_clip_length_strategy=max_clip_length_strategy,
-            # clipping_precision=clipping_precision,
-            # extract_compression_metadata=extract_compression_metadata,
         )
     # TODO: look into how to do Optical flow aprams in yaml
     elif stage == "optical_flow":
