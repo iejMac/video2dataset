@@ -6,7 +6,7 @@ import fire
 import fsspec
 
 from omegaconf import OmegaConf
-from typing import List, Optional
+from typing import List, Optional, Union
 import numpy as np  # pylint: disable=unused-import
 
 from .logger import LoggerProcess
@@ -51,15 +51,15 @@ def video2dataset(
     incremental_mode: str = "incremental",
     max_shard_retry: int = 1,
     tmp_dir: str = "/tmp",
-    config: str = "default"
+    config: Union[str,dict] = "default"
 ):
     """
     create video dataset from video links
     """
     local_args = dict(locals())
-
-    config = CONFIGS[config] if config in CONFIGS else OmegaConf.load(config)
-    config = OmegaConf.to_container(config)
+    if isinstance(config, str):
+        config = CONFIGS[config] if config in CONFIGS else OmegaConf.load(config)
+        config = OmegaConf.to_container(config)
     for arg_type in ["subsampling", "reading", "storage", "distribution"]:
         assert arg_type in config
 

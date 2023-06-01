@@ -8,7 +8,7 @@ reading:
     sampler: null
 
 storage:
-    number_sample_per_shard: 10000
+    number_sample_per_shard: 1000
     oom_shard_count: 5
     captions_are_subtitles: False
 
