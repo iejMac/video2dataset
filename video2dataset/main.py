@@ -23,6 +23,7 @@ from .distributor import (
     multiprocessing_distributor,
     pyspark_distributor,
     SlurmDistributor,
+    SlurmShardSampler,
 )
 from .workers import DownloadWorker, SubsetWorker, OpticalFlowWorker
 from .configs import CONFIGS
@@ -66,6 +67,12 @@ def video2dataset(
     if config["reading"]["sampler"] is None:
         config["reading"]["sampler"] = identity
 
+    called_from_slurm = "CALLED_FROM_SLURM" in os.environ
+    if called_from_slurm:
+        global_task_id = int(os.environ["GLOBAL_RANK"])
+        num_tasks = config['distribution']['distributor_args']['n_nodes'] * config['distribution']['distributor_args']['tasks_per_node']
+        config['reading']['sampler'] = SlurmShardSampler(global_task_id=global_task_id, num_tasks=num_tasks)
+        
     # TODO: find better location for this code
     # TODO: figure out minimum yt_meta_args for subtitles to be added to metadata
     if config["storage"]["captions_are_subtitles"]:
@@ -188,7 +195,6 @@ def video2dataset(
     # I Think we can just set called_from_slurm normally here and based on that go into multiproc
     # TODO: while you're at it fix the problem where each worker logs, when you set multiproc to true
     # in spawned slurm procs also sent their enable_wandb to false unless its master worker
-    called_from_slurm = "CALLED_FROM_SLURM" in os.environ
     if config["distribution"]["distributor"] == "multiprocessing" or called_from_slurm:
         distributor_fn = multiprocessing_distributor
         called_from_slurm = "GLOBAL_RANK" in os.environ

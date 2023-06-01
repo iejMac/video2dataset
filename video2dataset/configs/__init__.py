@@ -1,3 +1,4 @@
+"""video2dataset example configs"""
 import os
 from omegaconf import OmegaConf
 

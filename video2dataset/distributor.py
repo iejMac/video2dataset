@@ -71,6 +71,28 @@ def pyspark_distributor(processes_count, worker, input_sharder, subjob_size, max
         retrier(run, failed_shards, max_shard_retry)
 
 
+class SlurmShardSampler:
+    """
+    Should be callable to select samples based on the node_id
+    :param global_task_id: The global task id for the current task
+    :param num_tasks: The overall number of tasks
+    :return:
+    """
+
+    def __init__(self, global_task_id, num_tasks):
+        self.task_id = global_task_id
+        print(global_task_id)
+        self.num_tasks = num_tasks
+
+    def __call__(self, shardfile_list):
+        shardlist = [
+            (full_shard_id, shard_id)
+            for full_shard_id, shard_id in shardfile_list
+            if int(full_shard_id) % self.num_tasks == self.task_id
+        ]
+        return shardlist
+
+
 class SlurmDistributor:
     """Parallelism via slurm"""
 
