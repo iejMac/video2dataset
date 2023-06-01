@@ -182,7 +182,7 @@ def video2dataset(
         shard_iterator = OutputSharder(  # type: ignore
             url_list, input_format, done_shards, sampler=config["reading"]["sampler"]
         )
-        is_slurm_task = "GLOBAL_RANK" in os.environ and config['distribution']['distributor'] == "multiprocessing"
+        is_slurm_task = "GLOBAL_RANK" in os.environ and config["distribution"]["distributor"] == "multiprocessing"
         worker = OpticalFlowWorker(  # type: ignore
             sample_writer_class=sample_writer_class,
             output_folder=output_folder,
