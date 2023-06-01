@@ -7,7 +7,7 @@ import tempfile
 from .subsampler import Subsampler
 
 # TODO: figuer out why this is so slow (12 samples/s)
-class MetadataSubsampler(Subsampler):
+class FFProbeSubsampler(Subsampler):
     """
     Extracts metadata from bytes.
     Args:

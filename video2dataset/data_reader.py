@@ -157,11 +157,11 @@ class YtDlpDownloader:
     """Downloader class for yt-dlp links"""
 
     # TODO: maybe we just include height and width in the metadata_args
-    def __init__(self, tmp_dir, metadata_args, video_size, audio_rate, encode_formats):
+    def __init__(self, yt_args, tmp_dir, encode_formats):
+        self.metadata_args = yt_args.get('yt_metadata_args', {})
+        self.video_size = yt_args.get("download_size", 360)
+        self.audio_rate = yt_args.get('download_audio_rate', 44100)
         self.tmp_dir = tmp_dir
-        self.metadata_args = metadata_args
-        self.video_size = video_size
-        self.audio_rate = audio_rate
         self.encode_formats = encode_formats
 
         # TODO: figure out when to do this
@@ -238,9 +238,9 @@ class YtDlpDownloader:
 class VideoDataReader:
     """Video data reader provide data for a video"""
 
-    def __init__(self, video_size, audio_rate, dl_timeout, tmp_dir, yt_meta_args, encode_formats) -> None:
-        self.webfile_downloader = WebFileDownloader(dl_timeout, tmp_dir, encode_formats)
-        self.yt_downloader = YtDlpDownloader(tmp_dir, yt_meta_args, video_size, audio_rate, encode_formats)
+    def __init__(self, encode_formats, tmp_dir, reading_config):
+        self.webfile_downloader = WebFileDownloader(reading_config['timeout'], tmp_dir, encode_formats)
+        self.yt_downloader = YtDlpDownloader(reading_config['yt_args'], tmp_dir, encode_formats)
 
     def __call__(self, row):
         key, url = row

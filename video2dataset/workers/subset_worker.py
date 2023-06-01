@@ -15,7 +15,7 @@ from video2dataset.subsamplers import (
     ClippingSubsampler,
     CutDetectionSubsampler,
     FrameSubsampler,
-    MetadataSubsampler,
+    FFProbeSubsampler,
     NoOpSubsampler,
     ResolutionSubsampler,
     AudioRateSubsampler,
@@ -63,7 +63,7 @@ class SubsetWorker:
 
         need_keyframes = clipping_precision == "keyframe_adjusted"
         self.metadata_subsampler = (
-            MetadataSubsampler(extract_keyframes=need_keyframes)
+            FFProbeSubsampler(extract_keyframes=need_keyframes)
             if (extract_compression_metadata or need_keyframes)
             else None
         )

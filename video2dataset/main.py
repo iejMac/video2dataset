@@ -58,21 +58,21 @@ def video2dataset(
     """
     local_args = dict(locals())
 
-    args = CONFIGS[config] if config in CONFIGS else OmegaConf.load(config)
-    args = OmegaConf.to_container(args)
+    config = CONFIGS[config] if config in CONFIGS else OmegaConf.load(config)
+    config = OmegaConf.to_container(config)
     for arg_type in ["subsampling", "reading", "storage", "distribution"]:
-        assert arg_type in args
+        assert arg_type in config
 
-    if args['reading']['sampler'] is None:
-        args['reading']['sampler'] = identity
+    if config['reading']['sampler'] is None:
+        config['reading']['sampler'] = identity
 
     # TODO: find better location for this code
     # TODO: figure out minimum yt_meta_args for subtitles to be added to metadata
-    if args['storage']['captions_are_subtitles']:
+    if config['storage']['captions_are_subtitles']:
         assert clip_col is None  # no weird double-clipping
-        if args['reading']['yt_args']['yt_metadata_args'] is None:
-            args['reading']['yt_args']['yt_metadata_args'] = {}
-        args['reading']['yt_args']['yt_metadata_args']["writesubtitles"] = True
+        if config['reading']['yt_args']['yt_metadata_args'] is None:
+            config['reading']['yt_args']['yt_metadata_args'] = {}
+        config['reading']['yt_args']['yt_metadata_args']["writesubtitles"] = True
 
     if encode_formats is None:
         encode_formats = {"video": "mp4"}
@@ -102,7 +102,7 @@ def video2dataset(
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    save_caption = caption_col is not None or captions_are_subtitles
+    save_caption = caption_col is not None or config['storage']['captions_are_subtitles']
 
     fs, output_path = fsspec.core.url_to_fs(output_folder)
 
@@ -136,80 +136,89 @@ def video2dataset(
         raise ValueError(f"Invalid output format {output_format}")
 
     if stage == "download":
-        shard_iterator = InputSharder(
+        shard_iterator = InputSharder(  # type: ignore
             url_list,
             input_format,
             url_col,
             caption_col,
             clip_col,
             save_additional_columns,
-            number_sample_per_shard,
+            config['storage']['number_sample_per_shard'],
             done_shards,
             tmp_path,
-            args['reading']['sampler'],
+            config['reading']['sampler'],
         )
         worker = DownloadWorker(
             sample_writer_class=sample_writer_class,
             save_caption=save_caption,
             output_folder=output_folder,
             column_list=shard_iterator.column_list,
-            thread_count=thread_count,
-            timeout=timeout,
-            number_sample_per_shard=number_sample_per_shard,
-            oom_shard_count=oom_shard_count,
-            video_size=video_size,
-            resize_mode=resize_mode,
-            video_fps=video_fps,
-            audio_rate=audio_rate,
             tmp_dir=tmp_dir,
-            yt_metadata_args=yt_metadata_args,
-            captions_are_subtitles=captions_are_subtitles,
             encode_formats=encode_formats,
-            detect_cuts=detect_cuts,
-            cut_detection_mode=cut_detection_mode,
-            cut_framerates=cut_framerates,
-            cuts_are_clips=cuts_are_clips,
-            cut_detector_threshold=cut_detector_threshold,
-            cut_detector_min_scene_len=cut_detector_min_scene_len,
-            min_clip_length=min_clip_length,
-            max_clip_length=max_clip_length,
-            max_clip_length_strategy=max_clip_length_strategy,
-            clipping_precision=clipping_precision,
-            extract_compression_metadata=extract_compression_metadata,
+            config=config,
+            # thread_count=thread_count,  DISTRIBUTION
+            # timeout=timeout,  READING
+            # number_sample_per_shard=number_sample_per_shard,  STORAGE
+            # oom_shard_count=oom_shard_count, STORAGE
+            # video_size=video_size, SUBSAMPLING
+            # resize_mode=resize_mode,
+            # video_fps=video_fps,
+            # audio_rate=audio_rate,
+            # yt_metadata_args=yt_metadata_args, READING
+            # captions_are_subtitles=captions_are_subtitles, SUBSAMPLING
+            # detect_cuts=detect_cuts, SUBSAMPLINg
+            # cut_detection_mode=cut_detection_mode,
+            # cut_framerates=cut_framerates,
+            # cuts_are_clips=cuts_are_clips,
+            # cut_detector_threshold=cut_detector_threshold,
+            # cut_detector_min_scene_len=cut_detector_min_scene_len,
+            # min_clip_length=min_clip_length,
+            # max_clip_length=max_clip_length,
+            # max_clip_length_strategy=max_clip_length_strategy,
+            # clipping_precision=clipping_precision,
+            # extract_compression_metadata=extract_compression_metadata,
         )
     elif stage == "subset":
         shard_iterator = OutputSharder(
             url_list,
             input_format,
             done_shards,
-            sampler=args['reading']['sampler']  # type: ignore
+            sampler=config['reading']['sampler']  # type: ignore
         )
+
         worker = SubsetWorker(  # type: ignore
             sample_writer_class=sample_writer_class,
             output_folder=output_folder,
-            thread_count=thread_count,
-            number_sample_per_shard=number_sample_per_shard,
-            oom_shard_count=oom_shard_count,
             encode_formats=encode_formats,
-            captions_are_subtitles=captions_are_subtitles,
-            video_size=video_size,
-            resize_mode=resize_mode,
-            video_fps=video_fps,
-            audio_rate=audio_rate,
-            detect_cuts=detect_cuts,
-            cut_detection_mode=cut_detection_mode,
-            cut_framerates=cut_framerates,
-            cuts_are_clips=cuts_are_clips,
-            cut_detector_threshold=cut_detector_threshold,
-            cut_detector_min_scene_len=cut_detector_min_scene_len,
-            min_clip_length=min_clip_length,
-            max_clip_length=max_clip_length,
-            max_clip_length_strategy=max_clip_length_strategy,
-            clipping_precision=clipping_precision,
-            extract_compression_metadata=extract_compression_metadata,
+            config=config,
+            # thread_count=thread_count, DIST
+            # number_sample_per_shard=number_sample_per_shard, STORAGE
+            # oom_shard_count=oom_shard_count, STORAGE
+            # captions_are_subtitles=captions_are_subtitles, READ
+            # video_size=video_size, SUB
+            # resize_mode=resize_mode,
+            # video_fps=video_fps,
+            # audio_rate=audio_rate,
+            # detect_cuts=detect_cuts,
+            # cut_detection_mode=cut_detection_mode,
+            # cut_framerates=cut_framerates,
+            # cuts_are_clips=cuts_are_clips,
+            # cut_detector_threshold=cut_detector_threshold,
+            # cut_detector_min_scene_len=cut_detector_min_scene_len,
+            # min_clip_length=min_clip_length,
+            # max_clip_length=max_clip_length,
+            # max_clip_length_strategy=max_clip_length_strategy,
+            # clipping_precision=clipping_precision,
+            # extract_compression_metadata=extract_compression_metadata,
         )
+    # TODO: look into how to do Optical flow aprams in yaml
     elif stage == "optical_flow":
-        shard_iterator = OutputSharder(url_list, input_format, done_shards, sampler=sampler)  # type: ignore
+        shard_iterator = OutputSharder(  # type: ignore
+            url_list,
+            input_format,
+            done_shards,
+            sampler=sampler
+        )
         if optical_flow_params is None:
             optical_flow_params = {
                 "detector": "cv2",
@@ -243,13 +252,17 @@ def video2dataset(
         raise ValueError(f"Invalid stage: {stage}")
 
     print("Starting the downloading of this file")
+    # TODO: slurm distributor sets arg distributor but that won't work here because of config
+    # I Think we can just set called_from_slurm normally here and based on that go into multiproc
+    # TODO: while you're at it fix the problem where each worker logs, when you set multiproc to true
+    # in spawned slurm procs also sent their enable_wandb to false unless its master worker
     called_from_slurm = False
-    if distributor == "multiprocessing":
+    if config['distribution']['distributor'] == "multiprocessing":
         distributor_fn = multiprocessing_distributor
         called_from_slurm = "GLOBAL_RANK" in os.environ
-    elif distributor == "pyspark":
+    elif config['distribution']['distributor'] == "pyspark":
         distributor_fn = pyspark_distributor
-    elif distributor == "slurm":
+    elif config['distribution']['distributor'] == "slurm":
         slurm_args = {"_".join(key.split("_")[1:]): local_args[key] for key in local_args if key.startswith("slurm")}
         worker_args = {key: local_args[key] for key in local_args if not key.startswith("slurm")}
         distributor_fn = SlurmDistributor(worker_args=worker_args, **slurm_args)
@@ -257,10 +270,10 @@ def video2dataset(
         raise ValueError(f"Distributor {distributor} not supported")
 
     distributor_fn(
-        processes_count,
+        config['distribution']['processes_count'],
         worker,
         shard_iterator,
-        subjob_size,
+        config['distribution']['subjob_size'],
         max_shard_retry,
     )
     logger_process.join()
