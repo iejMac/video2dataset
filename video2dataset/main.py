@@ -6,7 +6,7 @@ import fire
 import fsspec
 
 from omegaconf import OmegaConf
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict, Any
 import numpy as np  # pylint: disable=unused-import
 
 from .logger import LoggerProcess
@@ -52,7 +52,7 @@ def video2dataset(
     incremental_mode: str = "incremental",
     max_shard_retry: int = 1,
     tmp_dir: str = "/tmp",
-    config: Union[str, dict] = "default",
+    config: Union[str, Dict[Any]] = "default",
 ):
     """
     create video dataset from video links
@@ -209,7 +209,7 @@ def video2dataset(
 
         distributor_fn = SlurmDistributor(worker_args=worker_args, **slurm_args)
     else:
-        raise ValueError(f"Distributor {distributor} not supported")
+        raise ValueError(f"Distributor {config['distribution']['distributor']} not supported")
 
     distributor_fn(
         config["distribution"]["processes_count"],
