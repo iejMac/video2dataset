@@ -230,14 +230,14 @@ class OpticalFlowSubsampler(Subsampler):
             detector_args = () if detector_args is None else detector_args
             self.detector = Cv2Detector(*detector_args)
         elif detector == "raft":
-            assert args is not None
+            assert detector_args is not None
             if is_slurm_task:
                 local_rank = os.environ["LOCAL_RANK"]
                 device = f"cuda:{local_rank}"
-                args["device"] = device
-            if not isinstance(args, AttrDict):
-                args = AttrDict(args)
-            self.detector = RAFTDetector(args)
+                detector_args["device"] = device
+            if not isinstance(detector_args, AttrDict):
+                detector_args = AttrDict(args)
+            self.detector = RAFTDetector(detector_args)
         else:
             raise NotImplementedError()
 
