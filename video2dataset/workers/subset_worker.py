@@ -46,49 +46,37 @@ class SubsetWorker:
         self.clipping_subsampler = ClippingSubsampler(
             5,  # oom_clip_count
             encode_formats,
-            **self.config['subsampling'].get('ClippingSubsampler', {'args': {}})['args']
+            **self.config["subsampling"].get("ClippingSubsampler", {"args": {}})["args"],
         )
         need_keyframes = self.clipping_subsampler.precision == "keyframe_adjusted"
 
         self.ffprobe_subsampler = None
-        if 'FFProbeSubsampler' in self.config['subsampling'] or need_keyframes:
+        if "FFProbeSubsampler" in self.config["subsampling"] or need_keyframes:
             self.ffprobe_subsampler = FFProbeSubsampler(
-                **self.config['subsampling'].get('FFProbeSubsampler', {'args': {}})['args']
+                **self.config["subsampling"].get("FFProbeSubsampler", {"args": {}})["args"]
             )
             self.ffprobe_subsampler.extract_keyframes |= need_keyframes
 
         self.cut_detector = None
         self.cuts_are_clips = False
-        if "CutDetectionSubsampler" in self.config['subsampling']:
-            if "args" in self.config['subsampling']['CutDetectionSubsampler']:
+        if "CutDetectionSubsampler" in self.config["subsampling"]:
+            if "args" in self.config["subsampling"]["CutDetectionSubsampler"]:
                 self.cut_detector = CutDetectionSubsampler(
-                    **self.config['subsampling']['CutDetectionSubsampler']['args']
+                    **self.config["subsampling"]["CutDetectionSubsampler"]["args"]
                 )
-            self.cuts_are_clips = self.config['subsampling']['CutDetectionSubsampler'].get('cuts_are_clips', False)
+            self.cuts_are_clips = self.config["subsampling"]["CutDetectionSubsampler"].get("cuts_are_clips", False)
 
         self.noop_subsampler = NoOpSubsampler()
 
         video_subsamplers: List[Any] = []
-        if "ResolutionSubsampler" in self.config['subsampling']:
-            video_subsamplers.append(
-                ResolutionSubsampler(
-                    **self.config['subsampling']['ResolutionSubsampler']['args']
-                )
-            )
-        if "FrameSubsampler" in self.config['subsampling']:
-            video_subsamplers.append(
-                FrameSubsampler(
-                    **self.config['subsampling']['FrameSubsampler']['args']
-                )
-            )
+        if "ResolutionSubsampler" in self.config["subsampling"]:
+            video_subsamplers.append(ResolutionSubsampler(**self.config["subsampling"]["ResolutionSubsampler"]["args"]))
+        if "FrameSubsampler" in self.config["subsampling"]:
+            video_subsamplers.append(FrameSubsampler(**self.config["subsampling"]["FrameSubsampler"]["args"]))
 
         audio_subsamplers: List[Any] = []
-        if "AudioRateSubsampler" in self.config['subsampling']:
-            video_subsamplers.append(
-                AudioRateSubsampler(
-                    **self.config['subsampling']['AudioRateSubsampler']['args']
-                )
-            )
+        if "AudioRateSubsampler" in self.config["subsampling"]:
+            video_subsamplers.append(AudioRateSubsampler(**self.config["subsampling"]["AudioRateSubsampler"]["args"]))
 
         self.subsamplers = {"video": video_subsamplers, "audio": audio_subsamplers}
 
@@ -134,7 +122,7 @@ class SubsetWorker:
             shard_id,
             self.output_folder,
             self.save_caption,
-            self.config['storage']['oom_shard_count'],
+            self.config["storage"]["oom_shard_count"],
             schema,
             self.encode_formats,
         )
@@ -178,7 +166,7 @@ class SubsetWorker:
                         )
                         continue
 
-                if self.config['storage']['captions_are_subtitles']:  # create clips
+                if self.config["storage"]["captions_are_subtitles"]:  # create clips
                     subtitles = meta["yt_meta_dict"]["subtitles"]
                     meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
                 elif self.cut_detector is not None:  # apply cut detection to get clips
@@ -209,7 +197,7 @@ class SubsetWorker:
                 # 1 video -> many videos (either clipping or noop which does identity broadcasting)
                 broadcast_subsampler = (
                     self.clipping_subsampler
-                    if (self.config['storage']['captions_are_subtitles'] or self.cuts_are_clips)
+                    if (self.config["storage"]["captions_are_subtitles"] or self.cuts_are_clips)
                     else self.noop_subsampler
                 )
                 subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
@@ -250,7 +238,7 @@ class SubsetWorker:
                     meta["status"] = status
 
                     text_caption = caption
-                    if self.config['storage']['captions_are_subtitles']:
+                    if self.config["storage"]["captions_are_subtitles"]:
                         text_caption = meta["yt_meta_dict"].pop("subtitles")
 
                     sample_writer.write(
@@ -278,5 +266,5 @@ class SubsetWorker:
             start_time,
             end_time,
             status_dict,
-            self.config['storage']['oom_shard_count'],
+            self.config["storage"]["oom_shard_count"],
         )

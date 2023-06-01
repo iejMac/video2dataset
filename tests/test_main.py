@@ -20,9 +20,9 @@ def test_e2e(input_file):
     config = OmegaConf.to_container(CONFIGS["default"])
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        config['storage']['number_sample_per_shard'] = 10 if "webvid" in input_file else 3
-        samples_per_shard = config['storage']['number_sample_per_shard']
-        config['distribution']['processes_count'] = 1
+        config["storage"]["number_sample_per_shard"] = 10 if "webvid" in input_file else 3
+        samples_per_shard = config["storage"]["number_sample_per_shard"]
+        config["distribution"]["processes_count"] = 1
 
         video2dataset(
             url_list,

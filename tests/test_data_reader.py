@@ -8,6 +8,7 @@ import ffmpeg
 
 from video2dataset.data_reader import VideoDataReader
 
+
 @pytest.mark.parametrize("input_file", ["test_yt.csv"])
 def test_data_reader(input_file):
     encode_formats = {"video": "mp4", "audio": "mp3"}

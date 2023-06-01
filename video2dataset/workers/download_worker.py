@@ -56,7 +56,7 @@ class DownloadWorker:
         self.encode_formats = encode_formats
         self.config = config
 
-        self.data_reader = VideoDataReader(encode_formats, tmp_dir, config['reading'])
+        self.data_reader = VideoDataReader(encode_formats, tmp_dir, config["reading"])
 
         # Check all subsampler configs are valid:
         for ss in self.config.get("subsampling", {}):
@@ -65,49 +65,37 @@ class DownloadWorker:
         self.clipping_subsampler = ClippingSubsampler(
             5,  # oom_clip_count
             encode_formats,
-            **self.config['subsampling'].get('ClippingSubsampler', {'args': {}})['args']
+            **self.config["subsampling"].get("ClippingSubsampler", {"args": {}})["args"],
         )
         need_keyframes = self.clipping_subsampler.precision == "keyframe_adjusted"
 
         self.ffprobe_subsampler = None
-        if 'FFProbeSubsampler' in self.config['subsampling'] or need_keyframes:
+        if "FFProbeSubsampler" in self.config["subsampling"] or need_keyframes:
             self.ffprobe_subsampler = FFProbeSubsampler(
-                **self.config['subsampling'].get('FFProbeSubsampler', {'args': {}})['args']
+                **self.config["subsampling"].get("FFProbeSubsampler", {"args": {}})["args"]
             )
             self.ffprobe_subsampler.extract_keyframes |= need_keyframes
 
         self.cut_detector = None
         self.cuts_are_clips = False
-        if "CutDetectionSubsampler" in self.config['subsampling']:
-            if "args" in self.config['subsampling']['CutDetectionSubsampler']:
+        if "CutDetectionSubsampler" in self.config["subsampling"]:
+            if "args" in self.config["subsampling"]["CutDetectionSubsampler"]:
                 self.cut_detector = CutDetectionSubsampler(
-                    **self.config['subsampling']['CutDetectionSubsampler']['args']
+                    **self.config["subsampling"]["CutDetectionSubsampler"]["args"]
                 )
-            self.cuts_are_clips = self.config['subsampling']['CutDetectionSubsampler'].get('cuts_are_clips', False)
+            self.cuts_are_clips = self.config["subsampling"]["CutDetectionSubsampler"].get("cuts_are_clips", False)
 
         self.noop_subsampler = NoOpSubsampler()
 
         video_subsamplers: List[Any] = []
-        if "ResolutionSubsampler" in self.config['subsampling']:
-            video_subsamplers.append(
-                ResolutionSubsampler(
-                    **self.config['subsampling']['ResolutionSubsampler']['args']
-                )
-            )
-        if "FrameSubsampler" in self.config['subsampling']:
-            video_subsamplers.append(
-                FrameSubsampler(
-                    **self.config['subsampling']['FrameSubsampler']['args']
-                )
-            )
+        if "ResolutionSubsampler" in self.config["subsampling"]:
+            video_subsamplers.append(ResolutionSubsampler(**self.config["subsampling"]["ResolutionSubsampler"]["args"]))
+        if "FrameSubsampler" in self.config["subsampling"]:
+            video_subsamplers.append(FrameSubsampler(**self.config["subsampling"]["FrameSubsampler"]["args"]))
 
         audio_subsamplers: List[Any] = []
-        if "AudioRateSubsampler" in self.config['subsampling']:
-            video_subsamplers.append(
-                AudioRateSubsampler(
-                    **self.config['subsampling']['AudioRateSubsampler']['args']
-                )
-            )
+        if "AudioRateSubsampler" in self.config["subsampling"]:
+            video_subsamplers.append(AudioRateSubsampler(**self.config["subsampling"]["AudioRateSubsampler"]["args"]))
 
         self.subsamplers = {"video": video_subsamplers, "audio": audio_subsamplers}
 
@@ -158,7 +146,7 @@ class DownloadWorker:
         caption_indice = self.column_list.index("caption") if "caption" in self.column_list else None
         key_url_list = [(key, x[url_indice]) for key, x in shard_to_dl]
 
-        semaphore = Semaphore(self.config['distribution']['thread_count'])
+        semaphore = Semaphore(self.config["distribution"]["thread_count"])
 
         def data_generator():
             for e in key_url_list:
@@ -172,13 +160,13 @@ class DownloadWorker:
             shard_id,
             self.output_folder,
             self.save_caption,
-            self.config['storage']['oom_shard_count'],
+            self.config["storage"]["oom_shard_count"],
             schema,
             self.encode_formats,
         )
-        oom_sample_per_shard = math.ceil(math.log10(self.config['storage']['number_sample_per_shard']))
+        oom_sample_per_shard = math.ceil(math.log10(self.config["storage"]["number_sample_per_shard"]))
 
-        with ThreadPool(self.config['distribution']['thread_count']) as thread_pool:
+        with ThreadPool(self.config["distribution"]["thread_count"]) as thread_pool:
             for key, streams, yt_meta_dict, error_message in thread_pool.imap_unordered(
                 self.data_reader,  # pylint: disable=(unnecessary-lambda)
                 loader,
@@ -186,10 +174,7 @@ class DownloadWorker:
                 try:
                     _, sample_data = shard_to_dl[key]
                     str_key = compute_key(
-                        key,
-                        shard_id,
-                        oom_sample_per_shard,
-                        self.config['storage']['oom_shard_count']
+                        key, shard_id, oom_sample_per_shard, self.config["storage"]["oom_shard_count"]
                     )
                     meta = {
                         **{self.column_list[i]: sample_data[i] for i in range(len(self.column_list))},
@@ -237,7 +222,7 @@ class DownloadWorker:
                             )
                             continue
 
-                    if self.config['storage']['captions_are_subtitles']:  # create clips
+                    if self.config["storage"]["captions_are_subtitles"]:  # create clips
                         subtitles = meta["yt_meta_dict"]["subtitles"]
                         meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
                     elif self.cut_detector is not None:  # apply cut detection to get clips
@@ -268,7 +253,11 @@ class DownloadWorker:
                     # 1 video -> many videos (either clipping or noop which does identity broadcasting)
                     broadcast_subsampler = (
                         self.clipping_subsampler
-                        if ("clips" in self.column_list or self.config['storage']['captions_are_subtitles'] or self.cuts_are_clips)
+                        if (
+                            "clips" in self.column_list
+                            or self.config["storage"]["captions_are_subtitles"]
+                            or self.cuts_are_clips
+                        )
                         else self.noop_subsampler
                     )
                     subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
@@ -303,7 +292,7 @@ class DownloadWorker:
                         meta["status"] = status
 
                         text_caption = sample_data[caption_indice] if caption_indice is not None else None
-                        if self.config['storage']['captions_are_subtitles']:
+                        if self.config["storage"]["captions_are_subtitles"]:
                             text_caption = meta["yt_meta_dict"].pop("subtitles")
 
                         sample_writer.write(
@@ -334,6 +323,6 @@ class DownloadWorker:
             start_time,
             end_time,
             status_dict,
-            self.config['storage']['oom_shard_count'],
+            self.config["storage"]["oom_shard_count"],
         )
         fs.rm(shard_path)

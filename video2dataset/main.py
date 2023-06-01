@@ -51,7 +51,7 @@ def video2dataset(
     incremental_mode: str = "incremental",
     max_shard_retry: int = 1,
     tmp_dir: str = "/tmp",
-    config: Union[str,dict] = "default"
+    config: Union[str, dict] = "default",
 ):
     """
     create video dataset from video links
@@ -63,16 +63,16 @@ def video2dataset(
     for arg_type in ["subsampling", "reading", "storage", "distribution"]:
         assert arg_type in config
 
-    if config['reading']['sampler'] is None:
-        config['reading']['sampler'] = identity
+    if config["reading"]["sampler"] is None:
+        config["reading"]["sampler"] = identity
 
     # TODO: find better location for this code
     # TODO: figure out minimum yt_meta_args for subtitles to be added to metadata
-    if config['storage']['captions_are_subtitles']:
+    if config["storage"]["captions_are_subtitles"]:
         assert clip_col is None  # no weird double-clipping
-        if config['reading']['yt_args']['yt_metadata_args'] is None:
-            config['reading']['yt_args']['yt_metadata_args'] = {}
-        config['reading']['yt_args']['yt_metadata_args']["writesubtitles"] = True
+        if config["reading"]["yt_args"]["yt_metadata_args"] is None:
+            config["reading"]["yt_args"]["yt_metadata_args"] = {}
+        config["reading"]["yt_args"]["yt_metadata_args"]["writesubtitles"] = True
 
     if encode_formats is None:
         encode_formats = {"video": "mp4"}
@@ -102,7 +102,7 @@ def video2dataset(
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    save_caption = caption_col is not None or config['storage']['captions_are_subtitles']
+    save_caption = caption_col is not None or config["storage"]["captions_are_subtitles"]
 
     fs, output_path = fsspec.core.url_to_fs(output_folder)
 
@@ -143,10 +143,10 @@ def video2dataset(
             caption_col,
             clip_col,
             save_additional_columns,
-            config['storage']['number_sample_per_shard'],
+            config["storage"]["number_sample_per_shard"],
             done_shards,
             tmp_path,
-            config['reading']['sampler'],
+            config["reading"]["sampler"],
         )
         worker = DownloadWorker(
             sample_writer_class=sample_writer_class,
@@ -159,10 +159,7 @@ def video2dataset(
         )
     elif stage == "subset":
         shard_iterator = OutputSharder(
-            url_list,
-            input_format,
-            done_shards,
-            sampler=config['reading']['sampler']  # type: ignore
+            url_list, input_format, done_shards, sampler=config["reading"]["sampler"]  # type: ignore
         )
 
         worker = SubsetWorker(  # type: ignore
@@ -173,10 +170,7 @@ def video2dataset(
         )
     elif stage == "optical_flow":
         shard_iterator = OutputSharder(  # type: ignore
-            url_list,
-            input_format,
-            done_shards,
-            sampler=config['reading']['sampler']
+            url_list, input_format, done_shards, sampler=config["reading"]["sampler"]
         )
         is_slurm_task = "GLOBAL_RANK" in os.environ and distributor == "multiprocessing"
         worker = OpticalFlowWorker(  # type: ignore
@@ -195,24 +189,24 @@ def video2dataset(
     # TODO: while you're at it fix the problem where each worker logs, when you set multiproc to true
     # in spawned slurm procs also sent their enable_wandb to false unless its master worker
     called_from_slurm = "CALLED_FROM_SLURM" in os.environ
-    if config['distribution']['distributor'] == "multiprocessing" or called_from_slurm:
+    if config["distribution"]["distributor"] == "multiprocessing" or called_from_slurm:
         distributor_fn = multiprocessing_distributor
         called_from_slurm = "GLOBAL_RANK" in os.environ
-    elif config['distribution']['distributor'] == "pyspark":
+    elif config["distribution"]["distributor"] == "pyspark":
         distributor_fn = pyspark_distributor
-    elif config['distribution']['distributor'] == "slurm":
+    elif config["distribution"]["distributor"] == "slurm":
         worker_args = {key: local_args[key] for key in local_args if not key.startswith("slurm")}
-        slurm_args = config['distribution']['distributor_args']
+        slurm_args = config["distribution"]["distributor_args"]
 
         distributor_fn = SlurmDistributor(worker_args=worker_args, **slurm_args)
     else:
         raise ValueError(f"Distributor {distributor} not supported")
 
     distributor_fn(
-        config['distribution']['processes_count'],
+        config["distribution"]["processes_count"],
         worker,
         shard_iterator,
-        config['distribution']['subjob_size'],
+        config["distribution"]["subjob_size"],
         max_shard_retry,
     )
     logger_process.join()

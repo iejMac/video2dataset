@@ -61,7 +61,7 @@ class OpticalFlowWorker:
         self.config = config
 
         self.optical_flow_subsampler = OpticalFlowSubsampler(
-            **self.config['subsampling']['OpticalFlowSubsampler']['args'],
+            **self.config["subsampling"]["OpticalFlowSubsampler"]["args"],
             is_slurm_task=is_slurm_task,
         )
 
@@ -114,7 +114,7 @@ class OpticalFlowWorker:
             shard_id,
             self.output_folder,
             self.save_caption,
-            self.config['storage']['oom_shard_count'],
+            self.config["storage"]["oom_shard_count"],
             schema,
             self.encode_formats,
         )
@@ -125,8 +125,8 @@ class OpticalFlowWorker:
         dset = get_video_dataset(
             urls=shard,
             batch_size=1,
-            decoder_kwargs=self.config['reading']['dataloader_args']['decoder_kwargs'],
-            resize_size=self.config['reading']['dataloader_args']['resize_size'],
+            decoder_kwargs=self.config["reading"]["dataloader_args"]["decoder_kwargs"],
+            resize_size=self.config["reading"]["dataloader_args"]["resize_size"],
             crop_size=None,
             enforce_additional_keys=[],
             return_always=True,
@@ -186,8 +186,8 @@ class OpticalFlowWorker:
             mean_magnitude, mean_magnitude_per_frame = metrics
             meta["mean_optical_flow_magnitude"] = mean_magnitude
             meta["mean_optical_flow_magnitude_per_frame"] = mean_magnitude_per_frame
-            meta["optical_flow_fps"] = self.config['reading']['dataloader_args']['decoder_kwargs']['fps']
-            meta["optical_flow_downsample_size"] = self.config['reading']['dataloader_args']['resize_size']
+            meta["optical_flow_fps"] = self.config["reading"]["dataloader_args"]["decoder_kwargs"]["fps"]
+            meta["optical_flow_downsample_size"] = self.config["reading"]["dataloader_args"]["resize_size"]
             meta["optical_flow_dtype"] = str(self.optical_flow_subsampler.dtype)
 
             streams["optical_flow"] = numpy_npy_dumps(optical_flow)
@@ -212,5 +212,5 @@ class OpticalFlowWorker:
             start_time,
             end_time,
             status_dict,
-            self.config['storage']['oom_shard_count'],
+            self.config["storage"]["oom_shard_count"],
         )
