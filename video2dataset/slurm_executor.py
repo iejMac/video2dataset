@@ -65,9 +65,9 @@ def executor(worker_args, node_id, n_nodes, num_tasks_per_node, subtask_id):
         worker_args = yaml.load(worker_args_file, Loader=yaml.SafeLoader)
     sampler = ShardSampler(global_task_id=global_task_id, num_tasks=num_tasks)
 
-    worker_args.pop("sampler", None)
+    # worker_args.pop("sampler", None)
     # call main script from every subprocess
-    video2dataset(sampler=sampler, **worker_args)
+    video2dataset(**worker_args)
 
 
 if __name__ == "__main__":

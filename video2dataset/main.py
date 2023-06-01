@@ -194,15 +194,16 @@ def video2dataset(
     # I Think we can just set called_from_slurm normally here and based on that go into multiproc
     # TODO: while you're at it fix the problem where each worker logs, when you set multiproc to true
     # in spawned slurm procs also sent their enable_wandb to false unless its master worker
-    called_from_slurm = False
-    if config['distribution']['distributor'] == "multiprocessing":
+    called_from_slurm = "CALLED_FROM_SLURM" in os.environ
+    if config['distribution']['distributor'] == "multiprocessing" or called_from_slurm:
         distributor_fn = multiprocessing_distributor
         called_from_slurm = "GLOBAL_RANK" in os.environ
     elif config['distribution']['distributor'] == "pyspark":
         distributor_fn = pyspark_distributor
     elif config['distribution']['distributor'] == "slurm":
-        slurm_args = {"_".join(key.split("_")[1:]): local_args[key] for key in local_args if key.startswith("slurm")}
         worker_args = {key: local_args[key] for key in local_args if not key.startswith("slurm")}
+        slurm_args = config['distribution']['distributor_args']
+
         distributor_fn = SlurmDistributor(worker_args=worker_args, **slurm_args)
     else:
         raise ValueError(f"Distributor {distributor} not supported")

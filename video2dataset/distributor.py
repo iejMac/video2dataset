@@ -112,7 +112,7 @@ class SlurmDistributor:
         self.timestamp = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
 
         # change distributor type for the subprocesses
-        worker_args["distributor"] = "multiprocessing"
+        # worker_args["distributor"] = "multiprocessing"
 
         # save worker args to file (this is written by the slurm_executor)
         self.worker_args_as_file = os.path.join(self.cache_path, f"{self.timestamp}_worker_args.yaml")
@@ -172,6 +172,7 @@ echo THEID=$THEID
 export XDG_CACHE_HOME="{self.cache_path}"
 #in case of accessing s3 disable ssl verification (for making torchdata s3 related functionality work)
 export S3_VERIFY_SSL=0
+export CALLED_FROM_SLURM=1
 
 cd {project_root}
 source {venv}/bin/activate
