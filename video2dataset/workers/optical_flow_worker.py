@@ -50,32 +50,42 @@ class OpticalFlowWorker:
         self,
         sample_writer_class,
         output_folder,
-        thread_count,
-        number_sample_per_shard,
-        oom_shard_count,
         encode_formats,
-        optical_flow_params,
         is_slurm_task,
+        config,
+        # optical_flow_params,
+        # thread_count,
+        # number_sample_per_shard,
+        # oom_shard_count,
     ) -> None:
         self.sample_writer_class = sample_writer_class
         self.output_folder = output_folder
-        self.number_sample_per_shard = number_sample_per_shard
-        self.oom_shard_count = oom_shard_count
-        self.thread_count = thread_count
         self.encode_formats = encode_formats
         self.save_caption = False
-        self.detector = optical_flow_params.get("detector", "cv2")
-        self.fps = optical_flow_params.get("fps", None)
-        self.downsample_size = optical_flow_params.get("downsample_size", None)
-        self.dtype = optical_flow_params.get("dtype", "fp16")
-        self.detector_args = optical_flow_params.get("detector_args", None)
-
+        self.config = config
+        # self.number_sample_per_shard = number_sample_per_shard
+        # self.config['storage']['oom_shard_count'] = oom_shard_count
+        # self.thread_count = thread_count
+        # self.detector = optical_flow_params.get("detector", "cv2")
+        # self.fps = optical_flow_params.get("fps", None)
+        # self.downsample_size = optical_flow_params.get("downsample_size", None)
+        # self.dtype = optical_flow_params.get("dtype", "fp16")
+        # self.detector_args = optical_flow_params.get("detector_args", None)
+        '''
         self.optical_flow_subsampler = OpticalFlowSubsampler(
             detector=self.detector,
             args=self.detector_args,
             dtype=self.dtype,
             is_slurm_task=is_slurm_task,
         )
+        '''
+
+        self.optical_flow_subsampler = OpticalFlowSubsampler(
+            **self.config['subsampling']['OpticalFlowSubsampler']['args'],
+            is_slurm_task=is_slurm_task,
+        )
+
+
 
     def __call__(
         self,
@@ -126,7 +136,7 @@ class OpticalFlowWorker:
             shard_id,
             self.output_folder,
             self.save_caption,
-            self.oom_shard_count,
+            self.config['storage']['oom_shard_count'],
             schema,
             self.encode_formats,
         )
@@ -134,18 +144,20 @@ class OpticalFlowWorker:
         successes = 0
         failed_to_subsample = 0
 
+        '''
         decoder_kwargs = {
             "n_frames": None,
             "fps": self.fps,
             "num_threads": 8,
             "return_bytes": True,
         }
+        '''
 
         dset = get_video_dataset(
             urls=shard,
             batch_size=1,
-            decoder_kwargs=decoder_kwargs,
-            resize_size=self.downsample_size,
+            decoder_kwargs=self.config['reading']['dataloader_args']['decoder_kwargs'],
+            resize_size=self.config['reading']['dataloader_args']['resize_size'],
             crop_size=None,
             enforce_additional_keys=[],
             return_always=True,
@@ -235,5 +247,5 @@ class OpticalFlowWorker:
             start_time,
             end_time,
             status_dict,
-            self.oom_shard_count,
+            self.config['storage']['oom_shard_count'],
         )

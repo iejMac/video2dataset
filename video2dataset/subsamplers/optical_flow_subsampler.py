@@ -225,24 +225,13 @@ class OpticalFlowSubsampler(Subsampler):
     def __init__(
         self,
         detector="cv2",
-        args=None,
+        detector_args=None,
         dtype="fp16",
         is_slurm_task=False,
     ):
         if detector == "cv2":
-            if args:
-                pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags = args
-                self.detector = Cv2Detector(
-                    pyr_scale,
-                    levels,
-                    winsize,
-                    iterations,
-                    poly_n,
-                    poly_sigma,
-                    flags,
-                )
-            else:
-                self.detector = Cv2Detector()
+            detector_args = () if detector_args is None else detector_args
+            self.detector = Cv2Detector(*detector_args)
         elif detector == "raft":
             assert args is not None
             if is_slurm_task:

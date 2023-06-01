@@ -177,8 +177,9 @@ def video2dataset(
             url_list,
             input_format,
             done_shards,
-            sampler=sampler
+            sampler=config['reading']['sampler']
         )
+        '''
         if optical_flow_params is None:
             optical_flow_params = {
                 "detector": "cv2",
@@ -196,17 +197,18 @@ def video2dataset(
                 ], "please select either fp16 or fp32 for optical flow dtype"
             else:
                 optical_flow_params["dtype"] = "fp16"
-
+        '''
         is_slurm_task = "GLOBAL_RANK" in os.environ and distributor == "multiprocessing"
         worker = OpticalFlowWorker(  # type: ignore
             sample_writer_class=sample_writer_class,
             output_folder=output_folder,
-            thread_count=thread_count,
-            number_sample_per_shard=number_sample_per_shard,
-            oom_shard_count=oom_shard_count,
             encode_formats=encode_formats,
-            optical_flow_params=optical_flow_params,
             is_slurm_task=is_slurm_task,
+            config=config,
+            # optical_flow_params=optical_flow_params,
+            # thread_count=thread_count,
+            # number_sample_per_shard=number_sample_per_shard,
+            # oom_shard_count=oom_shard_count,
         )
     else:
         raise ValueError(f"Invalid stage: {stage}")
