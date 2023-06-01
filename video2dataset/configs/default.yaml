@@ -3,6 +3,7 @@ subsampling: {}
 reading:
     yt_args:
         download_size: 360
+        download_audio_rate: 44100
         yt_metadata_args: null
     timeout: 60
     sampler: null
