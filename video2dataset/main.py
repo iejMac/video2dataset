@@ -70,9 +70,12 @@ def video2dataset(
     called_from_slurm = "CALLED_FROM_SLURM" in os.environ
     if called_from_slurm:
         global_task_id = int(os.environ["GLOBAL_RANK"])
-        num_tasks = config['distribution']['distributor_args']['n_nodes'] * config['distribution']['distributor_args']['tasks_per_node']
-        config['reading']['sampler'] = SlurmShardSampler(global_task_id=global_task_id, num_tasks=num_tasks)
-        
+        num_tasks = (
+            config["distribution"]["distributor_args"]["n_nodes"]
+            * config["distribution"]["distributor_args"]["tasks_per_node"]
+        )
+        config["reading"]["sampler"] = SlurmShardSampler(global_task_id=global_task_id, num_tasks=num_tasks)
+
     # TODO: find better location for this code
     # TODO: figure out minimum yt_meta_args for subtitles to be added to metadata
     if config["storage"]["captions_are_subtitles"]:
