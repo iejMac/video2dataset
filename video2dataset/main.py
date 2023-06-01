@@ -52,7 +52,7 @@ def video2dataset(
     incremental_mode: str = "incremental",
     max_shard_retry: int = 1,
     tmp_dir: str = "/tmp",
-    config: Union[str, Dict[Any]] = "default",
+    config: Any = "default",
 ):
     """
     create video dataset from video links
@@ -82,7 +82,7 @@ def video2dataset(
         assert clip_col is None  # no weird double-clipping
         if config["reading"]["yt_args"]["yt_metadata_args"] is None:
             config["reading"]["yt_args"]["yt_metadata_args"] = {}
-        config["reading"]["yt_args"]["yt_metadata_args"]["writesubtitles"] = True
+        config["reading"]["yt_args"]["yt_metadata_args"]["writesubtitles"] = True  # type: ignore
 
     if encode_formats is None:
         encode_formats = {"video": "mp4"}
@@ -182,7 +182,7 @@ def video2dataset(
         shard_iterator = OutputSharder(  # type: ignore
             url_list, input_format, done_shards, sampler=config["reading"]["sampler"]
         )
-        is_slurm_task = "GLOBAL_RANK" in os.environ and distributor == "multiprocessing"
+        is_slurm_task = "GLOBAL_RANK" in os.environ and config['distribution']['distributor'] == "multiprocessing"
         worker = OpticalFlowWorker(  # type: ignore
             sample_writer_class=sample_writer_class,
             output_folder=output_folder,
