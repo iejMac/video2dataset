@@ -103,7 +103,7 @@ tmp_dir: Path to temporary directory on your file system (default = "/tmp")
 config: Path to your config of choice or the config itself (more info on configs in API doc) (default = "default")
 ```
 
-These arguments give coarse controle over input/output "shape" of the dataset. For finer control of subsamplers, distribution, reading, and storage see the more detailed [API.md](https://github.com/iejMac/video2dataset/blob/main/API.md) doc.
+These arguments give coarse control over input/output "shape" of the dataset. For finer control of subsamplers, distribution, reading, and storage see the more detailed [API.md](https://github.com/iejMac/video2dataset/blob/main/API.md) doc.
 
 ## Downloading YouTube Metadata
 
