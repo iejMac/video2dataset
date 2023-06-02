@@ -44,7 +44,7 @@ The tool will automatically download the urls and store them with the format:
         * 000000001.mp4
         * 000000002.mp4
 
-with each number being the position in the input table or the input sample ID. The subfolders avoids having too many files in a single folder. If **captions** are provided, they will be saved as 0.txt, 1.txt, etc. (matching the ID of the sample they belong to). This can then easily be fed into machine learning training or any other use case.
+with each number being the position in the input table or the input sample ID. The subfolders avoid having too many files in a single folder. If **captions** are provided, they will be saved as 0.txt, 1.txt, etc. (matching the ID of the sample they belong to). This can then easily be fed into machine learning training or any other use case.
 
 Also .json files named 0.json, 1.json,... are saved with these keys:
 * url
