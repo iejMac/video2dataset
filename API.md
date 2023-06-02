@@ -141,7 +141,7 @@ reading:
     yt_args:
         download_size: 360
         yt_metadata_args:
-	    writesubtitles:  True
+            writesubtitles:  True
             subtitleslangs: ['en']
             writeautomaticsub: True
             get_info: True
