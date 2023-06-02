@@ -38,9 +38,9 @@ def identity(x):
 # pylint: disable=broad-except
 def video2dataset(
     url_list: str,
-    output_folder: str = "videos",
+    output_folder: str = "dataset",
     output_format: str = "files",
-    input_format: str = "txt",
+    input_format: str = "csv",
     encode_formats: dict = None,
     stage: str = "download",
     url_col: str = "url",
@@ -55,7 +55,45 @@ def video2dataset(
     config: Any = "default",
 ):
     """
-    create video dataset from video links
+    Create datasets from video/audio links
+
+    Args:
+    url_list: list of input urls - can be any of the supported input formats 
+        (csv, parquet, braceexpand tar paths etc.)
+    output_folder: Desired location of output dataset
+    output_format: Format of output dataset, can be
+        - files, samples saved in subdirectory for each shard (useful for debugging)
+        - webdataset, samples saved in tars (useful for efficient loading)
+        - parquet, sampels saved in parquet (as bytes)
+        - tfrecord, samples saved in tfrecord (as bytes)
+        - dummy, does not save (useful for benchmarks)
+    input_format: Format of the input, can be
+        - txt, text file with a url in each line
+        - csv, csv file with urls, (and captions + metadata)
+        - tsv, tsv - || -
+        - tsv.gz, - || - but compressed gzip
+        - json, loads urls and metadata as json
+        - parquet, loads urls and metadata as parquet
+        - webdataset, usually braceexpand format of mutliple paths to tars to re-process
+    encode_formats: Dict that specifies what extension each modality should use
+        f.e. {"video": "mp4", "audio": "m4a"}
+    stage: String that tells video2dataset what stage of processing is being performed. Can be
+        WARNING: To be depracated soon (this information should be deduced based on config)
+        - download, when input is some tabular format and data must be downloaded first
+        - subset, tar files are already written and we would like to re-process (input_format == "webdataset")
+        - optical_flow, tar files are written and we woudl like to compute optical_flow and save to md shards
+    url_col: Column in input (if has columns) that contains the url  
+    caption_col: Column in input (if has columns) that contains captions (to be written as txt)
+    clip_col: Column in input (if has columns) that contains timeframes of clips for how to split video
+    save_additional_columns: List of column names to save to json component of a sample
+    enable_wandb: Whether or not to log info to wandb
+    wandb_project: Name of wandb project to log runs to
+    incremental_mode: Decides how to handle restarting, Can be
+        - incremental, checks which shards are done and skips those
+        - overwrite, deletes and reprocesses shards as it goes
+    max_shard_retry: Maximum amount of attempts to retry a failed shard
+    tmp_dir: Path to temporary directory on your file system
+    config: Path to your config of choice or the config itself (more info on configs in API doc)
     """
     local_args = dict(locals())
     if isinstance(config, str):
