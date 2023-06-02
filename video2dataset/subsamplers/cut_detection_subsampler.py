@@ -35,9 +35,14 @@ class CutDetectionSubsampler(Subsampler):
     """
     Detects cuts in input videos and returns contiguous segments in a video as metadata.
 
-    expects:
+    non-initialization args:
+    - cuts_are_clips: whether to create video clips from the source video based on cuts
+
+    initialization args:
     - cut_detection_mode to be either "longest" to pick the longest cut or "all" to pick all cuts
     - framerates to be None (for original fps only) or a list of target framerates to detect cuts in
+    - threshold - determines roughly how much motion is required for a "cut" (tunable parameter)
+    - min_scene_len - minimum scene length to not drop a scene (see pyscenedeteect docs for more explanation)
     """
 
     def __init__(self, cut_detection_mode="all", framerates=None, threshold=27, min_scene_len=15):

@@ -66,7 +66,6 @@ def get_yt_meta(url, yt_metadata_args: dict) -> dict:
     writeautomaticsub: Write the automatically generated subtitles to a file
     subtitleslangs:    List of languages of the subtitles to download.
     get_info: whether to add info (title, description, tags etc) to the output.
-
     """
 
     write_subs = yt_metadata_args.get("writesubtitles", None)
@@ -154,7 +153,13 @@ class WebFileDownloader:
 
 
 class YtDlpDownloader:
-    """Downloader class for yt-dlp links"""
+    """Downloader class for yt-dlp links
+
+    yt_args:
+        download_size: preferred height of video to download. Will try to download smallest video >=download_size
+        download_audio_rate: same as size but with audio
+        yt_metadata_args: see get_yt_metadata function docstring
+    """
 
     # TODO: maybe we just include height and width in the metadata_args
     def __init__(self, yt_args, tmp_dir, encode_formats):
