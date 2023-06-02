@@ -158,8 +158,8 @@ for how we used pyspark distributed mode to download 40M videos with metadata. I
 
 In order to use video2dataset with pyspark, you will need to do this:
 1. `pip install pyspark`
-2. use the `--distributor pyspark` option
-3. tweak the `--subjob_size 1000` option: this is the number of images to download in each subjob. Increasing it will mean a longer time of preparation to put the feather files in the temporary dir, a shorter time will mean sending less shards at a time to the pyspark job.
+2. set `distributor: pyspark` in your config
+3. tweak the `subjob_size: 1000` option in your config. This is the number of videos to download in each subjob. Increasing it will mean a longer time of preparation to put the feather files in the temporary dir, a shorter time will mean sending less shards at a time to the pyspark job.
 
 By default a local spark session will be created.
 You may want to create a custom spark session depending on your specific spark cluster.
@@ -192,10 +192,6 @@ You can use `make black` to reformat the code
 `python -m pytest -x -s -v tests -k "dummy"` to run a specific test
 
 ## Benchmarks
-
-## Special Contributors:
-
-* [ChatGPT](https://chat.openai.com) - FrameSubsampler implementation
 
 ## Citation
 ```
