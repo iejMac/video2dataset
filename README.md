@@ -147,11 +147,12 @@ Which may be necessary if using s3 compatible file systems such as [minio](https
 video2dataset supports several distributors.
 * multiprocessing which spawns a process pool and use these local processes for downloading
 * pyspark which spawns workers in a spark pool to do the downloading
+* slurm which starts separate worker nodes
 
 multiprocessing is a good option for downloading on one machine, and as such it is the default.
 Pyspark lets video2dataset use many nodes, which makes it as fast as the number of machines.
 It can be particularly useful if downloading datasets with more than a billion image. Here's an [example](https://github.com/iejMac/video2dataset/blob/main/examples/distributed_spark.md)
-for how we used pyspark distributed mode to download 40M videos with metadata.
+for how we used pyspark distributed mode to download 40M videos with metadata. If you have access to a slurm cluster it is more comfortable to use than pyspark but not everyone does.
 
 ### pyspark configuration
 
