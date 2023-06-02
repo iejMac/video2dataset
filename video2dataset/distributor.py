@@ -71,6 +71,28 @@ def pyspark_distributor(processes_count, worker, input_sharder, subjob_size, max
         retrier(run, failed_shards, max_shard_retry)
 
 
+class SlurmShardSampler:
+    """
+    Should be callable to select samples based on the node_id
+    :param global_task_id: The global task id for the current task
+    :param num_tasks: The overall number of tasks
+    :return:
+    """
+
+    def __init__(self, global_task_id, num_tasks):
+        self.task_id = global_task_id
+        print(global_task_id)
+        self.num_tasks = num_tasks
+
+    def __call__(self, shardfile_list):
+        shardlist = [
+            (full_shard_id, shard_id)
+            for full_shard_id, shard_id in shardfile_list
+            if int(full_shard_id) % self.num_tasks == self.task_id
+        ]
+        return shardlist
+
+
 class SlurmDistributor:
     """Parallelism via slurm"""
 
@@ -110,9 +132,6 @@ class SlurmDistributor:
             self.fs.mkdir(self.cache_path)
 
         self.timestamp = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
-
-        # change distributor type for the subprocesses
-        worker_args["distributor"] = "multiprocessing"
 
         # save worker args to file (this is written by the slurm_executor)
         self.worker_args_as_file = os.path.join(self.cache_path, f"{self.timestamp}_worker_args.yaml")
@@ -172,6 +191,7 @@ echo THEID=$THEID
 export XDG_CACHE_HOME="{self.cache_path}"
 #in case of accessing s3 disable ssl verification (for making torchdata s3 related functionality work)
 export S3_VERIFY_SSL=0
+export CALLED_FROM_SLURM=1
 
 cd {project_root}
 source {venv}/bin/activate

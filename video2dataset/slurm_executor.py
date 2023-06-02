@@ -7,27 +7,6 @@ import fire
 from video2dataset import video2dataset
 
 
-class ShardSampler:
-    """
-    Should be callable to select samples based on the node_id
-    :param global_task_id: The global task id for the current task
-    :param num_tasks: The overall number of tasks
-    :return:
-    """
-
-    def __init__(self, global_task_id, num_tasks):
-        self.task_id = global_task_id
-        self.num_tasks = num_tasks
-
-    def __call__(self, shardfile_list):
-        shardlist = [
-            (full_shard_id, shard_id)
-            for full_shard_id, shard_id in shardfile_list
-            if int(full_shard_id) % self.num_tasks == self.task_id
-        ]
-        return shardlist
-
-
 def executor(worker_args, node_id, n_nodes, num_tasks_per_node, subtask_id):
     """
     Spins up the individual workers on the nodes
@@ -63,11 +42,9 @@ def executor(worker_args, node_id, n_nodes, num_tasks_per_node, subtask_id):
     # Read the worker args from the file
     with open(worker_args, "r", encoding="utf-8") as worker_args_file:
         worker_args = yaml.load(worker_args_file, Loader=yaml.SafeLoader)
-    sampler = ShardSampler(global_task_id=global_task_id, num_tasks=num_tasks)
 
-    worker_args.pop("sampler", None)
     # call main script from every subprocess
-    video2dataset(sampler=sampler, **worker_args)
+    video2dataset(**worker_args)
 
 
 if __name__ == "__main__":

@@ -5,7 +5,8 @@ import signal
 import fire
 import fsspec
 
-from typing import List, Optional
+from omegaconf import OmegaConf
+from typing import List, Optional, Any
 import numpy as np  # pylint: disable=unused-import
 
 from .logger import LoggerProcess
@@ -22,8 +23,10 @@ from .distributor import (
     multiprocessing_distributor,
     pyspark_distributor,
     SlurmDistributor,
+    SlurmShardSampler,
 )
 from .workers import DownloadWorker, SubsetWorker, OpticalFlowWorker
+from .configs import CONFIGS
 
 
 def identity(x):
@@ -35,76 +38,92 @@ def identity(x):
 # pylint: disable=broad-except
 def video2dataset(
     url_list: str,
-    output_folder: str = "videos",
-    processes_count: int = 1,
-    thread_count: int = 16,
+    output_folder: str = "dataset",
     output_format: str = "files",
-    input_format: str = "txt",
+    input_format: str = "csv",
+    encode_formats: dict = None,
+    stage: str = "download",
     url_col: str = "url",
     caption_col: Optional[str] = None,
     clip_col: Optional[str] = None,
     save_additional_columns: Optional[List[str]] = None,
-    number_sample_per_shard: int = 10000,
     enable_wandb: bool = False,
     wandb_project: str = "video2dataset",
-    oom_shard_count: int = 5,
-    distributor: str = "multiprocessing",
-    subjob_size: int = 1000,
     incremental_mode: str = "incremental",
     max_shard_retry: int = 1,
-    video_size: int = 360,
-    video_fps: int = -1,
-    resize_mode: Optional[List[str]] = None,
-    audio_rate: int = -1,
-    timeout: int = 60,
     tmp_dir: str = "/tmp",
-    yt_metadata_args: dict = None,
-    captions_are_subtitles: bool = False,
-    detect_cuts: bool = False,
-    cut_detection_mode: str = "all",
-    cut_framerates: list = None,
-    cuts_are_clips: bool = False,
-    cut_detector_threshold: int = 27,
-    cut_detector_min_scene_len: int = 15,
-    encode_formats: dict = None,
-    stage: str = "download",
-    optical_flow_params: dict = None,
-    min_clip_length: float = 0.0,
-    max_clip_length: float = 999999.0,
-    max_clip_length_strategy: str = "all",
-    clipping_precision: str = "low",
-    extract_compression_metadata: bool = False,
-    sampler=None,
-    slurm_cpus_per_task: int = 1,
-    slurm_job_name: str = "video2dataset",
-    slurm_partition: str = None,
-    slurm_n_nodes: int = 1,
-    slurm_gpus_per_node: int = 8,
-    slurm_account: str = None,
-    slurm_tasks_per_node: int = 1,
-    slurm_nodelist: str = None,
-    slurm_exclude: str = None,
-    slurm_cache_path: str = None,
-    slurm_timeout: int = None,
-    slurm_verbose_wait: bool = False,
+    config: Any = "default",
 ):
     """
-    create video dataset from video links
+    Create datasets from video/audio links
+
+    Args:
+    url_list: list of input urls - can be any of the supported input formats
+        (csv, parquet, braceexpand tar paths etc.)
+    output_folder: Desired location of output dataset
+    output_format: Format of output dataset, can be
+        - files, samples saved in subdirectory for each shard (useful for debugging)
+        - webdataset, samples saved in tars (useful for efficient loading)
+        - parquet, sampels saved in parquet (as bytes)
+        - tfrecord, samples saved in tfrecord (as bytes)
+        - dummy, does not save (useful for benchmarks)
+    input_format: Format of the input, can be
+        - txt, text file with a url in each line
+        - csv, csv file with urls, (and captions + metadata)
+        - tsv, tsv - || -
+        - tsv.gz, - || - but compressed gzip
+        - json, loads urls and metadata as json
+        - parquet, loads urls and metadata as parquet
+        - webdataset, usually braceexpand format of mutliple paths to tars to re-process
+    encode_formats: Dict that specifies what extension each modality should use
+        f.e. {"video": "mp4", "audio": "m4a"}
+    stage: String that tells video2dataset what stage of processing is being performed. Can be
+        WARNING: To be depracated soon (this information should be deduced based on config)
+        - download, when input is some tabular format and data must be downloaded first
+        - subset, tar files are already written and we would like to re-process (input_format == "webdataset")
+        - optical_flow, tar files are written and we woudl like to compute optical_flow and save to md shards
+    url_col: Column in input (if has columns) that contains the url
+    caption_col: Column in input (if has columns) that contains captions (to be written as txt)
+    clip_col: Column in input (if has columns) that contains timeframes of clips for how to split video
+    save_additional_columns: List of column names to save to json component of a sample
+    enable_wandb: Whether or not to log info to wandb
+    wandb_project: Name of wandb project to log runs to
+    incremental_mode: Decides how to handle restarting, Can be
+        - incremental, checks which shards are done and skips those
+        - overwrite, deletes and reprocesses shards as it goes
+    max_shard_retry: Maximum amount of attempts to retry a failed shard
+    tmp_dir: Path to temporary directory on your file system
+    config: Path to your config of choice or the config itself (more info on configs in API doc)
     """
     local_args = dict(locals())
+    if isinstance(config, str):
+        config = CONFIGS[config] if config in CONFIGS else OmegaConf.load(config)
+        config = OmegaConf.to_container(config)
+    for arg_type in ["subsampling", "reading", "storage", "distribution"]:
+        assert arg_type in config
 
-    if sampler is None:
-        sampler = identity
+    if config["reading"]["sampler"] is None:
+        config["reading"]["sampler"] = identity
+
+    called_from_slurm = "CALLED_FROM_SLURM" in os.environ
+    if called_from_slurm:
+        global_task_id = int(os.environ["GLOBAL_RANK"])
+        num_tasks = (
+            config["distribution"]["distributor_args"]["n_nodes"]
+            * config["distribution"]["distributor_args"]["tasks_per_node"]
+        )
+        config["reading"]["sampler"] = SlurmShardSampler(global_task_id=global_task_id, num_tasks=num_tasks)
+
+        # Only log from master
+        enable_wandb = enable_wandb and (global_task_id == 0)
 
     # TODO: find better location for this code
     # TODO: figure out minimum yt_meta_args for subtitles to be added to metadata
-    if captions_are_subtitles:
+    if config["storage"]["captions_are_subtitles"]:
         assert clip_col is None  # no weird double-clipping
-        if yt_metadata_args is None:
-            yt_metadata_args = {}
-        yt_metadata_args["writesubtitles"] = True
-
-    config_parameters = dict(locals())
+        if config["reading"]["yt_args"]["yt_metadata_args"] is None:
+            config["reading"]["yt_args"]["yt_metadata_args"] = {}
+        config["reading"]["yt_args"]["yt_metadata_args"]["writesubtitles"] = True  # type: ignore
 
     if encode_formats is None:
         encode_formats = {"video": "mp4"}
@@ -118,7 +137,7 @@ def video2dataset(
     output_folder = make_path_absolute(output_folder)
     url_list = make_path_absolute(url_list)
 
-    logger_process = LoggerProcess(output_folder, enable_wandb, wandb_project, config_parameters)
+    logger_process = LoggerProcess(output_folder, enable_wandb, wandb_project, local_args)
     tmp_path = output_folder + "/_tmp"
     fs, run_tmp_dir = fsspec.core.url_to_fs(tmp_path)
     if not fs.exists(run_tmp_dir):
@@ -134,7 +153,7 @@ def video2dataset(
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    save_caption = caption_col is not None or captions_are_subtitles
+    save_caption = caption_col is not None or config["storage"]["captions_are_subtitles"]
 
     fs, output_path = fsspec.core.url_to_fs(output_folder)
 
@@ -168,126 +187,72 @@ def video2dataset(
         raise ValueError(f"Invalid output format {output_format}")
 
     if stage == "download":
-        shard_iterator = InputSharder(
+        shard_iterator = InputSharder(  # type: ignore
             url_list,
             input_format,
             url_col,
             caption_col,
             clip_col,
             save_additional_columns,
-            number_sample_per_shard,
+            config["storage"]["number_sample_per_shard"],
             done_shards,
             tmp_path,
-            sampler,
+            config["reading"]["sampler"],
         )
         worker = DownloadWorker(
             sample_writer_class=sample_writer_class,
             save_caption=save_caption,
             output_folder=output_folder,
             column_list=shard_iterator.column_list,
-            thread_count=thread_count,
-            timeout=timeout,
-            number_sample_per_shard=number_sample_per_shard,
-            oom_shard_count=oom_shard_count,
-            video_size=video_size,
-            resize_mode=resize_mode,
-            video_fps=video_fps,
-            audio_rate=audio_rate,
             tmp_dir=tmp_dir,
-            yt_metadata_args=yt_metadata_args,
-            captions_are_subtitles=captions_are_subtitles,
             encode_formats=encode_formats,
-            detect_cuts=detect_cuts,
-            cut_detection_mode=cut_detection_mode,
-            cut_framerates=cut_framerates,
-            cuts_are_clips=cuts_are_clips,
-            cut_detector_threshold=cut_detector_threshold,
-            cut_detector_min_scene_len=cut_detector_min_scene_len,
-            min_clip_length=min_clip_length,
-            max_clip_length=max_clip_length,
-            max_clip_length_strategy=max_clip_length_strategy,
-            clipping_precision=clipping_precision,
-            extract_compression_metadata=extract_compression_metadata,
+            config=config,
         )
     elif stage == "subset":
-        shard_iterator = OutputSharder(url_list, input_format, done_shards, sampler=sampler)  # type: ignore
+        shard_iterator = OutputSharder(
+            url_list, input_format, done_shards, sampler=config["reading"]["sampler"]  # type: ignore
+        )
+
         worker = SubsetWorker(  # type: ignore
             sample_writer_class=sample_writer_class,
             output_folder=output_folder,
-            thread_count=thread_count,
-            number_sample_per_shard=number_sample_per_shard,
-            oom_shard_count=oom_shard_count,
             encode_formats=encode_formats,
-            captions_are_subtitles=captions_are_subtitles,
-            video_size=video_size,
-            resize_mode=resize_mode,
-            video_fps=video_fps,
-            audio_rate=audio_rate,
-            detect_cuts=detect_cuts,
-            cut_detection_mode=cut_detection_mode,
-            cut_framerates=cut_framerates,
-            cuts_are_clips=cuts_are_clips,
-            cut_detector_threshold=cut_detector_threshold,
-            cut_detector_min_scene_len=cut_detector_min_scene_len,
-            min_clip_length=min_clip_length,
-            max_clip_length=max_clip_length,
-            max_clip_length_strategy=max_clip_length_strategy,
-            clipping_precision=clipping_precision,
-            extract_compression_metadata=extract_compression_metadata,
+            config=config,
         )
     elif stage == "optical_flow":
-        shard_iterator = OutputSharder(url_list, input_format, done_shards, sampler=sampler)  # type: ignore
-        if optical_flow_params is None:
-            optical_flow_params = {
-                "detector": "cv2",
-                "detector_args": None,
-                "fps": -1,
-                "downsample_size": None,
-                "dtype": "fp16",
-            }
-        else:
-            optical_flow_dtype = optical_flow_params.get("dtype", None)
-            if optical_flow_dtype:
-                assert optical_flow_dtype in [
-                    "fp16",
-                    "fp32",
-                ], "please select either fp16 or fp32 for optical flow dtype"
-            else:
-                optical_flow_params["dtype"] = "fp16"
-
-        is_slurm_task = "GLOBAL_RANK" in os.environ and distributor == "multiprocessing"
+        shard_iterator = OutputSharder(  # type: ignore
+            url_list, input_format, done_shards, sampler=config["reading"]["sampler"]
+        )
+        is_slurm_task = "GLOBAL_RANK" in os.environ and config["distribution"]["distributor"] == "multiprocessing"
         worker = OpticalFlowWorker(  # type: ignore
             sample_writer_class=sample_writer_class,
             output_folder=output_folder,
-            thread_count=thread_count,
-            number_sample_per_shard=number_sample_per_shard,
-            oom_shard_count=oom_shard_count,
             encode_formats=encode_formats,
-            optical_flow_params=optical_flow_params,
             is_slurm_task=is_slurm_task,
+            config=config,
         )
     else:
         raise ValueError(f"Invalid stage: {stage}")
 
     print("Starting the downloading of this file")
-    called_from_slurm = False
-    if distributor == "multiprocessing":
+    if config["distribution"]["distributor"] == "multiprocessing" or called_from_slurm:
         distributor_fn = multiprocessing_distributor
         called_from_slurm = "GLOBAL_RANK" in os.environ
-    elif distributor == "pyspark":
+    elif config["distribution"]["distributor"] == "pyspark":
         distributor_fn = pyspark_distributor
-    elif distributor == "slurm":
-        slurm_args = {"_".join(key.split("_")[1:]): local_args[key] for key in local_args if key.startswith("slurm")}
+    elif config["distribution"]["distributor"] == "slurm":
         worker_args = {key: local_args[key] for key in local_args if not key.startswith("slurm")}
+        slurm_args = config["distribution"]["distributor_args"]
+
         distributor_fn = SlurmDistributor(worker_args=worker_args, **slurm_args)
     else:
-        raise ValueError(f"Distributor {distributor} not supported")
+        raise ValueError(f"Distributor {config['distribution']['distributor']} not supported")
 
     distributor_fn(
-        processes_count,
+        config["distribution"]["processes_count"],
         worker,
         shard_iterator,
-        subjob_size,
+        config["distribution"]["subjob_size"],
         max_shard_retry,
     )
     logger_process.join()

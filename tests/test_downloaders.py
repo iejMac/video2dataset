@@ -17,10 +17,9 @@ full_encode_formats = {"video": "mp4", "audio": "m4a"}
 @pytest.mark.parametrize("video_size", [361, 1080])
 def test_yt_downloader(modalities, video_size):
     encode_formats = dict([(modality, full_encode_formats[modality]) for modality in modalities])
+    yt_args = {"download_size": video_size, "yt_metadata_args": None}
 
-    ytdlp_downloader = YtDlpDownloader(
-        tmp_dir="/tmp", metadata_args=None, video_size=video_size, audio_rate=12000, encode_formats=encode_formats
-    )
+    ytdlp_downloader = YtDlpDownloader(encode_formats, "/tmp", yt_args)
 
     modality_paths, yt_meta_dict, error_message = ytdlp_downloader(YT_URL)
     assert error_message is None
