@@ -11,12 +11,12 @@ subsampling:
         args:
             cut_detection_mode: "all"
             framerates: null
-            threshold: 27
+            threshold: 11.5
             min_scene_len: 15
     ClippingSubsampler:
         args:
             min_length: 4.0
-            max_length: 20.0
+            max_length: 10.0
             max_length_strategy: "all"
             precision: "keyframe_adjusted"
     FFProbeSubsampler:
@@ -27,12 +27,16 @@ reading:
     yt_args:
         download_size: 360
         download_audio_rate: 44100
-        yt_metadata_args: null
+        yt_metadata_args:
+            writesubtitles:  True
+            subtitleslangs: ['en']
+            writeautomaticsub: True
+            get_info: True
     timeout: 60
     sampler: null
 
 storage:
-    number_sample_per_shard: 10000
+    number_sample_per_shard: 1000
     oom_shard_count: 5
     captions_are_subtitles: False
 

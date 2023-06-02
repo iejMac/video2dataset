@@ -6,9 +6,6 @@ subsampling:
             dtype: "fp16"
 
 reading:
-    yt_args:
-        download_size: 360
-        yt_metadata_args: null
     dataloader_args:
         resize_size: 16
         decoder_kwargs:
