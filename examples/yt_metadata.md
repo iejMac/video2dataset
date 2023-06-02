@@ -15,6 +15,7 @@ yt_args:
         get_info: True
 ```
 
+Additionally if you specify `captions_are_subtitles` to be true in the storage parameters then each video and audio sample will be clipped according to the subtitles and divided into many unique samples.
 
 #### Output
 
