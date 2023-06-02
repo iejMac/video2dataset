@@ -38,23 +38,12 @@ video2dataset --url_list=myvidlist.txt --output_folder=output_folder
 
 The tool will then automatically download the urls and store them with that format:
 * output_folder
-    * 00000
+    * 00000{.ext if output_format != files, can be tar, parquet, tfrecord, etc.}
         * 000000000.mp4
         * 000000001.mp4
         * 000000002.mp4
 
-or as this format if choosing webdataset:
-* output_folder
-    * 00000.tar containing:
-        * 000000000.mp4
-        * 000000001.mp4
-        * 000000002.mp4
-
-with each number being the position in the list. The subfolders avoids having too many files in a single folder.
-
-If **captions** are provided, they will be saved as 0.txt, 1.txt, ...
-
-This can then easily be fed into machine learning training or any other use case.
+with each number being the position in the list. The subfolders avoids having too many files in a single folder. If **captions** are provided, they will be saved as 0.txt, 1.txt, etc. (matching the ID of the sample they belong to). This can then easily be fed into machine learning training or any other use case.
 
 Also .json files named 0.json, 1.json,... are saved with these keys:
 * url
@@ -71,7 +60,7 @@ It can be used to analyze the results efficiently.
 ### Output format choice
 
 video2dataset support several formats. There are trade off for which to choose:
-* files: this is the simplest one, images are simply saved as files. It's good for up to 1M samples on a local file system. Beyond that performance issues appear very fast. Handling more than a million files in standard filesystem does not work well.
+* files: this is the simplest one, videos are simply saved as files. It's good for up to 1M samples on a local file system. Beyond that performance issues appear very fast. Handling more than a million files in standard filesystem does not work well.
 * webdataset: webdataset format saves samples in tar files, thanks to [webdataset](https://webdataset.github.io/webdataset/) library, this makes it possible to load the resulting dataset fast in both pytorch, tensorflow and jax. Choose this for most use cases. It works well for any filesystem
 * parquet: parquet is a columnar format that allows fast filtering. It's particularly easy to read it using pyarrow and pyspark. Choose this if the rest of your data ecosystem is based on pyspark. [petastorm](https://github.com/uber/petastorm) can be used to read the data but it's not as easy to use as webdataset
 * tfrecord: tfrecord is a protobuf based format. It's particularly easy to use from tensorflow and using [tf data](https://www.tensorflow.org/guide/data). Use this if you plan to use the dataset only in the tensorflow ecosystem. The tensorflow writer does not use fsspec and as a consequence supports only a limited amount of filesystem, including local, hdfs, s3 and gcs. It is also less efficient than the webdataset writer when writing to other filesystems than local, losing some 30% performance.
