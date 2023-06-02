@@ -6,6 +6,8 @@ import pytest
 import tarfile
 import tempfile
 
+from omegaconf import OmegaConf
+from video2dataset.configs import CONFIGS
 from video2dataset.main import video2dataset
 
 
@@ -15,9 +17,12 @@ def test_e2e(input_file):
     url_list = os.path.join(current_folder, f"test_files/{input_file}")
 
     sample_count = len(pd.read_csv(url_list))
+    config = OmegaConf.to_container(CONFIGS["default"])
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        samples_per_shard = 10 if "webvid" in input_file else 3
+        config["storage"]["number_sample_per_shard"] = 10 if "webvid" in input_file else 3
+        samples_per_shard = config["storage"]["number_sample_per_shard"]
+        config["distribution"]["processes_count"] = 1
 
         video2dataset(
             url_list,
@@ -27,9 +32,7 @@ def test_e2e(input_file):
             url_col="contentUrl",
             caption_col="name",
             save_additional_columns=["videoid"],
-            video_size=360,
-            number_sample_per_shard=samples_per_shard,
-            processes_count=1,
+            config=config,
         )
 
         for shard in ["00000", "00001"] if sample_count / samples_per_shard > 1.0 else ["00000"]:
@@ -48,8 +51,6 @@ def test_e2e(input_file):
             input_format="webdataset",
             output_folder=tmpdir2,
             output_format="webdataset",
-            number_sample_per_shard=samples_per_shard,
-            processes_count=1,
             stage="subset",
             encode_formats={},  # only copy over metadata and caption
         )

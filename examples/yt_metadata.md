@@ -1,28 +1,21 @@
 ### Download YouTube metadata & subtitles:
 #### Usage
 
-This is how you can download a list of youtube videos along with the associated youtube metadata using video2dataset. You must pass in a yt_metadata_args parameter which will be used to specify what information you want in your json metadata in the output dataset. If you set the 'captions_are_subtitles' parameter (as is done in the example) video2dataset will take the video (and/or audio) and split it up according to the subtitles provided by youtube and make the text caption (txt file) of that given sample clip be the subtitle of the clip.
+In order to extract metadata from youtube videos you must configure your config such that the the `yt_metadata_args` entry is present in the `yt_args` key of the reading specifications as such:
 
-```py
-if __name__ == '__main__':
 
-    yt_metadata_args = {
-        'writesubtitles': True, # whether to write subtitles to a file
-        'subtitleslangs': ['en'], # languages of subtitles (right now support only one language)
-        'writeautomaticsub': True, # whether to write automatic subtitles
-        'get_info': True # whether to save a video meta data into the output JSON file
-    }
-
-    video2dataset(
-        url_list='input.parquet',
-        input_format='parquet',
-        output_format='files',
-        output_folder='audio',
-        yt_metadata_args=yt_metadata_args,
-	captions_are_subtitles=True,
-        encode_formats={"video": "mp4", "audio": "mp3"},
-    )
+```yaml
+yt_args:
+    download_size: 360
+    download_audio_rate: 44100
+    yt_metadata_args:
+        writesubtitles:  True
+        subtitleslangs: ['en']
+        writeautomaticsub: True
+        get_info: True
 ```
+
+Additionally if you specify `captions_are_subtitles` to be true in the storage parameters then each video and audio sample will be clipped according to the subtitles and divided into many unique samples.
 
 #### Output
 

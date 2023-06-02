@@ -11,7 +11,7 @@ from video2dataset.subsamplers import (
     ClippingSubsampler,
     _get_seconds,
     _split_time_frame,
-    MetadataSubsampler,
+    FFProbeSubsampler,
     ResolutionSubsampler,
     FrameSubsampler,
     AudioRateSubsampler,
@@ -219,7 +219,7 @@ def test_optical_flow_subsampler(detector, fps, params):
     step = int(native_fps / fps)
     raw_frames = np.array(frames)[::step]
 
-    subsampler = OpticalFlowSubsampler(detector, args=params)
+    subsampler = OpticalFlowSubsampler(detector, detector_args=params)
 
     optical_flow, metrics, error_message = subsampler(raw_frames)
     mean_magnitude, _ = metrics
@@ -240,14 +240,14 @@ def test_optical_flow_subsampler(detector, fps, params):
 
 
 @pytest.mark.parametrize("extract_keyframes", [False, True])
-def test_metadata_subsampler(extract_keyframes):
+def test_ffprobe_subsampler(extract_keyframes):
     current_folder = os.path.dirname(__file__)
     # video length - 2:02, 1080x1920, 30 fps
     video = os.path.join(current_folder, "test_files/test_video.mp4")
     with open(video, "rb") as vid_f:
         video_bytes = vid_f.read()
 
-    subsampler = MetadataSubsampler(extract_keyframes)
+    subsampler = FFProbeSubsampler(extract_keyframes)
 
     streams = {"video": [video_bytes]}
     metadata = {}
