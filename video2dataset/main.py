@@ -58,7 +58,7 @@ def video2dataset(
     Create datasets from video/audio links
 
     Args:
-    url_list: list of input urls - can be any of the supported input formats 
+    url_list: list of input urls - can be any of the supported input formats
         (csv, parquet, braceexpand tar paths etc.)
     output_folder: Desired location of output dataset
     output_format: Format of output dataset, can be
@@ -82,7 +82,7 @@ def video2dataset(
         - download, when input is some tabular format and data must be downloaded first
         - subset, tar files are already written and we would like to re-process (input_format == "webdataset")
         - optical_flow, tar files are written and we woudl like to compute optical_flow and save to md shards
-    url_col: Column in input (if has columns) that contains the url  
+    url_col: Column in input (if has columns) that contains the url
     caption_col: Column in input (if has columns) that contains captions (to be written as txt)
     clip_col: Column in input (if has columns) that contains timeframes of clips for how to split video
     save_additional_columns: List of column names to save to json component of a sample
