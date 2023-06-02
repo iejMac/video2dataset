@@ -133,9 +133,6 @@ class SlurmDistributor:
 
         self.timestamp = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
 
-        # change distributor type for the subprocesses
-        # worker_args["distributor"] = "multiprocessing"
-
         # save worker args to file (this is written by the slurm_executor)
         self.worker_args_as_file = os.path.join(self.cache_path, f"{self.timestamp}_worker_args.yaml")
         with self.fs.open(self.worker_args_as_file, "w", encoding="utf-8") as f:

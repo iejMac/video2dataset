@@ -114,6 +114,9 @@ def video2dataset(
         )
         config["reading"]["sampler"] = SlurmShardSampler(global_task_id=global_task_id, num_tasks=num_tasks)
 
+        # Only log from master
+        enable_wandb = enable_wandb and (global_task_id == 0)
+
     # TODO: find better location for this code
     # TODO: figure out minimum yt_meta_args for subtitles to be added to metadata
     if config["storage"]["captions_are_subtitles"]:
@@ -232,10 +235,6 @@ def video2dataset(
         raise ValueError(f"Invalid stage: {stage}")
 
     print("Starting the downloading of this file")
-    # TODO: slurm distributor sets arg distributor but that won't work here because of config
-    # I Think we can just set called_from_slurm normally here and based on that go into multiproc
-    # TODO: while you're at it fix the problem where each worker logs, when you set multiproc to true
-    # in spawned slurm procs also sent their enable_wandb to false unless its master worker
     if config["distribution"]["distributor"] == "multiprocessing" or called_from_slurm:
         distributor_fn = multiprocessing_distributor
         called_from_slurm = "GLOBAL_RANK" in os.environ
