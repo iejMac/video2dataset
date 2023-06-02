@@ -193,6 +193,8 @@ You can use `make black` to reformat the code
 
 ## Benchmarks
 
+For information about video2dataset speed please check out the [benchmark suite](https://github.com/iejMac/video2dataset/tree/main/benchmark) which contains code that produces performance numbers for subsamplers, over a grid of parameters, on a given architecture. It also contains a json file with some results we produced. This can be used to estimate costs of big runs and also to optimize the subsamplers.
+
 ## Citation
 ```
 @misc{beaumont-2023-video2dataset,
