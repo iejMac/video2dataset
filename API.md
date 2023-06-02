@@ -156,17 +156,22 @@ reading:
     sampler: null
 ```
 
-- `yt_args` are arguments used by the YtDlpDownloader, see [this](https://github.com/iejMac/video2dataset/blob/main/video2dataset/data_reader.py) file to find out what they mean
-- `dataloader_args` are areguments passed to the dataloader which will be used to load frames for stages that need them (f.e. optical flow). Follow [dataloader documentation](https://github.com/iejMac/video2dataset/blob/main/video2dataset/dataloader/dataloader.py) for that
-- `timeout` tells video2dataset the maximum time to consider downloading a video.
-- `sampler` is a class that samples shards from the input (f.e. used by slurm distributor to tell workers which shards to work on)
+Options:
+```
+yt_args: arguments used by the YtDlpDownloader, see [this](https://github.com/iejMac/video2dataset/blob/main/video2dataset/data_reader.py) file to find out what they mean
+dataloader_args: arguments passed to the dataloader which will be used to load frames for stages that need them (f.e. optical flow). Follow [dataloader documentation](https://github.com/iejMac/video2dataset/blob/main/video2dataset/dataloader/dataloader.py) for that
+timeout: tells video2dataset the maximum time to consider downloading a video.
+sampler: a class that samples shards from the input (f.e. used by slurm distributor to tell workers which shards to work on)
+```
 
 ### Storage
 
 The storage specification tells video2dataset how to store shards/samples. Here are the possible arguments:
-- `number_sample_per_shard` - how many samples should be in each shard
-- `oom_shard_count` - the order of magnitude of the number of shards, used only to decide what zero padding to use to name the shard files
-- `captions_are_subtitles` - If subtitles are present in metadata we can clip the video according to those by setting this parameter to True (TODO: this could be a ClippingSubsapler arg along with `cuts_are_clips`)
+```
+number_sample_per_shard: how many samples should be in each shard
+oom_shard_count: the order of magnitude of the number of shards, used only to decide what zero padding to use to name the shard files
+captions_are_subtitles: If subtitles are present in metadata we can clip the video according to those by setting this parameter to True (TODO: this could be a ClippingSubsapler arg along with `cuts_are_clips`)
+```
 
 ### Distribution
 
