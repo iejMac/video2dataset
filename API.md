@@ -105,17 +105,17 @@ This component of the config will contain a dict with subsampler names and their
 
 ```yaml
 SubsamplerName:
-    v2ds_arg1: "test"
+    ninit_arg1: "test"
     ...
-    v2ds_argn: "test"
+    ninit_argn: "test"
     args:
-        ss_init_arg1: 1
+        init_arg1: 1
         ...
-        ss_init_argn: n
+        init_argn: n
 ```
 
 The arguments within each subsampler are split into 2 groups:
-- initialization args: these are the arguments inside the "args" dict of each subsampler specification. If this is not present the subsampler will not be initialized. To check what values can be present in an "args" dict of a given subsampler check the documentation in the [docstring of a subsampler](https://github.com/iejMac/video2dataset/tree/main/video2dataset/subsamplers).
+- initialization args: these are the arguments inside the "args" dict of each subsampler specification. If this is not present the subsampler will not be initialized.
 - non-initialization args: the video2dataset worker will use these to perform operations outside the subsampler. They can be used to specify processes even without the presenece of the initialized subsampler. A good example is the `cuts_are_clips` parameter in the `CutDetectionSubsampler`. If we perform a stage where we detect cuts in the input videos and place those cuts in the metadata but do not clip the videos themselves we can simply perform this clipping in a subsequent stage without the need for re-computing those cuts. We would do this by *just* passing in the CutDetectionSubsampler specification without the *args* but adding `cuts_are_clips`. video2dataset would then just extract the cut information from the metadata and use that for clipping. It would look something like this:
 ```yaml
 ...
@@ -130,71 +130,72 @@ The arguments within each subsampler are split into 2 groups:
 ...
 ```
 
-
-
+To check what values can be present in a specification dict of a given subsampler check the documentation in the [docstring of the subsampler](https://github.com/iejMac/video2dataset/tree/main/video2dataset/subsamplers).
 
 ### Reading
 
+The reading component of the config informs video2dataset the preferred options for reading data from the specified source. Here is a maxed out reading specification (it has all possible options specified):
+
+```yaml
+reading:
+    yt_args:
+        download_size: 360
+        yt_metadata_args:
+	    writesubtitles:  True
+            subtitleslangs: ['en']
+            writeautomaticsub: True
+            get_info: True
+    dataloader_args:
+        resize_size: 16
+        decoder_kwargs:
+            n_frames: null
+            fps: 2
+            num_threads: 8
+            return_bytes: True
+    timeout: 60
+    sampler: null
+```
+
+- `yt_args` are arguments used by the YtDlpDownloader, see [this](https://github.com/iejMac/video2dataset/blob/main/video2dataset/data_reader.py) file to find out what they mean
+- `dataloader_args` are areguments passed to the dataloader which will be used to load frames for stages that need them (f.e. optical flow). Follow [dataloader documentation](https://github.com/iejMac/video2dataset/blob/main/video2dataset/dataloader/dataloader.py) for that
+- `timeout` tells video2dataset the maximum time to consider downloading a video.
+- `sampler` is a class that samples shards from the input (f.e. used by slurm distributor to tell workers which shards to work on)
+
 ### Storage
+
+The storage specification tells video2dataset how to store shards/samples. Here are the possible arguments:
+- `number_sample_per_shard` - how many samples should be in each shard
+- `oom_shard_count` - the order of magnitude of the number of shards, used only to decide what zero padding to use to name the shard files
+- `captions_are_subtitles` - If subtitles are present in metadata we can clip the video according to those by setting this parameter to True (TODO: this could be a ClippingSubsapler arg along with `cuts_are_clips`)
 
 ### Distribution
 
+The distribution specification tells video2dataset how to parallelize processing at multiple levels. There are 4 required arguments:
 
+```
+processes_count: The number of processes used for downloading the dataset at the shard level. This is important to be high for performance.
+thread_count: The number of threads to use for processing samples (sample level).
+subjob_size: the number of shards to download in each subjob supporting it, a subjob can be a pyspark job for example
+distributor: the type of distribution used, can be
+    - multiprocessing, uses multiprocessing pool to spawn processes
+    - spark, use a pyspark session to create workers on a spark cluster (see details in [doc](https://github.com/iejMac/video2dataset/blob/main/examples/distributed_spark.md))
+    - slurm, use slurm to distribute processing to multiple slurm workers
+```
 
+On top of these args some distributors like slurm need additional arguments. You can check the docstring of the distributor to see what needs to be specified and then fill in the `distributor_args` entry in the config. Here's an example (currently only slurm requires this):
 
-This module exposes a single function `download` which takes the same arguments as the command line tool:
-
-* **url_list** A file with the list of url of images to download. It can be a folder of such files. (*required*)
-* **output_folder** The path to the output folder. (default *"images"*)
-* **processes_count** The number of processes used for downloading the pictures. This is important to be high for performance. (default *1*)
-* **encode_formats** Dict of (modality, format) pairs specifying what file format each modality should be saved as. This determines which modalities will be written in the output dataset f.e. if we only specify audio only audio wil be saved (default *{"video": "mp4"}*)
-* **output_format** decides how to save pictures (default *files*)
-  * **files** saves as a set of subfolder containing pictures
-  * **webdataset** saves as tars containing pictures
-  * **parquet** saves as parquet containing pictures as bytes
-  * **tfrecord** saves as tfrecord containing pictures as bytes
-  * **dummy** does not save. Useful for benchmarks
-* **input_format** decides how to load the urls (default *txt*)
-  * **txt** loads the urls as a text file of url, one per line
-  * **csv** loads the urls and optional caption as a csv
-  * **tsv** loads the urls and optional caption as a tsv
-  * **tsv.gz** loads the urls and optional caption as a compressed (gzip) tsv.gz
-  * **json** loads the urls and optional caption as a json
-  * **parquet** loads the urls and optional caption as a parquet
-* **url_col** the name of the url column for parquet and csv (default *url*)
-* **caption_col** the name of the caption column for parquet and csv (default *None*)
-* **clip_col** the name of the column with a list of timespans for each clip (defualt *None*)
-* **save_additional_columns** list of additional columns to take from the csv/parquet files and save in metadata files (default *None*)
-* **number_sample_per_shard** the number of sample that will be downloaded in one shard (default *10000*)
-* **timeout** maximum time (in seconds) to wait when trying to download an image (default *10*)
-* **video_size** size of video frames (default *360*)
-* **resize_mode** what resizing transformations to apply to video resolution (default *None*)
-  * **scale** scale video keeping aspect ratios (currently always picks video height)
-  * **crop** center crop to video_size x video_size
-  * **pad** center pad to video_size x video_size
-* **video_fps** what FPS to resample the video to. If < 0 then video FPS remains unchanged (default *-1*)
-* **audio_rate** audio sampling rate, by default (-1) it is left unchanged from the downloaded video (default *-1*)
-* **enable_wandb** whether to enable wandb logging (default *False*)
-* **wandb_project** name of W&B project used (default *video2dataset*)
-* **oom_shard_count** the order of magnitude of the number of shards, used only to decide what zero padding to use to name the shard files (default *5*)
-* **distributor** choose how to distribute the downloading (default *multiprocessing*)
-  * **multiprocessing** use a multiprocessing pool to spawn processes
-  * **pyspark** use a pyspark session to create workers on a spark cluster (see details below)
-* **subjob_size** the number of shards to download in each subjob supporting it, a subjob can be a pyspark job for example (default *1000*)
-* **incremental_mode** Can be "incremental" or "overwrite". For "incremental", video2dataset will download all the shards that were not downloaded, for "overwrite" video2dataset will delete recursively the output folder then start from zero (default *incremental*)
-* **tmp_dir** name of temporary directory in your file system (default */tmp*)
-* **yt_metadata_args** dict of YouTube metadata arguments (default *None*, more info below)
-* **detect_cuts** whether or not to detect jump-cuts in each video and store as metadata (default *False*)
-* **cut_detection_mode** Can be either "longest" or "all" -- "longest" will select the longest contiguous (i.e. no jump-cuts) section of video, and "all" will select all contiguous sections of video to store in metadata (default *"longest"*)
-* **cut_framerates** a list of additional framerates to detect jump cuts at. If None, jump cuts will only be detected at the original framerate of the video (default *None*)
-* **cuts_are_clips** whether or not to turn each contiguous section of each input video into a distinct ouput video (default *False*)
-* **cut_detector_threshold** mean pixel difference to trigger a jump cut detection for the cut detector. A lower threshold yields a more sensitive cut detector with more jump cuts. (default *27*) 
-* **cut_detector_min_scene_len** minimum scene length for the cut detector (in frames). If the detector detects a jump cut and the distance from the previous cut is less than *cut_detector_min_scene_len* then the jump cut will not be annotated. (default *15*)
-* **stage** which stage of processing to execute in betweeen downloading + cheap subsampling and costly subsampling (default *"download"*)
-* **optical_flow_params** Dict containing parameters for optical flow detection. Keys can include *detector* ("cv2" or "raft", default "cv2"), *fps* (-1 or target fps, default *-1*), *detector_args* (additional args to pass to optical flow detector, default *None*), *downsample_size* (size to downsample shortest side of video to when detecting optical flow, default *None*), and *dtype* (datatype to store optical flow data in, default *np.float16*). Optional keys: *device* (only when using RAFT detector, lets you specify the device for the RAFT detector).
-* **min_clip_length** Minimum length in seconds of a clip. Below this the subsampler will reject the clips (default *0.0*)
-* **max_clip_length** Maximum length in seconds of a clip. Above this the ClippingSubsampler cuts up the long clip according to the max_clip_length_strategy (default *999999.0*)
-* **max_clip_length_strategy** Tells the ClippingSubsampler how to resolve clips that are too long. "first" means take the first max_clip_length clip, "all" means take all contiguous max_clip_length clips (default *"all"*)
-* **clipping_precision** informs the ClippingSubsampler how to clip the videos (see docstring for options (default *"low"*)
-* **extract_compression_metadata** If True, extracts information about codec and puts in metadata (default *False*)
-
+```yaml
+distribution:
+    processes_count: 1
+    thread_count: 8
+    subjob_size: 1000
+    distributor: "slurm"
+    distributor_args:
+        cpus_per_task: 96
+        job_name: "v2ds"
+        partition: "g80"
+        n_nodes: 2
+        gpus_per_node: 8
+        account: "stablediffusion"
+        tasks_per_node: 1
+```
