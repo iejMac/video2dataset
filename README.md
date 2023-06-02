@@ -9,10 +9,17 @@ Checkout the [design doc](https://docs.google.com/document/d/1_TD2KQLkEegszq4Eip
 
 ## Install
 
+```
 pip install video2dataset
+```
 
-## Examples
+Or from source via
 
+```
+git clone https://github.com/iejMac/video2dataset
+cd video2dataset
+pip install -e .
+```
 
 ## Usage
 
@@ -26,6 +33,8 @@ Then, run the tool:
 ```
 video2dataset --url_list=myvidlist.txt --output_folder=output_folder
 ```
+
+## Output format
 
 The tool will then automatically download the urls and store them with that format:
 * output_folder
@@ -58,6 +67,14 @@ Also a .parquet file will be saved with the same name as the subfolder/tar files
 It can be used to analyze the results efficiently.
 
 .json files will also be saved with the same name suffixed by _stats, they contain stats collected during downloading (download time, number of success, ...)
+
+### Output format choice
+
+video2dataset support several formats. There are trade off for which to choose:
+* files: this is the simplest one, images are simply saved as files. It's good for up to 1M samples on a local file system. Beyond that performance issues appear very fast. Handling more than a million files in standard filesystem does not work well.
+* webdataset: webdataset format saves samples in tar files, thanks to [webdataset](https://webdataset.github.io/webdataset/) library, this makes it possible to load the resulting dataset fast in both pytorch, tensorflow and jax. Choose this for most use cases. It works well for any filesystem
+* parquet: parquet is a columnar format that allows fast filtering. It's particularly easy to read it using pyarrow and pyspark. Choose this if the rest of your data ecosystem is based on pyspark. [petastorm](https://github.com/uber/petastorm) can be used to read the data but it's not as easy to use as webdataset
+* tfrecord: tfrecord is a protobuf based format. It's particularly easy to use from tensorflow and using [tf data](https://www.tensorflow.org/guide/data). Use this if you plan to use the dataset only in the tensorflow ecosystem. The tensorflow writer does not use fsspec and as a consequence supports only a limited amount of filesystem, including local, hdfs, s3 and gcs. It is also less efficient than the webdataset writer when writing to other filesystems than local, losing some 30% performance.
 
 
 ## API
@@ -112,14 +129,6 @@ If we want to download a large amount of YouTube videos with video2dataset we ca
 ## Incremental mode
 
 If a first download got interrupted for any reason, you can run again with --incremental "incremental" (this is the default) and using the same output folder , the same number_sample_per_shard and the same input urls, and video2dataset will complete the download.
-
-## Output format choice
-
-video2dataset support several formats. There are trade off for which to choose:
-* files: this is the simplest one, images are simply saved as files. It's good for up to 1M samples on a local file system. Beyond that performance issues appear very fast. Handling more than a million files in standard filesystem does not work well.
-* webdataset: webdataset format saves samples in tar files, thanks to [webdataset](https://webdataset.github.io/webdataset/) library, this makes it possible to load the resulting dataset fast in both pytorch, tensorflow and jax. Choose this for most use cases. It works well for any filesystem
-* parquet: parquet is a columnar format that allows fast filtering. It's particularly easy to read it using pyarrow and pyspark. Choose this if the rest of your data ecosystem is based on pyspark. [petastorm](https://github.com/uber/petastorm) can be used to read the data but it's not as easy to use as webdataset
-* tfrecord: tfrecord is a protobuf based format. It's particularly easy to use from tensorflow and using [tf data](https://www.tensorflow.org/guide/data). Use this if you plan to use the dataset only in the tensorflow ecosystem. The tensorflow writer does not use fsspec and as a consequence supports only a limited amount of filesystem, including local, hdfs, s3 and gcs. It is also less efficient than the webdataset writer when writing to other filesystems than local, losing some 30% performance.
 
 ## File system support
 
