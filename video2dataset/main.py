@@ -6,7 +6,7 @@ import fire
 import fsspec
 
 from omegaconf import OmegaConf
-from typing import List, Optional, Union, Dict, Any
+from typing import List, Optional, Any
 import numpy as np  # pylint: disable=unused-import
 
 from .logger import LoggerProcess
