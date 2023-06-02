@@ -217,3 +217,5 @@ We provide 3 example configs which can be used by setting the config parameter o
 - `default` - This performs no subsampling and attempts to download videos at either native resolution or close to 360p for youtube videos.
 - `downsample_ml` - performs resolution downsampling to 224x224 via a scale, center crop, and pad for smaller videos, downsamples FPS to 5, detects cuts, clips the videos according to those cuts and saves compression metadata from FFProbe.
 - `optical_flow` - takes a created tar dataset and computes the optical flow for the videos in it
+
+If you want to create your own config based on these you can copy them from video2dataset/configs
