@@ -43,13 +43,14 @@ The tool will then automatically download the urls and store them with that form
         * 000000001.mp4
         * 000000002.mp4
 
-with each number being the position in the list. The subfolders avoids having too many files in a single folder. If **captions** are provided, they will be saved as 0.txt, 1.txt, etc. (matching the ID of the sample they belong to). This can then easily be fed into machine learning training or any other use case.
+with each number being the position in the input table or the input shard ID. The subfolders avoids having too many files in a single folder. If **captions** are provided, they will be saved as 0.txt, 1.txt, etc. (matching the ID of the sample they belong to). This can then easily be fed into machine learning training or any other use case.
 
 Also .json files named 0.json, 1.json,... are saved with these keys:
 * url
 * caption
-* key of the form 000010005 : the first 5 digits are the shard id, the last 4 are the index in the shard
-* status : whether the download succeeded
+* key of the form 000010005: the first 5 digits are the shard id, the last 4 are the index in the shard
+* additionally gathered metadata (either specified from input table or collected during downloading/processing)
+* status: whether the download succeeded
 * error_message
 
 Also a .parquet file will be saved with the same name as the subfolder/tar files containing these same metadata.
