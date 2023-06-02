@@ -19,5 +19,5 @@ __all__ = [
     "NoOpSubsampler",
     "ResolutionSubsampler",
     "CutDetectionSubsampler",
-    "OpticalFlowSubsampler",
+    # "OpticalFlowSubsampler",
 ]

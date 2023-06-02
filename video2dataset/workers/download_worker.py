@@ -58,10 +58,6 @@ class DownloadWorker:
 
         self.data_reader = VideoDataReader(encode_formats, tmp_dir, config["reading"])
 
-        # Check all subsampler configs are valid:
-        for ss in self.config.get("subsampling", {}):
-            assert ss in __all__
-
         self.clipping_subsampler = ClippingSubsampler(
             5,  # oom_clip_count
             encode_formats,
