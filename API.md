@@ -157,11 +157,15 @@ reading:
 ```
 
 Options:
+
 ```
-yt_args: arguments used by the YtDlpDownloader, see [`this`](https://github.com/iejMac/video2dataset/blob/main/video2dataset/data_reader.py) file to find out what they mean
-dataloader_args: arguments passed to the dataloader which will be used to load frames for stages that need them (f.e. optical flow). Follow [`dataloader documentation`](https://github.com/iejMac/video2dataset/blob/main/video2dataset/dataloader/dataloader.py) for that
+yt_args: arguments used by the YtDlpDownloader, see the docstring of that class in data_reader.py for
+    an explanation on what they do.
+dataloader_args: arguments passed to the dataloader which will be used to load frames for stages that
+    need them (f.e. optical flow). Follow dataloader documentation for that
 timeout: tells video2dataset the maximum time to consider downloading a video.
-sampler: a class that samples shards from the input (f.e. used by slurm distributor to tell workers which shards to work on)
+sampler: a class that samples shards from the input (f.e. used by slurm distributor to tell workers 
+    which shards to work on)
 ```
 
 ### Storage
@@ -185,7 +189,7 @@ thread_count: The number of threads to use for processing samples (sample level)
 subjob_size: the number of shards to download in each subjob supporting it, a subjob can be a pyspark job for example
 distributor: the type of distribution used, can be
     - multiprocessing, uses multiprocessing pool to spawn processes
-    - spark, use a pyspark session to create workers on a spark cluster (see details in [`doc`](https://github.com/iejMac/video2dataset/blob/main/examples/distributed_spark.md))
+    - spark, use a pyspark session to create workers on a spark cluster (see details in `examples/distributed_spark.md`)
     - slurm, use slurm to distribute processing to multiple slurm workers
 ```
 
