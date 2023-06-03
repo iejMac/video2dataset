@@ -3,61 +3,87 @@
 
 Easily create large video dataset from video urls
 
-![Video2dataset design overview](video2dataset_overview.png)]
-
-Checkout the [design doc](https://docs.google.com/document/d/1_TD2KQLkEegszq4Eip568fc6cWnh9h0Jqj4Lc88t9Y0/edit#)
+![video2dataset design overview](video2dataset_overview.png)
 
 ## Install
 
+```
 pip install video2dataset
+```
 
-## Examples
+Or from source via
 
+```
+git clone https://github.com/iejMac/video2dataset
+cd video2dataset
+pip install -e .
+```
 
 ## Usage
 
-First get some video url list. For example:
+First get some video urls and metadata. For example lets save this small animal video dataset to a csv file called `videos.csv`
 ```
-echo 'https://www.youtube.com/watch?v=0WfKzVqdQqo' >> myvidlist.txt
+url,caption
+https://www.youtube.com/watch?v=od_PmtmMDV0,Driving to the banana store
+https://www.youtube.com/watch?v=8FhGOV7fs64,Polar bear eating
+https://www.youtube.com/watch?v=TReCLbmhlMs,Cat scared of printer
 ```
 
 Then, run the tool:
 
 ```
-video2dataset --url_list=myvidlist.txt --output_folder=output_folder
+video2dataset --url_list="videos.csv" --url_col="url" --caption_col="caption" --output_folder="dataset"
 ```
+If you go into the output folder you should see a nice small video dataset stored with all relevant metadata.
 
-The tool will then automatically download the urls and store them with that format:
+## Examples
+
+Here are some more concrete examples of video2dataset usage.
+
+#### WebVid download
+
+The WebVid dataset is a high quality video-text of 10M stock videos. It can be easily downloaded and stored using [one video2dataset command](https://github.com/iejMac/video2dataset/blob/readme_cleanup/examples/download_webvid.sh), to perform the same on the train split (much larger) you just need to swap out the csv file and update the distribution params to something more beefy. Here's an [example config](https://github.com/iejMac/video2dataset/blob/main/examples/default_slurm.yaml) that adjusts the default config for slurm distribution (so we can use many nodes to download it quickly).
+
+#### Dataloading
+
+Once you download some chunk of WebVid (or any video dataset) you can load it using our dataloader like in [this example](https://github.com/iejMac/video2dataset/blob/readme_cleanup/examples/dataloader_example.py). Try it out.
+
+#### Large processing job examples
+
+Whenever we do a large dataset processing job we document them in [dataset examples](https://github.com/iejMac/video2dataset/tree/readme_cleanup/dataset_examples) as many existing datasets are unique and might require special procesing or the authors just don't specify the best ways of getting the data. Thanks to this we can all share the most efficient ways of processing large video/audio datasets!
+
+## Output format
+
+The tool will automatically download the urls and store them with the format:
+
 * output_folder
-    * 00000
+    * 00000{.ext if output_format != files, can be tar, parquet, tfrecord, etc.}
         * 000000000.mp4
         * 000000001.mp4
         * 000000002.mp4
 
-or as this format if choosing webdataset:
-* output_folder
-    * 00000.tar containing:
-        * 000000000.mp4
-        * 000000001.mp4
-        * 000000002.mp4
-
-with each number being the position in the list. The subfolders avoids having too many files in a single folder.
-
-If **captions** are provided, they will be saved as 0.txt, 1.txt, ...
-
-This can then easily be fed into machine learning training or any other use case.
+with each number being the position in the input table or the input sample ID. The subfolders avoid having too many files in a single folder. If **captions** are provided, they will be saved as 0.txt, 1.txt, etc. (matching the ID of the sample they belong to). This can then easily be fed into machine learning training or any other use case.
 
 Also .json files named 0.json, 1.json,... are saved with these keys:
 * url
 * caption
-* key of the form 000010005 : the first 5 digits are the shard id, the last 4 are the index in the shard
-* status : whether the download succeeded
+* key of the form 000010005: the first 5 digits are the shard id, the last 4 are the index in the shard
+* additionally gathered metadata (either specified from input table or collected during downloading/processing)
+* status: whether the download succeeded
 * error_message
 
 Also a .parquet file will be saved with the same name as the subfolder/tar files containing these same metadata.
 It can be used to analyze the results efficiently.
 
 .json files will also be saved with the same name suffixed by _stats, they contain stats collected during downloading (download time, number of success, ...)
+
+### Output format choice
+
+video2dataset support several formats. There are trade off for which to choose:
+* files: this is the simplest one, videos are simply saved as files. It's good for up to 1M samples on a local file system. Beyond that performance issues appear very fast. Handling more than a million files in standard filesystem does not work well.
+* webdataset: webdataset format saves samples in tar files, thanks to [webdataset](https://webdataset.github.io/webdataset/) library, this makes it possible to load the resulting dataset fast in both pytorch, tensorflow and jax. Choose this for most use cases. It works well for any filesystem
+* parquet: parquet is a columnar format that allows fast filtering. It's particularly easy to read it using pyarrow and pyspark. Choose this if the rest of your data ecosystem is based on pyspark. [petastorm](https://github.com/uber/petastorm) can be used to read the data but it's not as easy to use as webdataset
+* tfrecord: tfrecord is a protobuf based format. It's particularly easy to use from tensorflow and using [tf data](https://www.tensorflow.org/guide/data). Use this if you plan to use the dataset only in the tensorflow ecosystem. The tensorflow writer does not use fsspec and as a consequence supports only a limited amount of filesystem, including local, hdfs, s3 and gcs. It is also less efficient than the webdataset writer when writing to other filesystems than local, losing some 30% performance.
 
 
 ## API
@@ -113,14 +139,6 @@ If we want to download a large amount of YouTube videos with video2dataset we ca
 
 If a first download got interrupted for any reason, you can run again with --incremental "incremental" (this is the default) and using the same output folder , the same number_sample_per_shard and the same input urls, and video2dataset will complete the download.
 
-## Output format choice
-
-video2dataset support several formats. There are trade off for which to choose:
-* files: this is the simplest one, images are simply saved as files. It's good for up to 1M samples on a local file system. Beyond that performance issues appear very fast. Handling more than a million files in standard filesystem does not work well.
-* webdataset: webdataset format saves samples in tar files, thanks to [webdataset](https://webdataset.github.io/webdataset/) library, this makes it possible to load the resulting dataset fast in both pytorch, tensorflow and jax. Choose this for most use cases. It works well for any filesystem
-* parquet: parquet is a columnar format that allows fast filtering. It's particularly easy to read it using pyarrow and pyspark. Choose this if the rest of your data ecosystem is based on pyspark. [petastorm](https://github.com/uber/petastorm) can be used to read the data but it's not as easy to use as webdataset
-* tfrecord: tfrecord is a protobuf based format. It's particularly easy to use from tensorflow and using [tf data](https://www.tensorflow.org/guide/data). Use this if you plan to use the dataset only in the tensorflow ecosystem. The tensorflow writer does not use fsspec and as a consequence supports only a limited amount of filesystem, including local, hdfs, s3 and gcs. It is also less efficient than the webdataset writer when writing to other filesystems than local, losing some 30% performance.
-
 ## File system support
 
 Thanks to [fsspec](https://filesystem-spec.readthedocs.io/en/latest/), video2dataset supports reading and writing files in [many file systems](https://github.com/fsspec/filesystem_spec/blob/6233f315548b512ec379323f762b70764efeb92c/fsspec/registry.py#L87).
@@ -135,7 +153,7 @@ If you need specific configuration for your filesystem, you may handle this prob
     "client_kwargs": {
             "endpoint_url": "https://some_endpoint",
             "aws_access_key_id": "your_user",
-           "aws_secret_access_key": "your_password"
+            "aws_secret_access_key": "your_password"
     }
   }
 }
@@ -147,18 +165,19 @@ Which may be necessary if using s3 compatible file systems such as [minio](https
 video2dataset supports several distributors.
 * multiprocessing which spawns a process pool and use these local processes for downloading
 * pyspark which spawns workers in a spark pool to do the downloading
+* slurm which starts separate worker nodes
 
 multiprocessing is a good option for downloading on one machine, and as such it is the default.
 Pyspark lets video2dataset use many nodes, which makes it as fast as the number of machines.
 It can be particularly useful if downloading datasets with more than a billion image. Here's an [example](https://github.com/iejMac/video2dataset/blob/main/examples/distributed_spark.md)
-for how we used pyspark distributed mode to download 40M videos with metadata.
+for how we used pyspark distributed mode to download 40M videos with metadata. If you have access to a slurm cluster it is more comfortable to use than pyspark but not everyone does.
 
 ### pyspark configuration
 
 In order to use video2dataset with pyspark, you will need to do this:
 1. `pip install pyspark`
-2. use the `--distributor pyspark` option
-3. tweak the `--subjob_size 1000` option: this is the number of images to download in each subjob. Increasing it will mean a longer time of preparation to put the feather files in the temporary dir, a shorter time will mean sending less shards at a time to the pyspark job.
+2. set `distributor: pyspark` in your config
+3. tweak the `subjob_size: 1000` option in your config. This is the number of videos to download in each subjob. Increasing it will mean a longer time of preparation to put the feather files in the temporary dir, a shorter time will mean sending less shards at a time to the pyspark job.
 
 By default a local spark session will be created.
 You may want to create a custom spark session depending on your specific spark cluster.
@@ -192,9 +211,7 @@ You can use `make black` to reformat the code
 
 ## Benchmarks
 
-## Special Contributors:
-
-* [ChatGPT](https://chat.openai.com) - FrameSubsampler implementation
+For information about video2dataset speed please check out the [benchmark suite](https://github.com/iejMac/video2dataset/tree/main/benchmark) which contains code that produces performance numbers for subsamplers, over a grid of parameters, on a given architecture. It also contains a json file with some results we produced. This can be used to estimate costs of big runs and also to optimize the subsamplers.
 
 ## Citation
 ```
