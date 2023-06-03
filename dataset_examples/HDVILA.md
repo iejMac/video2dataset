@@ -50,44 +50,62 @@ df.to_parquet("hd_vila.parquet")
 
 Once you run this, you should have a file `hd_vila.parquet` with all the relevant metadata.
 
+## Create the config for Stage 1
+
+Since we download these videos in HD we want to decrease the number of samples per shard (a good heuristic is having shards be ~1Gb). We also wanted to use fewer processes because the many shards being processed at once on a single machine exceeded RAM. Additionally we wanted to use slurm to process this dataset since we set up slurm distribution and it was easier to manage than pyspark. Finally we wanted to detect cuts for each video and place them in the metadata so we need to add a subsampler for that:
+
+```yaml
+subsampling:
+    CutDetectionSubsampler:
+        args:
+            cut_detection_mode: "all"
+            framerates: null
+            threshold: 11.5
+            min_scene_len: 15
+
+reading:
+    yt_args:
+        download_size: 360
+        download_audio_rate: 44100
+        yt_metadata_args:
+            writesubtitles:  True
+            subtitleslangs: ['en']
+            writeautomaticsub: True
+            get_info: True
+    timeout: 60
+    sampler: null
+
+storage:
+    number_sample_per_shard: 100
+    captions_are_subtitles: False
+
+distribution:
+    processes_count: 32
+    thread_count: 32
+    subjob_size: 10000
+    distributor: "slurm"
+    distributor_args:
+        partition: "cpu64"
+        n_nodes: 16
+        account: "laion"
+        cache_path: "/fsx/home-iejmac/.slurm_cache"
+```
+
 ## Stage 1 (Downloading + Cut Detection)
 
-This command runs video2dataset on the input parquet and saves the videos along with the metadata in the webdataset format.
+This command runs video2dataset on the input parquet and saves the videos and audio along with the metadata in the webdataset format.
 
 ```python
-from video2dataset import video2dataset
-
-if __name__ == '__main__':
-
-    yt_metadata_args = {
-        'writesubtitles': True, # whether to write subtitles to a file
-        'subtitleslangs': ['en'], # languages of subtitles (right now support only one language)
-        'writeautomaticsub': True, # whether to write automatic subtitles
-        'get_info': True # whether to save a video meta data into the output JSON file
-    }
-
-    video2dataset(
-        url_list='/fsx/proj-stablediffusion/datasets/hd-vila/hd_vila.parquet',
-        input_format='parquet',
-        output_format='webdataset',
-        output_folder='s3://stability-west/hd-vila/base_dataset',
-        url_col="url",
-        enable_wandb=True,
-        number_sample_per_shard=100,
-        subjob_size=10000,
-        processes_count=32,
-        thread_count=32,
-        detect_cuts=True,
-        cut_detection_mode="all",
-        yt_metadata_args=yt_metadata_args,
-        encode_formats={"video": "mp4", "audio": "m4a"},
-        slurm_partition="cpu64",
-        slurm_gpus_per_node=0,
-        slurm_n_nodes=16,
-        slurm_account="laion",
-        slurm_cache_path="/fsx/home-iejmac/.slurm_cache",
-        distributor="slurm",
-    )
+video2dataset(
+    url_list='/fsx/proj-stablediffusion/datasets/hd-vila/hd_vila.parquet',
+    input_format='parquet',
+    output_format='webdataset',
+    output_folder='s3://stability-west/hd-vila/base_dataset',
+    url_col="url",
+    enable_wandb=True,
+    encode_formats={"video": "mp4", "audio": "m4a"},
+    config="path/to/config.yaml"
+)
 ```
 
 ## Stage 1 Performance
