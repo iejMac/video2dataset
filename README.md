@@ -46,6 +46,10 @@ Here are some more concrete examples of video2dataset usage.
 
 The WebVid dataset is a high quality video-text of 10M stock videos. It can be easily downloaded and stored using [one video2dataset command](https://github.com/iejMac/video2dataset/blob/readme_cleanup/examples/download_webvid.sh), to perform the same on the train split (much larger) you just need to swap out the csv file and update the distribution params to something more beefy. Here's an [example config](https://github.com/iejMac/video2dataset/blob/main/examples/default_slurm.yaml) that adjusts the default config for slurm distribution (so we can use many nodes to download it quickly).
 
+#### Data Loading
+
+Once you download some chunk of WebVid (or any video dataset) you can load it using our dataloader like in [this example](https://github.com/iejMac/video2dataset/blob/readme_cleanup/examples/dataloader_example.py). Try it out.
+
 ## Output format
 
 The tool will automatically download the urls and store them with the format:
