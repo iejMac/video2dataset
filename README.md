@@ -3,7 +3,7 @@
 
 Easily create large video dataset from video urls
 
-![video2dataset design overview](video2dataset_overview.png)]
+![video2dataset design overview](video2dataset_overview.png)
 
 ## Install
 
