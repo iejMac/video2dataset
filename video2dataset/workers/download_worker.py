@@ -198,19 +198,6 @@ class DownloadWorker:
                         if error_message is not None:
                             raise Exception("failed_to_subsample")
 
-                            # failed_to_subsample += 1
-                            # status = "failed_to_subsample"
-                            # status_dict.increment(error_message)
-                            # meta["status"] = status
-                            # meta["error_message"] = error_message
-                            # sample_writer.write(
-                            #     {},
-                            #     key,
-                            #     sample_data[caption_indice] if caption_indice is not None else None,
-                            #    meta,
-                            # )
-                            # continue
-
                     if self.config["storage"]["captions_are_subtitles"]:  # create clips
                         subtitles = meta["yt_meta_dict"]["subtitles"]
                         meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
@@ -218,19 +205,7 @@ class DownloadWorker:
                         streams, cuts, error_message = self.cut_detector(streams)
 
                         if error_message is not None:
-                            failed_to_subsample += 1
-                            status = "failed_to_subsample"
-                            status_dict.increment(error_message)
-                            meta["status"] = status
-                            meta["error_message"] = error_message
-
-                            sample_writer.write(
-                                {},
-                                key,
-                                sample_data[caption_indice] if caption_indice is not None else None,
-                                meta,
-                            )
-                            continue
+                            raise Exception("failed_to_subsample")
 
                         meta["cuts"] = cuts
 
@@ -256,20 +231,8 @@ class DownloadWorker:
                             subsampled_streams, _, error_message = modality_subsampler(subsampled_streams)
 
                     if error_message is not None:
-                        failed_to_subsample += 1
-                        status = "failed_to_subsample"
-                        status_dict.increment(error_message)
-                        meta["status"] = status
                         meta["clips"] = []
-                        meta["error_message"] = error_message
-                        sample_writer.write(
-                            {},
-                            str_key,
-                            sample_data[caption_indice] if caption_indice is not None else None,
-                            meta,
-                        )
-                        semaphore.release()
-                        continue
+                        raise Exception("failed_to_subsample")
 
                     successes += 1
                     status = "success"
@@ -294,7 +257,6 @@ class DownloadWorker:
                     status = str(err)
                     if status.startswith("failed_to_"):
                         failed[status] += 1
-
                         status_dict.increment(error_message)
                         meta["status"] = status
                         meta["error_message"] = error_message
