@@ -135,8 +135,10 @@ class DownloadWorker:
 
         count = len(shard_to_dl)
         successes = 0
-        failed_to_download = 0
-        failed_to_subsample = 0
+        failed = {
+            "failed_to_download": 0,
+            "failed_to_subsample": 0,
+        }
         bytes_downloaded = 0
         url_indice = self.column_list.index("url")
         caption_indice = self.column_list.index("caption") if "caption" in self.column_list else None
@@ -181,23 +183,10 @@ class DownloadWorker:
                     }
 
                     if error_message is not None:
+                        print(error_message)
                         if "[youtube]" in error_message:  # video-specific error, remove videoID
                             error_message = "ERROR: [youtube]:" + error_message.split(":")[-1]
                         raise Exception("failed_to_download")
-                        '''
-                        failed_to_download += 1
-                        status = "failed_to_download"
-                        status_dict.increment(error_message)
-                        meta["status"] = status
-                        sample_writer.write(
-                            {},
-                            str_key,
-                            sample_data[caption_indice] if caption_indice is not None else None,
-                            meta,
-                        )
-                        semaphore.release()
-                        continue
-                        '''
 
                     for stream in streams.values():
                         bytes_downloaded += len(stream)
@@ -207,19 +196,20 @@ class DownloadWorker:
                     if self.ffprobe_subsampler is not None:
                         streams, meta, error_message = self.ffprobe_subsampler(streams, meta)
                         if error_message is not None:
-                            failed_to_subsample += 1
-                            status = "failed_to_subsample"
-                            status_dict.increment(error_message)
-                            meta["status"] = status
-                            meta["error_message"] = error_message
+                            raise Exception("failed_to_subsample")
 
-                            sample_writer.write(
-                                {},
-                                key,
-                                sample_data[caption_indice] if caption_indice is not None else None,
-                                meta,
-                            )
-                            continue
+                            # failed_to_subsample += 1
+                            # status = "failed_to_subsample"
+                            # status_dict.increment(error_message)
+                            # meta["status"] = status
+                            # meta["error_message"] = error_message
+                            # sample_writer.write(
+                            #     {},
+                            #     key,
+                            #     sample_data[caption_indice] if caption_indice is not None else None,
+                            #    meta,
+                            # )
+                            # continue
 
                     if self.config["storage"]["captions_are_subtitles"]:  # create clips
                         subtitles = meta["yt_meta_dict"]["subtitles"]
@@ -303,12 +293,11 @@ class DownloadWorker:
                 except Exception as err:  # pylint: disable=broad-except
                     status = str(err)
                     if status.startswith("failed_to_"):
-                        failed_to_download += 1
-                        # failed[status] += 1
+                        failed[status] += 1
 
-                        # status = "failed_to_download"
                         status_dict.increment(error_message)
                         meta["status"] = status
+                        meta["error_message"] = error_message
                         sample_writer.write(
                             {},
                             str_key,
@@ -334,8 +323,8 @@ class DownloadWorker:
             shard_id,
             count,
             successes,
-            failed_to_download,
-            failed_to_subsample,
+            failed['failed_to_download'],
+            failed['failed_to_subsample'],
             bytes_downloaded,
             start_time,
             end_time,
