@@ -45,16 +45,16 @@ This command runs video2dataset on the input table and saves the video clips alo
 
 ```python
 video2dataset(
-	url_list="/admin/home-iejmac/datasets/acav100m/ACAV100M_clip_unique.parquet",
-	output_folder="s3://s-laion/acav100m/mp4_acav100m",
-	output_format="webdataset",
-	input_format="parquet",
-	url_col="video_link",
-	caption_col="title",
-	clip_col="clips",
-	save_additional_columns=["videoID", "start", "end"],
-	enable_wandb=True,
-	config="path/to/config.yaml"
+    url_list="/admin/home-iejmac/datasets/acav100m/ACAV100M_clip_unique.parquet",
+    output_folder="s3://s-laion/acav100m/mp4_acav100m",
+    output_format="webdataset",
+    input_format="parquet",
+    url_col="video_link",
+    caption_col="title",
+    clip_col="clips",
+    save_additional_columns=["videoID", "start", "end"],
+    enable_wandb=True,
+    config="path/to/config.yaml"
 )
 ```
 

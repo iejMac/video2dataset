@@ -96,16 +96,16 @@ distribution:
 This command runs video2dataset on the input parquet and saves the videos and audio along with the metadata in the webdataset format.
 
 ```python
-    video2dataset(
-        url_list='/fsx/proj-stablediffusion/datasets/hd-vila/hd_vila.parquet',
-        input_format='parquet',
-        output_format='webdataset',
-        output_folder='s3://stability-west/hd-vila/base_dataset',
-        url_col="url",
-        enable_wandb=True,
-        encode_formats={"video": "mp4", "audio": "m4a"},
-	config="path/to/config.yaml"
-    )
+video2dataset(
+    url_list='/fsx/proj-stablediffusion/datasets/hd-vila/hd_vila.parquet',
+    input_format='parquet',
+    output_format='webdataset',
+    output_folder='s3://stability-west/hd-vila/base_dataset',
+    url_col="url",
+    enable_wandb=True,
+    encode_formats={"video": "mp4", "audio": "m4a"},
+    config="path/to/config.yaml"
+)
 ```
 
 ## Stage 1 Performance
