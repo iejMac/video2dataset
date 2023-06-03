@@ -12,18 +12,38 @@ df["video_link"] = df.apply(lambda row: f"https://youtube.com/watch?v={row['vide
 df["clips"] = df.apply(lambda row: [[row['start'], row['end']]], axis=1)
 ```
 
+## Create the appropriate video2dataset config
+
+Since we only want to download 10 second clips we can allow for more samples per shard than usual. Also since this is a massive dataset we want to use a different distributor like pyspark. We also want to specify that we should download the metadata of the video and include that into the json file of each sample using the `yt_metadata_args`.
+
+```yaml
+subsampling: {}
+
+reading:
+    yt_args:
+        download_size: 360
+        download_audio_rate: 44100
+        yt_metadata_args:
+            get_info: True
+    timeout: 60
+    sampler: null
+
+storage:
+    number_sample_per_shard: 2000
+    captions_are_subtitles: False
+
+distribution:
+    processes_count: 96
+    thread_count: 48
+    subjob_size: 10000
+    distributor: "pyspark"
+```
+
 ## Download the videos with video2dataset
 
 This command runs video2dataset on the input table and saves the video clips along with the metadata in the webdataset format.
 
 ```python
-
-# args specify we want to get all metadata from the video and save to the json component of the sample
-# this includes the title and description of the video
-yt_metadata_args = {
-	"get_info": True,  # whether to save a video meta data into the output JSON file
-}
-
 video2dataset(
 	url_list="/admin/home-iejmac/datasets/acav100m/ACAV100M_clip_unique.parquet",
 	output_folder="s3://s-laion/acav100m/mp4_acav100m",
@@ -34,13 +54,7 @@ video2dataset(
 	clip_col="clips",
 	save_additional_columns=["videoID", "start", "end"],
 	enable_wandb=True,
-	video_size=360,
-	number_sample_per_shard=2000,
-	subjob_size=10000,
-	processes_count=96,
-	thread_count=48,
-	distributor="pyspark",
-	yt_metadata_args=yt_metadata_args
+	config="path/to/config.yaml"
 )
 ```
 
