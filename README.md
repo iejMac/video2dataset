@@ -155,7 +155,7 @@ If you need specific configuration for your filesystem, you may handle this prob
     "client_kwargs": {
             "endpoint_url": "https://some_endpoint",
             "aws_access_key_id": "your_user",
-           "aws_secret_access_key": "your_password"
+            "aws_secret_access_key": "your_password"
     }
   }
 }
