@@ -40,7 +40,11 @@ If you go into the output folder you should see a nice small video dataset store
 
 ## Examples
 
-TODO
+Here are some more concrete examples of video2dataset usage.
+
+### WebVid Download
+
+The WebVid dataset is a high quality video-text of stock videos. It can be easily downloaded and stored using one video2dataset command. The script to do that is located [here](https://github.com/iejMac/video2dataset/blob/readme_cleanup/examples/download_webvid.sh)
 
 
 ## Output format
