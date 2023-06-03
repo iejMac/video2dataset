@@ -27,7 +27,7 @@ subsampling:
         args:
             cut_detection_mode: "all"
             framerates: null
-            threshold: 20
+            threshold: 11.5
             min_scene_len: 15
     ClippingSubsampler:
         args:
@@ -60,7 +60,12 @@ distribution:
     processes_count: 48
     thread_count: 48
     subjob_size: 1000
-    distributor: "multiprocessing"
+    distributor: "slurm"
+    distributor_args:
+        partition: "cpu64"
+        n_nodes: 50
+        account: "laion"
+        cache_path: "/fsx/home-iejmac/.slurm_cache"
 ```
 
 ## Download and process the videos using video2dataset:
@@ -76,5 +81,6 @@ video2dataset(
     url_col="video_url",
     encode_formats={"video": "mp4"},
     stage="download",
+    config="path/to/config.yaml"
 )
 ```
