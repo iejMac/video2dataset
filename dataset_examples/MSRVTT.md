@@ -55,6 +55,4 @@ video2dataset --url_list="msr-vtt-test.parquet" \
         --output_folder="/fsx/iejmac/datasets/msr-vtt/dataset" \
         --url_col="location" \
         --save_additional_columns='[video_id,category,id,caption_0,caption_1,caption_2,caption_3,caption_4,caption_5,caption_6,caption_7,caption_8,caption_9,caption_10,caption_11,caption_12,caption_13,caption_14,caption_15,caption_16,caption_17,caption_18,caption_19]' \
-        --number_sample_per_shard=3000 \
-        --processes_count 10
 ```
