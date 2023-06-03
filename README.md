@@ -23,7 +23,7 @@ pip install -e .
 
 ## Usage
 
-First get some video urls and metadata. For example lets save this small animal video dataset to a csv file called videos.csv
+First get some video urls and metadata. For example lets save this small animal video dataset to a csv file called `videos.csv`
 ```
 url,caption
 https://www.youtube.com/watch?v=od_PmtmMDV0,Driving to the banana store
@@ -36,6 +36,7 @@ Then, run the tool:
 ```
 video2dataset --url_list="videos.csv" --url_col="url" --caption_col="caption" --output_folder="dataset"
 ```
+If you go into the output folder you should see a nice small video dataset stored with all relevant metadata.
 
 ## Examples
 
