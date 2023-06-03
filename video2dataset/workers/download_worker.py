@@ -183,6 +183,8 @@ class DownloadWorker:
                     if error_message is not None:
                         if "[youtube]" in error_message:  # video-specific error, remove videoID
                             error_message = "ERROR: [youtube]:" + error_message.split(":")[-1]
+                        raise Exception("failed_to_download")
+                        '''
                         failed_to_download += 1
                         status = "failed_to_download"
                         status_dict.increment(error_message)
@@ -195,6 +197,7 @@ class DownloadWorker:
                         )
                         semaphore.release()
                         continue
+                        '''
 
                     for stream in streams.values():
                         bytes_downloaded += len(stream)
@@ -298,8 +301,26 @@ class DownloadWorker:
                             meta,
                         )
                 except Exception as err:  # pylint: disable=broad-except
-                    traceback.print_exc()
-                    print(f"Sample {key} failed to download: {err}")
+                    status = str(err)
+                    if status.startswith("failed_to_"):
+                        failed_to_download += 1
+                        # failed[status] += 1
+
+                        # status = "failed_to_download"
+                        status_dict.increment(error_message)
+                        meta["status"] = status
+                        sample_writer.write(
+                            {},
+                            str_key,
+                            sample_data[caption_indice] if caption_indice is not None else None,
+                            meta,
+                        )
+                        semaphore.release()
+                        continue
+                    else:
+                        traceback.print_exc()
+                        print(f"Sample {key} failed to download: {err}")
+
                 semaphore.release()
 
             sample_writer.close()
