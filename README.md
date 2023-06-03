@@ -23,16 +23,24 @@ pip install -e .
 
 ## Usage
 
-First get some video url list. For example:
+First get some video urls and metadata. For example lets save this small animal video dataset to a csv file called videos.csv
 ```
-echo 'https://www.youtube.com/watch?v=0WfKzVqdQqo' >> myvidlist.txt
+url,caption
+https://www.youtube.com/watch?v=od_PmtmMDV0,Driving to the banana store
+https://www.youtube.com/watch?v=8FhGOV7fs64,Polar bear eating
+https://www.youtube.com/watch?v=TReCLbmhlMs,Cat scared of printer
 ```
 
 Then, run the tool:
 
 ```
-video2dataset --url_list=myvidlist.txt --output_folder=output_folder
+video2dataset --url_list="videos.csv" --url_col="url" --caption_col="caption" --output_folder="dataset"
 ```
+
+## Examples
+
+TODO
+
 
 ## Output format
 
