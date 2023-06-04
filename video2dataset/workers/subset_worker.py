@@ -125,8 +125,8 @@ class SubsetWorker:
 
         successes = 0
         failed = {
-            "failed_to_download": 0
-            "failed_to_subsample": 0
+            "failed_to_download": 0,
+            "failed_to_subsample": 0,
         }
         error_message = None
 
