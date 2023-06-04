@@ -3,7 +3,7 @@
 
 Easily create large video dataset from video urls. Can download and package 10M videos in 12h on a single 16 core machine.
 
-![video2dataset design overview](video2dataset_overview.png)
+![video2dataset design overview](docs/video2dataset_overview.png)
 
 ## Install
 
@@ -187,6 +187,27 @@ You may want to create a custom spark session depending on your specific spark c
 As stated at the top of the README - video2dataset is capable of downloading 10M videos in 12h. For more details on end2end performance please see specific runs in [dataset examples](https://github.com/iejMac/video2dataset/tree/main/dataset_examples) as there are nuances to video (how long it is, where it comes from etc.). For example it takes considerably longer to pul videos from youtube than just mp4 links (compare [WebVid.md](https://github.com/iejMac/video2dataset/tree/main/dataset_examples/WebVid.md) to [VideoCC.md](https://github.com/iejMac/video2dataset/tree/main/dataset_examples/VideoCC.md)). Each example should have a "Performance" statement at the bottom which should contain info about download/processing performance (video/s, Mb/s) along with a cost estimate on popular cloud infrastructure.
 
 For information about video2dataset subsampler speed please check out the [benchmark suite](https://github.com/iejMac/video2dataset/tree/main/benchmark) which contains code that produces performance numbers for subsamplers, over a grid of parameters, on a given architecture. It also contains a json file with some results we produced. This can be used to estimate costs of big runs and also to optimize the subsamplers. NOTE: cost can drastically vary based on chosen subsampler configuration.
+
+## Integration with Weights & Biases
+
+If you pass the `--enable_wandb=True` parameter then performance metrics will be logged to [Weights & Biases](https://wandb.com/)
+
+![W&B metrics](docs/wandb_logs.png)
+
+In addition, most frequent errors are logged for easier debugging
+
+![W&B status](docs/wandb_status.png)
+
+Other features are available:
+
+* logging of environment configuration (OS, python version, CPU count, Hostname, etc)
+* monitoring of hardware resources (GPU/CPU, RAM, Disk, Networking, etc)
+* custom graphs and reports
+* comparison of runs (convenient when optimizing parameters such as number of threads/cpus)
+
+When running the script for the first time, you can decide to either associate your metrics to your account or log them anonymously.
+
+You can also log in (or create an account) before by running `wandb login`.	
 
 ## For development
 
