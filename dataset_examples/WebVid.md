@@ -1,6 +1,6 @@
 # [WebVid](https://m-bain.github.io/webvid-dataset/)
 
-The entirety of WebVid can be downloaded very easily using scripts/configs provided in video2dataset/examples.
+The entirety of WebVid can be downloaded very easily using scripts/configs provided in video2dataset/examples. You don't even need to use complex distribution strategies, multiprocessing is fine to download all 10M samples in a timely manner on a single machine.
 
 ## Create the config:
 
@@ -21,16 +21,10 @@ storage:
     captions_are_subtitles: False
 
 distribution:
-    processes_count: 32
-    thread_count: 32
+    processes_count: 16
+    thread_count: 16
     subjob_size: 1000
-    distributor: "slurm"
-    distributor_args:
-        cpus_per_task: 64
-        partition: "cpu64"
-        n_nodes: 50
-        account: "laion"
-        cache_path: "/fsx/home-iejmac/.slurm_cache"
+    distributor: "multiprocessing"
 ```
 
 ## Download WebVid:
@@ -50,3 +44,7 @@ video2dataset --url_list="results_10M_train.csv" \
         --enable_wandb=True \
 	--config="path/to/config.yaml" \
 ```
+
+## Performance
+
+On a single cpu16 (16 core) EC2 instance (c6i-4xlarge) the entirety of WebVid (10M samples) can be downloaded in ~12h. It achieves 230 video/s (14.4 videos/s/core) or 420 Mb/s and of course can be proportionally sped up by utilizing more nodes via spark or slurm distribution to reduce the processing time even more. The cost to download WebVid is ~ 0.68$/h * 12h = 8.16$

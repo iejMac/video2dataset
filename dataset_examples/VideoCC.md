@@ -84,3 +84,7 @@ video2dataset(
     config="path/to/config.yaml"
 )
 ```
+
+## Performance
+
+NOTE: VideoCC is a youtube-based dataset so it will be slower to download than mp4-based ones. On a single cpu16 (16 core) EC2 instance (c6i-4xlarge) the entirety of VideoCC (~5M samples) can be downloaded in ~220h. It achieves 5 video/s (0.31 videos/s/core) or 87 Mb/s and I highly recommend paralellizing this over many nodes. This means the cost to download VideoCC comes out to ~0.68$/hr * 220h = 150$
