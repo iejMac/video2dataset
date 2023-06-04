@@ -124,7 +124,10 @@ class SubsetWorker:
         )
 
         successes = 0
-        failed_to_subsample = 0
+        failed = {
+            "failed_to_download": 0
+            "failed_to_subsample": 0
+        }
         error_message = None
 
         dataloader = get_video_dataset(
@@ -148,40 +151,15 @@ class SubsetWorker:
                 if self.ffprobe_subsampler is not None:
                     streams, meta, error_message = self.ffprobe_subsampler(streams, meta)
                     if error_message is not None:
-                        failed_to_subsample += 1
-                        status = "failed_to_subsample"
-                        status_dict.increment(error_message)
-                        meta["status"] = status
-                        meta["error_message"] = error_message
-
-                        sample_writer.write(
-                            {},
-                            key,
-                            caption,
-                            meta,
-                        )
-                        continue
+                        raise Exception("failed_to_subsample")
 
                 if self.config["storage"]["captions_are_subtitles"]:  # create clips
                     subtitles = meta["yt_meta_dict"]["subtitles"]
                     meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
                 elif self.cut_detector is not None:  # apply cut detection to get clips
                     streams, cuts, error_message = self.cut_detector(streams)
-
                     if error_message is not None:
-                        failed_to_subsample += 1
-                        status = "failed_to_subsample"
-                        status_dict.increment(error_message)
-                        meta["status"] = status
-                        meta["error_message"] = error_message
-
-                        sample_writer.write(
-                            {},
-                            key,
-                            caption,
-                            meta,
-                        )
-                        continue
+                        raise Exception("failed_to_subsample")
 
                     meta["cuts"] = cuts
 
@@ -197,24 +175,16 @@ class SubsetWorker:
                     else self.noop_subsampler
                 )
                 subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
+                if error_message is not None:
+                    meta['clips'] = []
+                    raise Exception("failed_to_subsample")
+
                 for modality in subsampled_streams:
                     for modality_subsampler in self.subsamplers[modality]:
                         subsampled_streams, _, error_message = modality_subsampler(subsampled_streams)
 
                 if error_message is not None:
-                    failed_to_subsample += 1
-                    status = "failed_to_subsample"
-                    status_dict.increment(error_message)
-                    meta["status"] = status
-                    meta["error_message"] = error_message
-
-                    sample_writer.write(
-                        {},
-                        key,
-                        caption,
-                        meta,
-                    )
-                    continue
+                    raise Exception("failed_to_subsample")
 
                 successes += 1
                 status = "success"
@@ -245,8 +215,22 @@ class SubsetWorker:
                     )
 
             except Exception as err:  # pylint: disable=broad-except
-                traceback.print_exc()
-                print(f"Sample {key} failed to download: {err}")
+                status = str(err)
+                if status.startswith("failed_to_"):
+                    failed[status] += 1
+                    status_dict.increment(error_message)
+                    meta["status"] = status
+                    meta["error_message"] = error_message
+                    sample_writer.write(
+                        {},
+                        key,
+                        caption,
+                        meta,
+                    )
+                    continue
+                else:
+                    traceback.print_exc()
+                    print(f"Sample {key} failed to download: {err}")
 
         sample_writer.close()
         end_time = time.time()
@@ -257,7 +241,7 @@ class SubsetWorker:
             count,
             successes,
             0,  # failed to download
-            failed_to_subsample,
+            failed['failed_to_subsample'],
             0,  # bytes downloaded
             start_time,
             end_time,
