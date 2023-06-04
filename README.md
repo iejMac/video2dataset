@@ -44,6 +44,10 @@ Here are some more concrete examples of video2dataset usage.
 
 The WebVid dataset is a high quality video-text of 10M stock videos. It can be easily downloaded and stored using [one video2dataset command](https://github.com/iejMac/video2dataset/blob/main/examples/download_webvid.sh), to perform the same on the train split (much larger) you just need to swap out the csv file and update the distribution params to something more beefy. Here's an [example config](https://github.com/iejMac/video2dataset/blob/main/examples/default_slurm.yaml) that adjusts the default config for slurm distribution (so we can use many nodes to download it quickly).
 
+#### Re-processing
+
+video2dataset is designed such that you can chain together runs to re-process your downloaded data since `webdataset` is a valid `input_format`. Here's an example - with the WebVid data you downloaded in the previous example you can also run [this script](https://github.com/iejMac/video2dataset/blob/main/examples/optical_flow_webvid.sh) which will compute the optical flow for each video and store it in metadata shards (shards which only have the optical flow metadata in them). You can also run [this script](https://github.com/iejMac/video2dataset/blob/main/examples/downsample_webvid.sh) which will take those videos and perform resizing, fps downsampling, cut detection, and clipping and also store that in a new dataset. We make sure that the content in shards with the same IDs is the same across re-processing runs. Furthermore, if clipping is not performed shard IDs *and* sample IDs are exactly the same since clipping is the only transformation that changes the sample IDs i.e. if sample `000` is clipped into 3 clips they will be split into `000_000`, `000_001`, `000_002`.
+
 #### Dataloading
 
 Once you download some chunk of WebVid (or any video dataset) you can load it using our dataloader like in [this example](https://github.com/iejMac/video2dataset/blob/main/examples/dataloader_example.py). Try it out.
