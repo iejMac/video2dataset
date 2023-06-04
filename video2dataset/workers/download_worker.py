@@ -267,7 +267,6 @@ class DownloadWorker:
                             meta,
                         )
                         semaphore.release()
-                        continue
                     else:
                         traceback.print_exc()
                         print(f"Sample {key} failed to download: {err}")

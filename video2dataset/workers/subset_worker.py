@@ -227,7 +227,6 @@ class SubsetWorker:
                         caption,
                         meta,
                     )
-                    continue
                 else:
                     traceback.print_exc()
                     print(f"Sample {key} failed to download: {err}")
