@@ -47,5 +47,4 @@ video2dataset --url_list="results_10M_train.csv" \
 
 ## Performance
 
-
-
+On a single cpu16 (16 core) EC2 instance (c6i-4xlarge) the entirety of WebVid (10M samples) can be downloaded in ~12h. It achieves 230 video/s (14.4 videos/s/core) and of course can be proportionally sped up by utilizing more nodes via spark or slurm distribution to reduce the processing time even more. The cost to download WebVid is ~ 0.68$/h * 12h = 8.16$

@@ -1,7 +1,7 @@
 # video2dataset
 [![pypi](https://img.shields.io/pypi/v/video2dataset.svg)](https://pypi.python.org/pypi/video2dataset)
 
-Easily create large video dataset from video urls
+Easily create large video dataset from video urls. Can download and package 10M videos in 12h on a single 16 core machine.
 
 ![video2dataset design overview](video2dataset_overview.png)
 
