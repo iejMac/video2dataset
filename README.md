@@ -190,6 +190,25 @@ For information about video2dataset subsampler speed please check out the [bench
 
 ## Integration with Weights & Biases
 
+If you pass the `--enable_wandb=True` parameter then performance metrics will be logged to [Weights & Biases](https://wandb.com/)
+
+![W&B metrics](docs/wandb_logs.png)
+
+In addition, most frequent errors are logged for easier debugging
+
+![W&B status](docs/wandb_status.png)
+
+Other features are available:
+
+* logging of environment configuration (OS, python version, CPU count, Hostname, etc)
+* monitoring of hardware resources (GPU/CPU, RAM, Disk, Networking, etc)
+* custom graphs and reports
+* comparison of runs (convenient when optimizing parameters such as number of threads/cpus)
+
+When running the script for the first time, you can decide to either associate your metrics to your account or log them anonymously.
+
+You can also log in (or create an account) before by running `wandb login`.	
+
 ## For development
 
 Either locally, or in [gitpod](https://gitpod.io/#https://github.com/iejMac/video2dataset) (do `export PIP_USER=false` there)
