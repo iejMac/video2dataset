@@ -176,7 +176,7 @@ class SubsetWorker:
                 )
                 subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
                 if error_message is not None:
-                    meta['clips'] = []
+                    meta["clips"] = []
                     raise Exception("failed_to_subsample")
 
                 for modality in subsampled_streams:
@@ -241,7 +241,7 @@ class SubsetWorker:
             count,
             successes,
             0,  # failed to download
-            failed['failed_to_subsample'],
+            failed["failed_to_subsample"],
             0,  # bytes downloaded
             start_time,
             end_time,
