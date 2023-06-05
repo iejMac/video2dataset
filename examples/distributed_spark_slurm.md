@@ -152,7 +152,7 @@ def aws_ec2_s3_spark_session(master, num_cores=128, mem_gb=256):
         .config("spark.executor.memoryOverhead", memory_overhead)
         .config("spark.task.maxFailures", "2")
         .master(master)  # this should be set to the spark master url
-        .appName("cc2dataset")
+        .appName("video2dataset")
         .getOrCreate()
     )
     return spark
@@ -175,13 +175,6 @@ if __name__ == "__main__":
         clip_col="clip",
         save_additional_columns=["description", "videoID", "start", "end"],
         enable_wandb=True,
-        video_size=360,
-        strict_resize=False,
-        number_sample_per_shard=100,
-        subjob_size=10000,
-        processes_count=96,
-        thread_count=48,
-        distributor="pyspark",
     )
 ```
 
