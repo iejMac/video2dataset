@@ -1,6 +1,6 @@
 # Distributed video2dataset tutorial
 
-video2dataset can be used on a single machine to download and resize at around NEEDS BENCHMARKING sample/s/core.
+video2dataset can be used on a single machine to download at around 14 sample/s/core.
 
 However, what if you have billion of samples and you don't want to wait weeks ?
 
@@ -10,7 +10,7 @@ This document will help you setup such a cluster and run video2dataset on it.
 ## Where to get a cluster, what machines to use?
 
 These providers have been tested to work well with video2dataset:
-* aws c6i.4xlarge nodes ($0.68/h for NEEDS BENCHMARKING sample/s)
+* aws c6i.4xlarge nodes ($0.68/h for 230 sample/s)
 
 Ubuntu 20.04 works well with video2dataset. Centos7 also works.
 Other providers probably work too but haven't been tested.
@@ -268,12 +268,6 @@ video2dataset(
 	clip_col="clip",
 	save_additional_columns=["description", "videoID", "start", "end"],
 	enable_wandb=True,
-	video_size=360,
-	strict_resize=False,
-	number_sample_per_shard=100,
-	subjob_size=10000,
-	processes_count=96,
-	thread_count=48,
-	distributor="pyspark",
+	config="path/to/config.yaml"
 )
 ```

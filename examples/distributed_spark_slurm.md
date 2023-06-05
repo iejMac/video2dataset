@@ -4,7 +4,7 @@ Using PySpark for distributing work in video2dataset is preferred for larger dat
 
 ## Setup
 
-Download and extract spark via ```wget https://dlcdn.apache.org/spark/spark-3.3.1/spark-3.3.1-bin-hadoop3.tgz && tar xf spark-3.3.1-bin-hadoop3.tgz```.
+Download and extract spark via ```wget https://archive.apache.org/dist/spark/spark-3.3.1/spark-3.3.1-bin-hadoop3.tgz && tar xf spark-3.3.1-bin-hadoop3.tgz```. Make sure your pyspark version is the same.
 
 ## Creating the spark server
 
@@ -122,10 +122,6 @@ if __name__ == '__main__':
   fire.Fire(main)
 ```
 
-
-
-
-
 ## Running the video2dataset job
 
 Once you have the slurm cluster running you can ssh into the master node and simply run the following python script adjusted for your particular use case. You might need to adjust num_cores, mem_gb, master_node IP, etc.
@@ -152,7 +148,7 @@ def aws_ec2_s3_spark_session(master, num_cores=128, mem_gb=256):
         .config("spark.executor.memoryOverhead", memory_overhead)
         .config("spark.task.maxFailures", "2")
         .master(master)  # this should be set to the spark master url
-        .appName("cc2dataset")
+        .appName("video2dataset")
         .getOrCreate()
     )
     return spark
@@ -175,13 +171,6 @@ if __name__ == "__main__":
         clip_col="clip",
         save_additional_columns=["description", "videoID", "start", "end"],
         enable_wandb=True,
-        video_size=360,
-        strict_resize=False,
-        number_sample_per_shard=100,
-        subjob_size=10000,
-        processes_count=96,
-        thread_count=48,
-        distributor="pyspark",
     )
 ```
 

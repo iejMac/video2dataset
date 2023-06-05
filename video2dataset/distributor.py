@@ -71,6 +71,38 @@ def pyspark_distributor(processes_count, worker, input_sharder, subjob_size, max
         retrier(run, failed_shards, max_shard_retry)
 
 
+@contextmanager
+def _spark_session(processes_count: int):
+    """Create and close a spark session if none exist"""
+
+    from pyspark.sql import SparkSession  # pylint: disable=import-outside-toplevel
+    import pyspark  # pylint: disable=import-outside-toplevel
+
+    spark_major_version = int(pyspark.version.__version__[0])
+    if spark_major_version >= 3:
+        spark = SparkSession.getActiveSession()
+    else:
+        spark = pyspark.sql.SparkSession._instantiatedSession  # pylint: disable=protected-access
+
+    if spark is None:
+        print("No pyspark session found, creating a new one!")
+        owned = True
+        spark = (
+            SparkSession.builder.config("spark.driver.memory", "16G")
+            .master("local[" + str(processes_count) + "]")
+            .appName("spark-stats")
+            .getOrCreate()
+        )
+    else:
+        owned = False
+
+    try:
+        yield spark
+    finally:
+        if owned:
+            spark.stop()
+
+
 class SlurmShardSampler:
     """
     Should be callable to select samples based on the node_id
@@ -278,35 +310,3 @@ python {script} --worker_args {self.worker_args_as_file} --node_id $SLURM_NODEID
             print(f"job status is {status}")
 
         return status == "slurm_load_jobs error: Invalid job id specified" or len(status.split("\n")) == 2
-
-
-@contextmanager
-def _spark_session(processes_count: int):
-    """Create and close a spark session if none exist"""
-
-    from pyspark.sql import SparkSession  # pylint: disable=import-outside-toplevel
-    import pyspark  # pylint: disable=import-outside-toplevel
-
-    spark_major_version = int(pyspark.version.__version__[0])
-    if spark_major_version >= 3:
-        spark = SparkSession.getActiveSession()
-    else:
-        spark = pyspark.sql.SparkSession._instantiatedSession  # pylint: disable=protected-access
-
-    if spark is None:
-        print("No pyspark session found, creating a new one!")
-        owned = True
-        spark = (
-            SparkSession.builder.config("spark.driver.memory", "16G")
-            .master("local[" + str(processes_count) + "]")
-            .appName("spark-stats")
-            .getOrCreate()
-        )
-    else:
-        owned = False
-
-    try:
-        yield spark
-    finally:
-        if owned:
-            spark.stop()
