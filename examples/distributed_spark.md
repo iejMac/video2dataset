@@ -268,12 +268,6 @@ video2dataset(
 	clip_col="clip",
 	save_additional_columns=["description", "videoID", "start", "end"],
 	enable_wandb=True,
-	video_size=360,
-	strict_resize=False,
-	number_sample_per_shard=100,
-	subjob_size=10000,
-	processes_count=96,
-	thread_count=48,
-	distributor="pyspark",
+	config="path/to/config.yaml"
 )
 ```
