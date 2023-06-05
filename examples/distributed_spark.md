@@ -1,6 +1,6 @@
 # Distributed video2dataset tutorial
 
-video2dataset can be used on a single machine to download at around 5.0 sample/s/core.
+video2dataset can be used on a single machine to download at around 14 sample/s/core.
 
 However, what if you have billion of samples and you don't want to wait weeks ?
 
@@ -10,7 +10,7 @@ This document will help you setup such a cluster and run video2dataset on it.
 ## Where to get a cluster, what machines to use?
 
 These providers have been tested to work well with video2dataset:
-* aws c6i.4xlarge nodes ($0.68/h for NEEDS BENCHMARKING sample/s)
+* aws c6i.4xlarge nodes ($0.68/h for 230 sample/s)
 
 Ubuntu 20.04 works well with video2dataset. Centos7 also works.
 Other providers probably work too but haven't been tested.
