@@ -4,7 +4,7 @@ Using PySpark for distributing work in video2dataset is preferred for larger dat
 
 ## Setup
 
-Download and extract spark via ```wget https://archive.apache.org/dist/spark/spark-3.3.1/spark-3.3.1-bin-hadoop3.tgz && tar xf spark-3.3.1-bin-hadoop3.tgz```.
+Download and extract spark via ```wget https://archive.apache.org/dist/spark/spark-3.3.1/spark-3.3.1-bin-hadoop3.tgz && tar xf spark-3.3.1-bin-hadoop3.tgz```. Make sure your pyspark version is the same.
 
 ## Creating the spark server
 
@@ -121,10 +121,6 @@ def main(cpus=48, mem_in_gb=256,spark_path=None,job_id=None,command="start", spa
 if __name__ == '__main__':
   fire.Fire(main)
 ```
-
-
-
-
 
 ## Running the video2dataset job
 
