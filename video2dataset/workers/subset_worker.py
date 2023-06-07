@@ -205,7 +205,7 @@ class SubsetWorker:
 
                     text_caption = caption
                     if self.config["storage"]["captions_are_subtitles"]:
-                        text_caption = meta["yt_meta_dict"].pop("subtitles")
+                        text_caption = meta["yt_meta_dict"].get("subtitles")
 
                     sample_writer.write(
                         subsampled_streams,
