@@ -291,7 +291,8 @@ class FilesSampleWriter:
     def write(self, streams, key, caption, meta):
         """Write sample to disk"""
         for modality, stream in streams.items():
-            filename = f"{self.subfolder}/{key}.{self.encode_formats[modality]}"
+            ext = self.encode_formats[modality] if modality in self.encode_formats else modality
+            filename = f"{self.subfolder}/{key}.{ext}"
             with self.fs.open(filename, "wb") as f:
                 f.write(stream)
 
