@@ -49,7 +49,7 @@ class FrameSubsampler(Subsampler):
                         _ = _.output(f"{tmpdir}/output.mp4", reset_timestamps=1).run(capture_stdout=True, quiet=True)
                     elif "frame" in self.downsample_method:
                         _ = ffmpeg.input(f"{tmpdir}/input.mp4")
-                        _ = _.filter("select", f"eq(n,0)")
+                        _ = _.filter("select", "eq(n,0)")
                         _ = _.output(f"{tmpdir}/output.jpg").run(capture_stdout=True, quiet=True)
                         ext = "jpg"
 
