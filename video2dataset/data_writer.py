@@ -84,7 +84,8 @@ class ParquetSampleWriter:
         """Keep sample in memory then write to disk when close() is called"""
         sample = {"key": key}
         for modality, stream in streams.items():
-            sample[self.encode_formats[modality]] = stream
+            ext = self.encode_formats[modality] if modality in self.encode_formats else modality
+            sample[ext] = stream
 
         if self.save_caption:
             sample["txt"] = str(caption) if caption is not None else ""
@@ -128,7 +129,8 @@ class WebDatasetSampleWriter:
         """write sample to tars"""
         sample = {"__key__": key}
         for modality, stream in streams.items():
-            sample[self.encode_formats[modality]] = stream
+            ext = self.encode_formats[modality] if modality in self.encode_formats else modality
+            sample[ext] = stream
 
         if self.save_caption:
             sample["txt"] = str(caption) if caption is not None else ""
@@ -204,7 +206,8 @@ class TFRecordSampleWriter:
         """Write a sample using tfrecord writer"""
         sample = {"key": self._bytes_feature(key.encode())}
         for modality, stream in streams.items():
-            sample[self.encode_formats[modality]] = self._bytes_feature(stream)
+            ext = self.encode_formats[modality] if modality in self.encode_formats else modality
+            sample[ext] = self._bytes_feature(stream)
 
         if self.save_caption:
             sample["txt"] = self._bytes_feature(str(caption) if caption is not None else "")
@@ -291,7 +294,8 @@ class FilesSampleWriter:
     def write(self, streams, key, caption, meta):
         """Write sample to disk"""
         for modality, stream in streams.items():
-            filename = f"{self.subfolder}/{key}.{self.encode_formats[modality]}"
+            ext = self.encode_formats[modality] if modality in self.encode_formats else modality
+            filename = f"{self.subfolder}/{key}.{ext}"
             with self.fs.open(filename, "wb") as f:
                 f.write(stream)
 

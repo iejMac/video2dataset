@@ -179,7 +179,7 @@ class SubsetWorker:
                     meta["clips"] = []
                     raise Exception("failed_to_subsample")
 
-                for modality in subsampled_streams:
+                for modality in list(subsampled_streams.keys()):
                     for modality_subsampler in self.subsamplers[modality]:
                         subsampled_streams, _, error_message = modality_subsampler(subsampled_streams)
 
