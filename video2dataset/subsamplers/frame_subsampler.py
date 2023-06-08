@@ -51,7 +51,7 @@ class FrameSubsampler(Subsampler):
                         _ = ffmpeg.input(f"{tmpdir}/input.mp4")
                         _ = _.filter("select", f"eq(n,0)")
                         _ = _.output(f"{tmpdir}/output.jpg").run(capture_stdout=True, quiet=True)
-                        ext  = "jpg"
+                        ext = "jpg"
 
                 except Exception as err:  # pylint: disable=broad-except
                     return [], None, str(err)
