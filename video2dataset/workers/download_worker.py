@@ -245,7 +245,7 @@ class DownloadWorker:
 
                         text_caption = sample_data[caption_indice] if caption_indice is not None else None
                         if self.config["storage"]["captions_are_subtitles"]:
-                            text_caption = meta["yt_meta_dict"].get("subtitles")
+                            text_caption = meta.get("clip_subtitles")[0]["lines"][0]
 
                         sample_writer.write(
                             subsampled_streams,
