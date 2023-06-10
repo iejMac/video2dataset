@@ -25,7 +25,7 @@ from .distributor import (
     SlurmDistributor,
     SlurmShardSampler,
 )
-from .workers import DownloadWorker, SubsetWorker, OpticalFlowWorker
+from .workers import DownloadWorker, SubsetWorker, OpticalFlowWorker, WhisperWorker
 from .configs import CONFIGS
 
 
@@ -225,6 +225,18 @@ def video2dataset(
         )
         is_slurm_task = "GLOBAL_RANK" in os.environ and config["distribution"]["distributor"] == "multiprocessing"
         worker = OpticalFlowWorker(  # type: ignore
+            sample_writer_class=sample_writer_class,
+            output_folder=output_folder,
+            encode_formats=encode_formats,
+            is_slurm_task=is_slurm_task,
+            config=config,
+        )
+    elif stage == "whisperx":
+        shard_iterator = OutputSharder(  # type: ignore
+            url_list, input_format, done_shards, sampler=config["reading"]["sampler"]
+        )
+        is_slurm_task = "GLOBAL_RANK" in os.environ and config["distribution"]["distributor"] == "multiprocessing"
+        worker = WhisperWorker(  # type: ignore
             sample_writer_class=sample_writer_class,
             output_folder=output_folder,
             encode_formats=encode_formats,

@@ -10,6 +10,7 @@ from .noop_subsampler import NoOpSubsampler
 from .resolution_subsampler import ResolutionSubsampler
 from .cut_detection_subsampler import CutDetectionSubsampler
 from .optical_flow_subsampler import OpticalFlowSubsampler
+from .whisper_subsampler import WhisperSubsampler
 
 __all__ = [
     "AudioRateSubsampler",
@@ -20,4 +21,5 @@ __all__ = [
     "ResolutionSubsampler",
     "CutDetectionSubsampler",
     # "OpticalFlowSubsampler",
+    "WhisperSubsampler",
 ]
