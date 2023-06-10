@@ -5,6 +5,7 @@ import time
 import pyarrow as pa
 import traceback
 import io
+import json
 import numpy as np
 import fsspec
 import webdataset as wds
@@ -14,25 +15,9 @@ from video2dataset.subsamplers import WhisperSubsampler
 from video2dataset.dataloader import get_video_dataset
 
 
-def numpy_npy_dumps(numpy_array):
-    """
-    Dump a numpy array into a bytestring using numpy npy format.
-
-    Args:
-        numpy_array (numpy.ndarray): A numpy array.
-
-    Returns:
-        bytes: A bytestring representing the numpy array.
-    """
-
-    stream = io.BytesIO()
-    np.save(stream, numpy_array)
-    return stream.getvalue()
-
-
 class WhisperWorker:
     """
-    A class to read shards, process them using OpticalFlowSubsampler, and write the output.
+    A class to read shards, process them using WhisperSubsampler, and write the output.
 
     Attributes:
         sample_writer_class (type): The class used to write samples.
@@ -43,7 +28,7 @@ class WhisperWorker:
         encode_formats (dict): The encoding formats.
         detector (str): The optical flow detector type.
         fps (int): The target frames per second.
-        optical_flow_subsampler (OpticalFlowSubsampler): The OpticalFlowSubsampler instance.
+        optical_flow_subsampler (WhisperSubsampler): The WhisperSubsampler instance.
     """
 
     def __init__(
@@ -82,7 +67,7 @@ class WhisperWorker:
         row,
     ):
         """
-        Process a video shard using the OpticalFlowSubsampler.
+        Process a video shard using the WhisperSubsampler.
 
         Args:
             row (tuple): A tuple containing the shard and shard_id.
@@ -133,14 +118,11 @@ class WhisperWorker:
         )
         count = 0
         for sample in dset:
-            print(sample.keys())
-            '''
             count += 1
-            corrupted = sample["__corrupted__"][0]
-            key = sample["__key__"][0]
-            dummy_npy = numpy_npy_dumps(np.array([]))
+            corrupted = sample["__corrupted__"]
+            key = sample["__key__"]
             if corrupted:
-                url = sample["__url__"][0]
+                url = sample["__url__"]
                 meta = {}
                 meta["url"] = url
                 meta["key"] = key
@@ -152,16 +134,18 @@ class WhisperWorker:
                 meta["error_message"] = error_message
                 meta["__corrupted__"] = True
                 sample_writer.write(
-                    {"optical_flow": dummy_npy},
+                    {},
                     key,
                     None,
                     meta,
                 )
                 continue
-            meta = sample["json"][0]
-            streams = {}
-            frames = np.array(sample.get("mp4")[0]).astype(np.float32)
-            optical_flow, metrics, error_message = self.optical_flow_subsampler(frames)
+            meta = [json.loads(sample.get("json", b"{}").decode("utf-8"))]
+            streams = {"audio": [sample[self.encode_formats['audio']]]}
+            streams, meta, error_message = self.whisper_subsampler(streams, meta)
+
+            streams.pop("audio")  # only write metadata shards
+            meta = meta[0]  # remove when unifying workers (needs to be list)
 
             if error_message is not None:
                 failed_to_subsample += 1
@@ -171,7 +155,7 @@ class WhisperWorker:
                 meta["error_message"] = error_message
                 meta["__corrupted__"] = True
                 sample_writer.write(
-                    {"optical_flow": dummy_npy},
+                    {},
                     key,
                     None,
                     meta,
@@ -184,21 +168,12 @@ class WhisperWorker:
             meta["status"] = status
             meta["__corrupted__"] = False
 
-            mean_magnitude, mean_magnitude_per_frame = metrics
-            meta["mean_optical_flow_magnitude"] = mean_magnitude
-            meta["mean_optical_flow_magnitude_per_frame"] = mean_magnitude_per_frame
-            meta["optical_flow_fps"] = self.config["reading"]["dataloader_args"]["decoder_kwargs"]["fps"]
-            meta["optical_flow_downsample_size"] = self.config["reading"]["dataloader_args"]["resize_size"]
-            meta["optical_flow_dtype"] = str(self.optical_flow_subsampler.dtype)
-
-            streams["optical_flow"] = numpy_npy_dumps(optical_flow)
             sample_writer.write(
                 streams,
                 key,
                 None,
                 meta,
             )
-            '''
         sample_writer.close()
         end_time = time.time()
         return

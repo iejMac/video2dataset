@@ -20,6 +20,7 @@ from .data_writer import (
 from .input_sharder import InputSharder
 from .output_sharder import OutputSharder
 from .distributor import (
+    no_distributor,
     multiprocessing_distributor,
     pyspark_distributor,
     SlurmDistributor,
@@ -231,7 +232,7 @@ def video2dataset(
             is_slurm_task=is_slurm_task,
             config=config,
         )
-    elif stage == "whisperx":
+    elif stage == "whisper":
         shard_iterator = OutputSharder(  # type: ignore
             url_list, input_format, done_shards, sampler=config["reading"]["sampler"]
         )
@@ -248,7 +249,7 @@ def video2dataset(
 
     print("Starting the downloading of this file")
     if config["distribution"]["distributor"] == "multiprocessing" or called_from_slurm:
-        distributor_fn = multiprocessing_distributor
+        distributor_fn = multiprocessing_distributor if stage != "whisper" else no_distributor
         called_from_slurm = "GLOBAL_RANK" in os.environ
     elif config["distribution"]["distributor"] == "pyspark":
         distributor_fn = pyspark_distributor

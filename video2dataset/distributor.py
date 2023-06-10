@@ -26,6 +26,19 @@ def retrier(runf, failed_shards, max_shard_retry):
         )
 
 
+def no_distributor(process_count, worker, input_sharder, _, max_shard_retry):
+    def run(gen):
+        failed_shards = []
+        for shard in gen:
+            status, row = worker(shard)
+            if status is False:
+                failed_shards.append(row)
+        return failed_shards
+
+    failed_shards = run(input_sharder)
+    retrier(run, failed_shards, max_shard_retry)
+
+
 def multiprocessing_distributor(processes_count, worker, input_sharder, _, max_shard_retry):
     """Distribute the work to the processes using multiprocessing"""
     ctx = get_context("spawn")
