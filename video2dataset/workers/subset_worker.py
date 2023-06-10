@@ -205,7 +205,18 @@ class SubsetWorker:
 
                     text_caption = caption
                     if self.config["storage"]["captions_are_subtitles"]:
-                        text_caption = meta.get("clip_subtitles")[0]["lines"][0]
+                        # text_caption = meta.get("clip_subtitles")[0]["lines"][0]
+                        # TODO: hack, remove later
+                        subs = meta['yt_meta_dict']['subtitles']
+                        cur_sub = meta.get("clip_subtitles")[0]["lines"][0]
+                        prev_subs = []
+                        for s in subs:
+                            s_line = s['lines'][0]
+                            if s_line == cur_sub:
+                                break
+                            prev_subs.append(s_line)
+                        prev_subs = " ".join(prev_subs) 
+                        text_caption = prev_subs + " |<SUB>|" + cur_sub
 
                     sample_writer.write(
                         subsampled_streams,
