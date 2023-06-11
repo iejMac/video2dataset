@@ -1,5 +1,5 @@
 """
-WhisperX subsampler - transcribes audio using the Whisper model from OAI
+Whisper subsampler - transcribes audio using the Whisper model from OAI using WhisperX API
 
 code: https://github.com/m-bain/whisperX
 """

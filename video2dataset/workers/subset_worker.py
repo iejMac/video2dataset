@@ -12,7 +12,6 @@ from typing import List, Any
 from video2dataset.dataloader import get_video_dataset
 from video2dataset.logger import CappedCounter, write_stats
 from video2dataset.subsamplers import (
-    __all__,
     ClippingSubsampler,
     CutDetectionSubsampler,
     FrameSubsampler,

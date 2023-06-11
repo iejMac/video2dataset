@@ -26,7 +26,8 @@ def retrier(runf, failed_shards, max_shard_retry):
         )
 
 
-def no_distributor(process_count, worker, input_sharder, _, max_shard_retry):
+def no_distributor(process_count, worker, input_sharder, _, max_shard_retry):  # pylint: disable=unused-argument
+    """Go through shards sequentially (useful for when things don't like multiprocessing)"""
     def run(gen):
         failed_shards = []
         for shard in gen:

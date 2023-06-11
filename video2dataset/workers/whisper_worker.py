@@ -2,12 +2,10 @@
 Worker for optical flow stage
 """
 import time
-import pyarrow as pa
 import traceback
-import io
 import json
-import numpy as np
 import fsspec
+import pyarrow as pa
 import webdataset as wds
 
 from video2dataset.logger import CappedCounter, write_stats
@@ -176,7 +174,6 @@ class WhisperWorker:
             )
         sample_writer.close()
         end_time = time.time()
-        return
 
         write_stats(
             self.output_folder,
