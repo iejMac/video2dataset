@@ -16,7 +16,6 @@ from video2dataset.data_reader import VideoDataReader
 from video2dataset.logger import CappedCounter
 from video2dataset.logger import write_stats
 from video2dataset.subsamplers import (
-    __all__,
     ClippingSubsampler,
     CutDetectionSubsampler,
     FrameSubsampler,

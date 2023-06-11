@@ -20,12 +20,13 @@ from .data_writer import (
 from .input_sharder import InputSharder
 from .output_sharder import OutputSharder
 from .distributor import (
+    no_distributor,
     multiprocessing_distributor,
     pyspark_distributor,
     SlurmDistributor,
     SlurmShardSampler,
 )
-from .workers import DownloadWorker, SubsetWorker, OpticalFlowWorker
+from .workers import DownloadWorker, SubsetWorker, OpticalFlowWorker, WhisperWorker
 from .configs import CONFIGS
 
 
@@ -231,12 +232,24 @@ def video2dataset(
             is_slurm_task=is_slurm_task,
             config=config,
         )
+    elif stage == "whisper":
+        shard_iterator = OutputSharder(  # type: ignore
+            url_list, input_format, done_shards, sampler=config["reading"]["sampler"]
+        )
+        is_slurm_task = "GLOBAL_RANK" in os.environ and config["distribution"]["distributor"] == "multiprocessing"
+        worker = WhisperWorker(  # type: ignore
+            sample_writer_class=sample_writer_class,
+            output_folder=output_folder,
+            encode_formats=encode_formats,
+            is_slurm_task=is_slurm_task,
+            config=config,
+        )
     else:
         raise ValueError(f"Invalid stage: {stage}")
 
     print("Starting the downloading of this file")
     if config["distribution"]["distributor"] == "multiprocessing" or called_from_slurm:
-        distributor_fn = multiprocessing_distributor
+        distributor_fn = multiprocessing_distributor if stage != "whisper" else no_distributor
         called_from_slurm = "GLOBAL_RANK" in os.environ
     elif config["distribution"]["distributor"] == "pyspark":
         distributor_fn = pyspark_distributor
