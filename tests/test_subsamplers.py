@@ -283,7 +283,7 @@ def test_whisper_subsampler():
     with open(audio, "rb") as aud_f:
         audio_bytes = aud_f.read()
 
-    subsampler = WhisperSubsampler("small", 4, "float16")
+    subsampler = WhisperSubsampler("small", 4, "float32")
     streams = {"audio": [audio_bytes]}
     metadata = [{"key": "000"}]
 
