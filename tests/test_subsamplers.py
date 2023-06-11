@@ -289,6 +289,6 @@ def test_whisper_subsampler():
 
     _, metadata, error_message = subsampler(streams, metadata)
     assert error_message is None
-    transcript = metadata[0]['whisper_transcript']
-    assert transcript['segments'][0]['text'].startswith(" Bob Jones University in Greenville, South Carolina")
-    assert len(transcript['segments']) == 28
+    transcript = metadata[0]["whisper_transcript"]
+    assert transcript["segments"][0]["text"].startswith(" Bob Jones University in Greenville, South Carolina")
+    assert len(transcript["segments"]) == 28

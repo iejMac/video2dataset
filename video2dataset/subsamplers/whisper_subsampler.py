@@ -45,7 +45,7 @@ class WhisperSubsampler(Subsampler):
         audio_bytes = streams.get("audio")
 
         for i, aud_bytes in enumerate(audio_bytes):
-            # TODO: .m4a not always 
+            # TODO: .m4a not always
             with tempfile.NamedTemporaryFile(suffix=".m4a") as tmpfile:
                 tmpfile.write(aud_bytes)
                 tmpfile.flush()  # ensure all data is written

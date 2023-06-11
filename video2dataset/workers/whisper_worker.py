@@ -141,7 +141,7 @@ class WhisperWorker:
                 )
                 continue
             meta = [json.loads(sample.get("json", b"{}").decode("utf-8"))]
-            streams = {"audio": [sample[self.encode_formats['audio']]]}
+            streams = {"audio": [sample[self.encode_formats["audio"]]]}
             streams, meta, error_message = self.whisper_subsampler(streams, meta)
 
             streams.pop("audio")  # only write metadata shards
