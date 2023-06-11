@@ -10,3 +10,4 @@ tensorflow
 tensorflow_io
 torch
 types-pyyaml
+whisperx
