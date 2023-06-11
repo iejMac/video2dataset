@@ -19,6 +19,10 @@ class WhisperSubsampler(Subsampler):
     """
     Transcribes audio samples using the OAI Whisper Model via WhisperX API
 
+    Params:
+        model_name: https://github.com/guillaumekln/faster-whisper/blob/20d4e9418b5efb69ec5aa4819a39e3fb0e772a2a/faster_whisper/transcribe.py#LL90C1-L90C1
+        batch_size: batch size used during inference (try to maximize this for perf)
+        compute_type: accuracy/mem tradeoff (float16, float32, int8)
     """
 
     def __init__(

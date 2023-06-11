@@ -17,6 +17,7 @@ from video2dataset.subsamplers import (
     AudioRateSubsampler,
     CutDetectionSubsampler,
     OpticalFlowSubsampler,
+    WhisperSubsampler,
 )
 
 
@@ -274,3 +275,20 @@ def test_ffprobe_subsampler(extract_keyframes):
         assert len(video_metadata["keyframe_timestamps"]) > 0
     else:
         assert "keyframe_timestamps" not in metadata
+
+
+def test_whisper_subsampler():
+    current_folder = os.path.dirname(__file__)
+    audio = os.path.join(current_folder, "test_files/test_audio.mp3")
+    with open(audio, "rb") as aud_f:
+        audio_bytes = aud_f.read()
+
+    subsampler = WhisperSubsampler("small", 4, "float16")
+    streams = {"audio": [audio_bytes]}
+    metadata = [{"key": "000"}]
+
+    _, metadata, error_message = subsampler(streams, metadata)
+    assert error_message is None
+    transcript = metadata[0]['whisper_transcript']
+    assert transcript['segments'][0]['text'].startswith(" Bob Jones University in Greenville, South Carolina")
+    assert len(transcript['segments']) == 28
