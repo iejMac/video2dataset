@@ -227,7 +227,7 @@ class DownloadWorker:
 
                     for modality in subsampled_streams:
                         for modality_subsampler in self.subsamplers[modality]:
-                            subsampled_streams, _, error_message = modality_subsampler(subsampled_streams)
+                            subsampled_streams, metas, error_message = modality_subsampler(subsampled_streams, metas)
 
                     if error_message is not None:
                         meta["clips"] = []
