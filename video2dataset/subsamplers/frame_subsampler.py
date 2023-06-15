@@ -4,7 +4,6 @@ frame subsampler adjusts the fps of the videos to some constant value
 import tempfile
 import os
 import copy
-import glob
 import ffmpeg
 
 from .subsampler import Subsampler
