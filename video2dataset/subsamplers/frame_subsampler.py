@@ -56,26 +56,28 @@ class FrameSubsampler(Subsampler):
                         _ = _.output(f"{tmpdir}/output.jpg").run(capture_stdout=True, quiet=True)
                         ext = "jpg"
                     elif self.downsample_method == "yt_subtitle":
-                        subtitles = metadata[i]['yt_meta_dict']['subtitles']
-                        starts = [_get_seconds(s['start']) for s in subtitles]
+                        subtitles = metadata[i]["yt_meta_dict"]["subtitles"]
+                        starts = [_get_seconds(s["start"]) for s in subtitles]
 
                         for frame_id, start_t in enumerate(starts):
                             frame_key = f"{frame_id:04d}"
                             meta_frame = copy.deepcopy(metadata[i])
 
-                            meta_frame['frame_time'] = subtitles[frame_id]['start']
-                            meta_frame['frame_subtitle'] = subtitles[frame_id]['line']
-                            meta_frame['key'] = f"{meta_frame['key']}_{frame_key}"
+                            meta_frame["frame_time"] = subtitles[frame_id]["start"]
+                            meta_frame["frame_subtitle"] = subtitles[frame_id]["line"]
+                            meta_frame["key"] = f"{meta_frame['key']}_{frame_key}"
 
                             _ = ffmpeg.input(f"{tmpdir}/input.mp4", ss=start_t)
-                            _ = _.output(f"{tmpdir}/frame_{frame_id}.jpg", vframes=1, **{"q:v": 2}).run(capture_stdout=True, quiet=True)
+                            _ = _.output(f"{tmpdir}/frame_{frame_id}.jpg", vframes=1, **{"q:v": 2}).run(
+                                capture_stdout=True, quiet=True
+                            )
                             with open(f"{tmpdir}/frame_{frame_id}.jpg", "rb") as f:
                                 subsampled_bytes.append(f.read())
                             subsampled_metas.append(meta_frame)
 
                 except Exception as err:  # pylint: disable=broad-except
                     return [], None, str(err)
-                
+
                 if self.downsample_method != "yt_subtitle":
                     with open(f"{tmpdir}/output.{ext}", "rb") as f:
                         subsampled_bytes.append(f.read())
