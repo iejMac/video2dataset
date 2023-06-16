@@ -64,7 +64,7 @@ class FrameSubsampler(Subsampler):
                             meta_frame = copy.deepcopy(metadata[i])
 
                             meta_frame["frame_time"] = subtitles[frame_id]["start"]
-                            meta_frame["frame_subtitle"] = subtitles[frame_id]["line"]
+                            meta_frame["frame_subtitle"] = subtitles[frame_id]["lines"]
                             meta_frame["key"] = f"{meta_frame['key']}_{frame_key}"
 
                             _ = ffmpeg.input(f"{tmpdir}/input.mp4", ss=start_t)
