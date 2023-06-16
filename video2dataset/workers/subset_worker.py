@@ -180,7 +180,7 @@ class SubsetWorker:
 
                 for modality in list(subsampled_streams.keys()):
                     for modality_subsampler in self.subsamplers[modality]:
-                        subsampled_streams, _, error_message = modality_subsampler(subsampled_streams)
+                        subsampled_streams, metas, error_message = modality_subsampler(subsampled_streams, metas)
 
                 if error_message is not None:
                     raise Exception("failed_to_subsample")
