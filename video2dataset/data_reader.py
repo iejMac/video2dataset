@@ -251,16 +251,16 @@ class VideoDataReader:
         key, url = row
 
         meta_dict = None
-        # TODO: make nice function to detect what type of link we're dealing with
-        if get_file_info(url):  # web file that can be directly downloaded
-            modality_paths, error_message = self.webfile_downloader(url)
-        elif "youtube" in url:  # youtube link
-            try:
+        try:
+            # TODO: make nice function to detect what type of link we're dealing with
+            if get_file_info(url):  # web file that can be directly downloaded
+                modality_paths, error_message = self.webfile_downloader(url)
+            elif "youtube" in url:  # youtube link
                 modality_paths, meta_dict, error_message = self.yt_downloader(url)
-            except Exception as e:  # pylint: disable=(broad-except)
-                modality_paths, meta_dict, error_message = {}, None, str(e)
-        else:
-            modality_paths, error_message = {}, "Warning: Unsupported URL type"
+            else:
+                modality_paths, error_message = {}, "Warning: Unsupported URL type"
+        except Exception as e:  # pylint: disable=(broad-except)
+            modality_paths, meta_dict, error_message = {}, None, str(e)
 
         streams = {}
         for modality, modality_path in modality_paths.items():

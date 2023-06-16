@@ -16,7 +16,6 @@ from video2dataset.data_reader import VideoDataReader
 from video2dataset.logger import CappedCounter
 from video2dataset.logger import write_stats
 from video2dataset.subsamplers import (
-    __all__,
     ClippingSubsampler,
     CutDetectionSubsampler,
     FrameSubsampler,
@@ -228,7 +227,7 @@ class DownloadWorker:
 
                     for modality in subsampled_streams:
                         for modality_subsampler in self.subsamplers[modality]:
-                            subsampled_streams, _, error_message = modality_subsampler(subsampled_streams)
+                            subsampled_streams, metas, error_message = modality_subsampler(subsampled_streams, metas)
 
                     if error_message is not None:
                         meta["clips"] = []
