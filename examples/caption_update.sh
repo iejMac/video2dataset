@@ -8,11 +8,12 @@
 # 	--encode_formats '{"caption": "str"}' \
 # 	--config "caption" \
 
-
 video2dataset --url_list="/fsx/Andreas/stable-datasets/test_dataset/000/{000000..000009}.tar" \
 	--input_format="webdataset" \
 	--output-format="webdataset" \
 	--output_folder="test-captions/" \
 	--stage "caption" \
-	--encode_formats '{"caption": "str"}' \
+	--encode_formats '{"caption": "txt"}' \
 	--config "caption" \
+	--enable_wandb True \
+
