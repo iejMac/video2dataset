@@ -13,9 +13,12 @@ tqdm
 timeout-decorator
 scenedetect[opencv]
 decord
-torch>=2
+torch==2.0.0
 langdetect
 torchdata==0.6.0
-torchaudio>=2
+torchaudio==2.0.0
 soundfile
 omegaconf
+einops
+transformers==4.30.0
+Pillow

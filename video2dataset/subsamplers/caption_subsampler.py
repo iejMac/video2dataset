@@ -11,8 +11,6 @@ from functools import partial
 
 import torch
 import torch.nn as nn
-
-from PIL import Image
 from einops import rearrange, repeat
 
 from transformers import (
@@ -188,10 +186,11 @@ class VideoBlip:
         self.processor = Blip2Processor.from_pretrained(model)
         self.model = VideoBlipForConditionalGeneration.from_pretrained(model).to(self.device)
 
-    def infer(self, video):
-        video = rearrange(video, 't c h w -> c t h w')
-        # torch.Size([c, t, h, w]) -- 0, 255 uint8
-        video = (video * 255).round().byte()
+    def __call__(self, frames):
+        video = torch.from_numpy(frames)
+        video = rearrange(video, 't h w c -> c t h w')
+        video = video.round().byte()
+        # ([c, t, h, w]) --> 0, 255 & uint8
         inputs = process(self.processor, video=video, text=self.prompt).to(self.device)
         with torch.no_grad():
             generated_ids = self.model.generate(**inputs, 
@@ -218,23 +217,12 @@ class CaptionSubsampler(Subsampler):
             device = f"cuda:{local_rank}"
             captioner_args["device"] = device
         if not isinstance(captioner_args, AttrDict):
-            captioner_args = AttrDict(args)
+            captioner_args = AttrDict(captioner_args)
         self.captioner = VideoBlip(captioner_args)
 
     def __call__(self, frames):
-        optical_flow = []
-
-        frame1 = frames[0]
-        prvs = frame1
-
-        for frame2 in frames[1:]:
-            next_frame = frame2
-            flow = self.detector(prvs, next_frame)
-            optical_flow.append(flow)
-            prvs = next_frame
-
-        opt_flow = np.array(optical_flow)
-        mean_magnitude_per_frame = np.linalg.norm(opt_flow, axis=-1).mean(axis=(1, 2))
-        mean_magnitude = float(mean_magnitude_per_frame.mean())
-        metrics = [mean_magnitude, mean_magnitude_per_frame.tolist()]
-        return opt_flow.astype(self.dtype), metrics, None
+        try:
+            caption = self.captioner(frames)
+            return caption, None
+        except Exception as err:  # pylint: disable=broad-except
+            return [], str(err)

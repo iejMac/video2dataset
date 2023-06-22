@@ -1,14 +1,14 @@
 subsampling:
     CaptionSubsampler:
         args:
-            captioner_args: 
+            captioner_args:
                 video_captioner: "kpyu/video-blip-flan-t5-xl-ego4d"
                 llm: "TheBloke/Wizard-Vicuna-13B-Uncensored-HF"
                 prompt: null
 
 reading:
     dataloader_args:
-        resize_size: 16
+        resize_size: null
         decoder_kwargs:
             n_frames: null
             fps: 2
