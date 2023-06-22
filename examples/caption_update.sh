@@ -8,12 +8,10 @@
 # 	--encode_formats '{"caption": "str"}' \
 # 	--config "caption" \
 
-video2dataset --url_list="/fsx/Andreas/stable-datasets/test_dataset/000/{000000..000009}.tar" \
+video2dataset --url_list="s3://stability-west/acav/coca_fixed/" \
 	--input_format="webdataset" \
 	--output-format="webdataset" \
-	--output_folder="test-captions/" \
+	--output_folder="s3://stability-west/acav/new_captions/" \
 	--stage "caption" \
-	--encode_formats '{"caption": "txt"}' \
-	--config "caption" \
-	--enable_wandb True \
-
+	--encode_formats '{}' \
+	--config "/admin/home-iejmac/video2dataset/examples/caption.yaml" \

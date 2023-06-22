@@ -40,7 +40,7 @@ class CaptionWorker:
         self.sample_writer_class = sample_writer_class
         self.output_folder = output_folder
         self.encode_formats = encode_formats
-        self.save_caption = False
+        self.save_caption = True
         self.config = config
 
         self.caption_subsampler = CaptionSubsampler(
@@ -166,11 +166,11 @@ class CaptionWorker:
             meta["status"] = status
             meta["__corrupted__"] = False
 
-            streams["caption"] = caption
+            # streams["caption"] = caption
             sample_writer.write(
                 streams,
                 key,
-                None,
+                caption,
                 meta,
             )
 

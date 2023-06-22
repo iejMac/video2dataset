@@ -115,6 +115,7 @@ def video2dataset(
             * config["distribution"]["distributor_args"]["tasks_per_node"]
         )
         config["reading"]["sampler"] = SlurmShardSampler(global_task_id=global_task_id, num_tasks=num_tasks)
+        config["distribution"]["distributor"] = "multiprocessing"
 
         # Only log from master
         enable_wandb = enable_wandb and (global_task_id == 0)
