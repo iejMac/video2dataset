@@ -40,7 +40,7 @@ class CaptionWorker:
         self.sample_writer_class = sample_writer_class
         self.output_folder = output_folder
         self.encode_formats = encode_formats
-        self.save_caption = False
+        self.save_caption = True
         self.config = config
 
         self.caption_subsampler = CaptionSubsampler(
@@ -120,7 +120,6 @@ class CaptionWorker:
             count += 1
             corrupted = sample["__corrupted__"][0]
             key = sample["__key__"][0]
-            dummy_cap = ""
             if corrupted:
                 url = sample["__url__"][0]
                 meta = {}
@@ -134,8 +133,7 @@ class CaptionWorker:
                 meta["error_message"] = error_message
                 meta["__corrupted__"] = True
                 sample_writer.write(
-                    {"caption_combined": dummy_cap, \
-                        "caption_vblip": dummy_cap},
+                    streams,
                     key,
                     None,
                     meta,
@@ -154,8 +152,7 @@ class CaptionWorker:
                 meta["error_message"] = error_message
                 meta["__corrupted__"] = True
                 sample_writer.write(
-                    {"caption_combined": dummy_cap, \
-                        "caption_vblip": dummy_cap},
+                    streams,
                     key,
                     None,
                     meta,
@@ -168,12 +165,12 @@ class CaptionWorker:
             meta["status"] = status
             meta["__corrupted__"] = False
 
-            streams["caption_combined"] = caption[0]
-            streams["caption_vblip"] = caption[1]
+            # streams["caption_combined"] = caption[0]
+            # streams["caption_vblip"] = caption[1]
             sample_writer.write(
                 streams,
                 key,
-                None,
+                caption[0],
                 meta,
             )
 

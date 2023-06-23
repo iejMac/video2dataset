@@ -280,6 +280,9 @@ class CaptionSubsampler(Subsampler):
             local_rank = os.environ["LOCAL_RANK"]
             device = f"cuda:{local_rank}"
             captioner_args["device"] = device
+        else:
+            captioner_args["device"] = "cuda" if torch.cuda.is_available() else "cpu"
+
         if not isinstance(captioner_args, AttrDict):
             captioner_args = AttrDict(captioner_args)
         self.captioner = VideoBlipAndTxt(captioner_args)
