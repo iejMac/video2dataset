@@ -134,7 +134,8 @@ class CaptionWorker:
                 meta["error_message"] = error_message
                 meta["__corrupted__"] = True
                 sample_writer.write(
-                    {"caption": dummy_cap},
+                    {"caption_combined": dummy_cap, \
+                        "caption_vblip": dummy_cap},
                     key,
                     None,
                     meta,
@@ -143,7 +144,7 @@ class CaptionWorker:
             meta = sample["json"][0]
             streams = {}
             frames = np.array(sample.get("mp4")[0]).astype(np.float32)
-            caption, error_message = self.caption_subsampler(frames)
+            caption, error_message = self.caption_subsampler(frames, sample["txt"][0])
 
             if error_message is not None:
                 failed_to_subsample += 1
@@ -153,7 +154,8 @@ class CaptionWorker:
                 meta["error_message"] = error_message
                 meta["__corrupted__"] = True
                 sample_writer.write(
-                    {"caption": dummy_cap},
+                    {"caption_combined": dummy_cap, \
+                        "caption_vblip": dummy_cap},
                     key,
                     None,
                     meta,
@@ -166,7 +168,8 @@ class CaptionWorker:
             meta["status"] = status
             meta["__corrupted__"] = False
 
-            streams["caption"] = caption
+            streams["caption_combined"] = caption[0]
+            streams["caption_vblip"] = caption[1]
             sample_writer.write(
                 streams,
                 key,

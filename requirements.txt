@@ -22,3 +22,6 @@ omegaconf
 einops
 transformers==4.30.0
 Pillow
+accelerate
+bitsandbytes
+scipy

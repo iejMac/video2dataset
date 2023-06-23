@@ -13,7 +13,7 @@ video2dataset --url_list="/fsx/Andreas/stable-datasets/test_dataset/000/{000000.
 	--output-format="webdataset" \
 	--output_folder="test-captions/" \
 	--stage "caption" \
-	--encode_formats '{"caption": "txt"}' \
+	--encode_formats '{"caption_combined": "combined", "caption_vblip": "vblip"}' \
 	--config "caption" \
 	--enable_wandb True \
 
