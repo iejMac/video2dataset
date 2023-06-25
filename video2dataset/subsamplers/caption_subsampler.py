@@ -43,25 +43,26 @@ class AttrDict(dict):
 
 def process(
     processor: Blip2Processor,
-    video: torch.Tensor = None,
-    text = None,
+    video: torch.Tensor,
+    text,
 ) -> BatchEncoding:
     """Process videos and texts for VideoBLIP.
 
     :param images: a tensor of shape (batch, channel, time, height, width) or
         (channel, time, height, width)
     """
-    if video is not None:
-        if video.dim() == 4:
-            video = video.unsqueeze(0)
-        batch, channel, time, _, _ = video.size()
-        video = video.permute(0, 2, 1, 3, 4).flatten(end_dim=1)
-    inputs = processor(images=video, text=text, return_tensors="pt")
-    if video is not None:
-        _, _, height, weight = inputs.pixel_values.size()
-        inputs["pixel_values"] = inputs.pixel_values.view(
-            batch, time, channel, height, weight
-        ).permute(0, 2, 1, 3, 4)
+    # if video is not None:
+    #     if video.dim() == 4:
+    #         video = video.unsqueeze(0)S
+    #     batch, channel, time, _, _ = video.size()
+    #     video = video.permute(0, 2, 1, 3, 4).flatten(end_dim=1)
+    inputs = processor(images=None, text=text, return_tensors="pt")
+    inputs['pixel_values'] = video
+    # if video is not None:
+    #     _, _, height, weight = inputs.pixel_values.size()
+    #     inputs["pixel_values"] = inputs.pixel_values.view(
+    #         batch, time, channel, height, weight
+    #     ).permute(0, 2, 1, 3, 4)
     return inputs
 
 
@@ -184,14 +185,19 @@ class VideoBlip:
 
         self.device = args.get("device", "cuda")
         self.processor = Blip2Processor.from_pretrained(model)
-        self.model = VideoBlipForConditionalGeneration.from_pretrained(model).to(self.device)
 
-    def __call__(self, frames):
-        video = torch.from_numpy(frames)
-        video = rearrange(video, 't h w c -> c t h w')
-        video = video.round().byte()
-        # ([c, t, h, w]) --> 0, 255 & uint8
-        inputs = process(self.processor, video=video, text=self.prompt).to(self.device)
+        if ':' in self.device:
+            device_map = {'': int(self.device.split(':')[-1])}
+        else:
+            device_map = {'': 0}
+        self.model = VideoBlipForConditionalGeneration.from_pretrained(model, load_in_8bit=True, device_map=device_map)
+
+    def __call__(self, video):
+        video = video * 0.00392156862745098
+        video = (video - torch.Tensor([0.48145466, 0.4578275, 0.40821073])) / torch.Tensor([0.26862954, 0.26130258, 0.27577711])
+        video = rearrange(video, 'b t h w c -> b c t h w').to(torch.float16)
+
+        inputs = process(self.processor, video=video, text=[self.prompt] * video.shape[0]).to(self.device)
         with torch.no_grad():
             generated_ids = self.model.generate(**inputs, 
                 max_new_tokens=100,
@@ -202,7 +208,9 @@ class VideoBlip:
                 top_k=50, 
                 top_p=1.0, 
             )
-        generated_text = self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
+        generated_text = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
+        for idx in range(len(generated_text)):
+            generated_text[idx] = generated_text[idx].strip()
         return generated_text
 
 
@@ -217,17 +225,19 @@ class VideoBlipAndTxt:
 
         self.device = args.get("device", "cuda")
         self.processor = Blip2Processor.from_pretrained(model)
-        self.model = VideoBlipForConditionalGeneration.from_pretrained(model).to(self.device)
-        self.tokenizer = AutoTokenizer.from_pretrained(args.llm)
-        # self.model = AutoModelForCausalLM.from_pretrained(llm).to(self.device)
-        self.llm = AutoModelForCausalLM.from_pretrained(args.llm, device_map="auto", load_in_8bit=True)
 
-    def __call__(self, frames, original_caption):
-        video = torch.from_numpy(frames)
-        video = rearrange(video, 't h w c -> c t h w')
-        video = video.round().byte()
-        # ([c, t, h, w]) --> 0, 255 & uint8
-        inputs = process(self.processor, video=video, text=self.prompt).to(self.device)
+        device_map = {'': int(self.device.split(':')[-1])}
+        self.model = VideoBlipForConditionalGeneration.from_pretrained(model, load_in_8bit=True, device_map=device_map)
+
+        self.tokenizer = AutoTokenizer.from_pretrained(args.llm)
+        self.llm = AutoModelForCausalLM.from_pretrained(args.llm, load_in_8bit=True, device_map=device_map, )
+
+    def __call__(self, video, original_caption):
+        video = video * 0.00392156862745098
+        video = (video - torch.Tensor([0.48145466, 0.4578275, 0.40821073])) / torch.Tensor([0.26862954, 0.26130258, 0.27577711])
+        video = rearrange(video, 'b t h w c -> b c t h w').to(torch.float16)
+
+        inputs = process(self.processor, video=video, text=[self.prompt] * video.shape[0]).to(self.device)
         with torch.no_grad():
             generated_ids = self.model.generate(**inputs, 
                 max_new_tokens=100,
@@ -238,35 +248,45 @@ class VideoBlipAndTxt:
                 top_k=50, 
                 top_p=1.0, 
             )
-        vblip_caption = self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
+        vblip_caption = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
+        for idx in range(len(vblip_caption)):
+            vblip_caption[idx] = vblip_caption[idx].strip()
 
         # combine vblip with txt
-        prompt = f"""Here are two approximately correct video captions. First one is image-only caption of middle frame and second one is a brief video caption. Return a correct combined video caption by using both of these.
+        all_prompts = []
+        for batch_idx in range(len(original_caption)):
+            curr_orig_caption = original_caption[batch_idx]
+            curr_vblip_caption = vblip_caption[batch_idx]
+            prompt = f"""Here are two approximately correct video captions. First one is image-only caption of middle frame and second one is a brief video caption. Return a correct combined video caption by using both of these.
 
-        Image-only caption: a man in white shirt holding scissors near a bag of clothes .
-        Brief video caption: a man is cutting a piece of cloth .
-        Combined video caption: A man in white shirt is cutting a piece of cloth from a bag of clothes.
+            Image-only caption: a man in white shirt holding scissors near a bag of clothes .
+            Brief video caption: a man is cutting a piece of cloth .
+            Combined video caption: A man in white shirt is cutting a piece of cloth from a bag of clothes.
 
-        Image-only caption: a close up view of a geforce rtx gpu on a computer .
-        Brief video caption: the geforce rtx is being installed .
-        Combined video caption: A close up view of a geforce rtx gpu being installed on a computer. 
+            Image-only caption: a close up view of a geforce rtx gpu on a computer .
+            Brief video caption: the geforce rtx is being installed .
+            Combined video caption: A close up view of a geforce rtx gpu being installed on a computer. 
 
-        Image-only caption: an older man with a beard is sitting in front of a bush .
-        Brief video caption: a bald man is standing in front of bushes .
-        Combined video caption: An older bald man with a beard is sitting in front of a bush.
+            Image-only caption: an older man with a beard is sitting in front of a bush .
+            Brief video caption: a bald man is standing in front of bushes .
+            Combined video caption: An older bald man with a beard is sitting in front of a bush.
 
-        Image-only caption: a man with black hair and a black shirt is looking at the camera .
-        Brief video caption: a cartoon character is sitting in an office .
-        Combined video caption: A cartoon of a man with black hair and a black shirt sitting in an office. He is looking at the camera.
+            Image-only caption: a man with black hair and a black shirt is looking at the camera .
+            Brief video caption: a cartoon character is sitting in an office .
+            Combined video caption: A cartoon of a man with black hair and a black shirt sitting in an office. He is looking at the camera.
 
-        Image-only caption: {original_caption}
-        Brief video caption: {vblip_caption} .
-        Combined video caption: """
-        inputs = self.tokenizer(prompt, return_tensors="pt")
-        inputs = inputs.to(self.device)
+            Image-only caption: {curr_orig_caption}
+            Brief video caption: {curr_vblip_caption} .
+            Combined video caption: """
+            all_prompts.append(prompt)
+        inputs = self.tokenizer(all_prompts, return_tensors="pt")
+        inputs = inputs.to(self.device, torch.float16)
         output = self.llm.generate(inputs["input_ids"], num_beams=10, max_new_tokens=100)
-        combined_caption = self.tokenizer.decode(output[0].tolist()).split("Combined video caption: ")[-1]
-        combined_caption = combined_caption.replace('</s>', '').strip().lstrip('"').rstrip('"')
+        combined_caption = []
+        for elem in output:    
+            curr_comb_caption = self.tokenizer.decode(elem.tolist()).split("Combined video caption: ")[-1]
+            curr_comb_caption = curr_comb_caption.replace('</s>', '').strip().lstrip('"').rstrip('"')
+            combined_caption.append(curr_comb_caption)
         return combined_caption, vblip_caption
 
 
@@ -285,11 +305,14 @@ class CaptionSubsampler(Subsampler):
 
         if not isinstance(captioner_args, AttrDict):
             captioner_args = AttrDict(captioner_args)
-        self.captioner = VideoBlipAndTxt(captioner_args)
+        # self.captioner = VideoBlipAndTxt(captioner_args)
+        self.captioner = VideoBlip(captioner_args)
 
     def __call__(self, frames, original_caption):
         try:
-            combined_caption, vblip_caption = self.captioner(frames, original_caption)
-            return [combined_caption, vblip_caption], None
+            # combined_caption, vblip_caption = self.captioner(frames, original_caption)
+            # return [combined_caption, vblip_caption], None
+            combined_caption = self.captioner(frames)
+            return [combined_caption, ], None
         except Exception as err:  # pylint: disable=broad-except
             return [], str(err)

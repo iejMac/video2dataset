@@ -107,7 +107,7 @@ class CaptionWorker:
 
         dset = get_video_dataset(
             urls=shard,
-            batch_size=1,
+            batch_size=self.config["reading"]["dataloader_args"]["batch_size"],
             decoder_kwargs=self.config["reading"]["dataloader_args"]["decoder_kwargs"],
             resize_size=self.config["reading"]["dataloader_args"]["resize_size"],
             crop_size=None,
@@ -117,62 +117,85 @@ class CaptionWorker:
         )
         count = 0
         for sample in dset:
-            count += 1
-            corrupted = sample["__corrupted__"][0]
-            key = sample["__key__"][0]
-            if corrupted:
-                url = sample["__url__"][0]
-                meta = {}
-                meta["url"] = url
-                meta["key"] = key
-                error_message = "corrupted sample"
-                failed_to_subsample += 1
-                status = "failed_to_subsample"
-                status_dict.increment(error_message)
-                meta["status"] = status
-                meta["error_message"] = error_message
-                meta["__corrupted__"] = True
-                sample_writer.write(
-                    streams,
-                    key,
-                    None,
-                    meta,
-                )
+            batch_size = len(sample["__key__"])
+            count += batch_size
+            
+            bad_batch_idx = []
+            for batch_idx in range(batch_size):
+                corrupted = sample["__corrupted__"][batch_idx]
+                key = sample["__key__"][batch_idx]
+                if corrupted:
+                    bad_batch_idx.append(batch_idx)
+                    url = sample["__url__"][batch_idx]
+                    meta = {}
+                    meta["url"] = url
+                    meta["key"] = key
+                    error_message = "corrupted sample"
+                    failed_to_subsample += 1
+                    status = "failed_to_subsample"
+                    status_dict.increment(error_message)
+                    meta["status"] = status
+                    meta["error_message"] = error_message
+                    meta["__corrupted__"] = True
+                    sample_writer.write(
+                        streams,
+                        key,
+                        None,
+                        meta,
+                    )
+                    continue
+            
+            if len(bad_batch_idx) != 0:
+                bad_batch_idx.sort(reverse=True)
+                for key in sample:
+                    for i in bad_indices:
+                        del sample[key][i]
+
+            batch_size = len(sample["__key__"])
+            # incase all elems are corrupted
+            if batch_size == 0:
                 continue
-            meta = sample["json"][0]
+
+            meta = sample["json"]
             streams = {}
-            frames = np.array(sample.get("mp4")[0]).astype(np.float32)
-            caption, error_message = self.caption_subsampler(frames, sample["txt"][0])
+            caption, error_message = self.caption_subsampler(sample.get("mp4"), sample["txt"])
 
             if error_message is not None:
-                failed_to_subsample += 1
-                status = "failed_to_subsample"
-                status_dict.increment(error_message)
+                for batch_idx in range(batch_size):
+                    meta = sample["json"][batch_idx]
+                    key = sample["__key__"][batch_idx]
+                    failed_to_subsample += 1
+                    status = "failed_to_subsample"
+                    status_dict.increment(error_message)
+                    meta["status"] = status
+                    meta["error_message"] = error_message
+                    meta["__corrupted__"] = True
+                    sample_writer.write(
+                        streams,
+                        key,
+                        None,
+                        meta,
+                    )
+                    # continue
+                continue
+            
+            for batch_idx in range(batch_size):
+                meta = sample["json"][batch_idx]
+                key = sample["__key__"][batch_idx]
+                successes += 1
+                status = "success"
+                status_dict.increment(status)
                 meta["status"] = status
-                meta["error_message"] = error_message
-                meta["__corrupted__"] = True
+                meta["__corrupted__"] = False
+
+                # streams["caption_combined"] = caption[0]
+                # streams["caption_vblip"] = caption[1]
                 sample_writer.write(
                     streams,
                     key,
-                    None,
+                    caption[0][batch_idx],
                     meta,
                 )
-                continue
-
-            successes += 1
-            status = "success"
-            status_dict.increment(status)
-            meta["status"] = status
-            meta["__corrupted__"] = False
-
-            # streams["caption_combined"] = caption[0]
-            # streams["caption_vblip"] = caption[1]
-            sample_writer.write(
-                streams,
-                key,
-                caption[0],
-                meta,
-            )
 
         sample_writer.close()
         end_time = time.time()

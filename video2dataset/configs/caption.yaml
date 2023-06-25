@@ -8,10 +8,11 @@ subsampling:
 
 reading:
     dataloader_args:
-        resize_size: null
+        batch_size: 64
+        resize_size: [224, 224]
         decoder_kwargs:
-            n_frames: null
-            fps: 2
+            n_frames: 10
+            fps: null
             num_threads: 8
             return_bytes: True
     timeout: 60
@@ -22,8 +23,24 @@ storage:
     oom_shard_count: 5
     captions_are_subtitles: False
 
+# distribution:
+#     processes_count: 1
+#     thread_count: 8
+#     subjob_size: 1000
+#     distributor: "multiprocessing"
+
 distribution:
-    processes_count: 16
-    thread_count: 32
+    processes_count: 1
+    thread_count: 8
     subjob_size: 1000
-    distributor: "multiprocessing"
+    distributor: "slurm"
+    distributor_args:
+        cpus_per_task: 12
+        gpus_per_node: 8
+        tasks_per_node: 8
+        job_name: "v2ds"
+        partition: "g40"
+        n_nodes: 1
+        account: "stablediffusion"
+        cache_path: "/fsx/home-sumith/video2dataset/examples/.slurm_cache"
+
