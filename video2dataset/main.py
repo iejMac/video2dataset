@@ -263,7 +263,7 @@ def video2dataset(
 
     print("Starting the downloading of this file")
     if config["distribution"]["distributor"] == "multiprocessing" or called_from_slurm:
-        distributor_fn = multiprocessing_distributor if stage != "whisper" else no_distributor
+        distributor_fn = multiprocessing_distributor if stage not in ["whisper", "caption"] else no_distributor
         called_from_slurm = "GLOBAL_RANK" in os.environ
     elif config["distribution"]["distributor"] == "pyspark":
         distributor_fn = pyspark_distributor
