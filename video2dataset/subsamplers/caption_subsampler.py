@@ -23,6 +23,7 @@ from transformers import (
     Blip2QFormerModel,
     Blip2VisionModel,
     AutoTokenizer,
+    BitsAndBytesConfig
 )
 
 from transformers.modeling_outputs import BaseModelOutputWithPooling
@@ -225,12 +226,22 @@ class VideoBlipAndTxt:
 
         self.device = args.get("device", "cuda")
         self.processor = Blip2Processor.from_pretrained(model)
+        if ':' in self.device:
+            device_map = {'': int(self.device.split(':')[-1])}
+        else:
+            device_map = {'': 0}
 
-        device_map = {'': int(self.device.split(':')[-1])}
+        # bnb_config = BitsAndBytesConfig(
+        #     load_in_4bit=True,
+        #     bnb_4bit_use_double_quant=True,
+        #     bnb_4bit_quant_type="nf4",
+        #     bnb_4bit_compute_dtype=torch.bfloat16
+        # )
+        # self.model = VideoBlipForConditionalGeneration.from_pretrained(model, quantization_config=bnb_config, device_map=device_map)
         self.model = VideoBlipForConditionalGeneration.from_pretrained(model, load_in_8bit=True, device_map=device_map)
-
-        self.tokenizer = AutoTokenizer.from_pretrained(args.llm)
-        self.llm = AutoModelForCausalLM.from_pretrained(args.llm, load_in_8bit=True, device_map=device_map, )
+        self.tokenizer = AutoTokenizer.from_pretrained(args.llm, padding_side='left')
+        # self.llm = AutoModelForCausalLM.from_pretrained(args.llm, quantization_config=bnb_config, device_map=device_map)
+        self.llm = AutoModelForCausalLM.from_pretrained(args.llm, load_in_8bit=True, device_map=device_map)
 
     def __call__(self, video, original_caption):
         video = video * 0.00392156862745098
@@ -248,6 +259,7 @@ class VideoBlipAndTxt:
                 top_k=50, 
                 top_p=1.0, 
             )
+        
         vblip_caption = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
         for idx in range(len(vblip_caption)):
             vblip_caption[idx] = vblip_caption[idx].strip()
@@ -279,14 +291,14 @@ class VideoBlipAndTxt:
             Brief video caption: {curr_vblip_caption} .
             Combined video caption: """
             all_prompts.append(prompt)
-        inputs = self.tokenizer(all_prompts, return_tensors="pt")
-        inputs = inputs.to(self.device, torch.float16)
-        output = self.llm.generate(inputs["input_ids"], num_beams=10, max_new_tokens=100)
-        combined_caption = []
-        for elem in output:    
-            curr_comb_caption = self.tokenizer.decode(elem.tolist()).split("Combined video caption: ")[-1]
-            curr_comb_caption = curr_comb_caption.replace('</s>', '').strip().lstrip('"').rstrip('"')
-            combined_caption.append(curr_comb_caption)
+
+        inputs = self.tokenizer(all_prompts, return_tensors="pt", padding=True)
+        inputs = inputs.to(self.device)
+        output = self.llm.generate(inputs["input_ids"], num_beams=5, max_new_tokens=100)
+        combined_caption = self.tokenizer.batch_decode(output, skip_special_tokens=True)
+        for idx in range(len(combined_caption)):    
+            combined_caption[idx] = combined_caption[idx].split("Combined video caption: ")[-1]
+            combined_caption[idx] = combined_caption[idx].strip().lstrip('"').rstrip('"')
         return combined_caption, vblip_caption
 
 
@@ -305,13 +317,18 @@ class CaptionSubsampler(Subsampler):
 
         if not isinstance(captioner_args, AttrDict):
             captioner_args = AttrDict(captioner_args)
+        
+        ### for vblip + llm
         # self.captioner = VideoBlipAndTxt(captioner_args)
+        ### for vblip only
         self.captioner = VideoBlip(captioner_args)
 
     def __call__(self, frames, original_caption):
         try:
+            ### for vblip + llm
             # combined_caption, vblip_caption = self.captioner(frames, original_caption)
             # return [combined_caption, vblip_caption], None
+            ### for vblip only
             combined_caption = self.captioner(frames)
             return [combined_caption, ], None
         except Exception as err:  # pylint: disable=broad-except

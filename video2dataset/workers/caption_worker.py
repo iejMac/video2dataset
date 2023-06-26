@@ -6,6 +6,7 @@ import pyarrow as pa
 import traceback
 import io
 import numpy as np
+import torch
 import fsspec
 import webdataset as wds
 
@@ -138,18 +139,35 @@ class CaptionWorker:
                     meta["error_message"] = error_message
                     meta["__corrupted__"] = True
                     sample_writer.write(
-                        streams,
+                        {},
                         key,
                         None,
                         meta,
                     )
                     continue
             
+            # if len(bad_batch_idx) != 0:
+            #     bad_batch_idx.sort(reverse=True)
+            #     for key in sample:
+            #         for i in bad_batch_idx:
+            #             del sample[key][i]
+
             if len(bad_batch_idx) != 0:
                 bad_batch_idx.sort(reverse=True)
                 for key in sample:
-                    for i in bad_indices:
-                        del sample[key][i]
+                    if isinstance(sample[key], list):  # if the item is a list
+                        for i in bad_batch_idx:
+                            del sample[key][i]
+                    elif isinstance(sample[key], np.ndarray):  # if the item is a numpy array
+                        mask = np.ones(len(sample[key]), dtype=bool)  # create a mask of True values
+                        mask[bad_batch_idx] = False  # set the indices of the elements to remove to False
+                        sample[key] = sample[key][mask]  # apply the mask to the array
+                    elif isinstance(sample[key], torch.Tensor):  # if the item is a PyTorch tensor
+                        mask = torch.ones(len(sample[key]), dtype=bool)  # create a mask of True values
+                        mask[bad_batch_idx] = False  # set the indices of the elements to remove to False
+                        sample[key] = sample[key][mask]  # apply the mask to the tensor
+                    else:
+                        raise TypeError(f"Unsupported data type: {type(sample[key])}")
 
             batch_size = len(sample["__key__"])
             # incase all elems are corrupted
@@ -179,7 +197,32 @@ class CaptionWorker:
                     # continue
                 continue
             
+            # # for vblip + llm
+            # for batch_idx in range(batch_size):
+            #     sample["json"][batch_idx]["txt"] = sample["txt"][batch_idx]
+            #     sample["json"][batch_idx]["vblip"] = caption[1][batch_idx]
+            #     sample["json"][batch_idx]["vblip+llm"] = caption[0][batch_idx]
+
+            #     meta = sample["json"][batch_idx]
+            #     key = sample["__key__"][batch_idx]
+            #     successes += 1
+            #     status = "success"
+            #     status_dict.increment(status)
+            #     meta["status"] = status
+            #     meta["__corrupted__"] = False
+
+            #     sample_writer.write(
+            #         streams,
+            #         key,
+            #         caption[0][batch_idx],
+            #         meta,
+            #     )
+
+            # for vblip only
             for batch_idx in range(batch_size):
+                sample["json"][batch_idx]["txt"] = sample["txt"][batch_idx]
+                sample["json"][batch_idx]["vblip"] = caption[0][batch_idx]
+
                 meta = sample["json"][batch_idx]
                 key = sample["__key__"][batch_idx]
                 successes += 1
@@ -188,8 +231,6 @@ class CaptionWorker:
                 meta["status"] = status
                 meta["__corrupted__"] = False
 
-                # streams["caption_combined"] = caption[0]
-                # streams["caption_vblip"] = caption[1]
                 sample_writer.write(
                     streams,
                     key,

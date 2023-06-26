@@ -8,11 +8,10 @@
 # 	--encode_formats '{"caption": "str"}' \
 # 	--config "caption" \
 
-# video2dataset --url_list="s3://stability-west/acav/coca_fixed/" \
 rm -rf "test-captions/"
 video2dataset --url_list="/fsx/Andreas/stable-datasets/test_dataset/000/{000000..000009}.tar" \
 	--input_format="webdataset" \
-	--output-format="files" \
+	--output-format="webdataset" \
 	--output_folder="test-captions/" \
 	--stage "caption" \
 	--encode_formats '{}' \
