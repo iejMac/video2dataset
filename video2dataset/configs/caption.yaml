@@ -12,7 +12,8 @@ reading:
         # batch_size: 2 # for vblip + llm on g40
         resize_size: [224, 224]
         decoder_kwargs:
-            n_frames: 10
+            subsample_frames: 8
+            n_frames: null
             fps: null
             num_threads: 8
             return_bytes: True
