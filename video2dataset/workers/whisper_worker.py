@@ -141,14 +141,12 @@ class WhisperWorker:
             meta = [json.loads(sample.get("json", b"{}").decode("utf-8"))]
             streams = {"audio": [sample[self.encode_formats["audio"]]]}
             streams, meta, error_message = self.whisper_subsampler(streams, meta)
-
-            streams.pop("audio")  # only write metadata shards
-            meta = meta[0]  # remove when unifying workers (needs to be list)
-
             if error_message is not None:
                 failed_to_subsample += 1
                 status = "failed_to_subsample"
                 status_dict.increment(error_message)
+                meta["key"] = key
+                meta["url"] = sample["__url__"]
                 meta["status"] = status
                 meta["error_message"] = error_message
                 meta["__corrupted__"] = True
@@ -159,6 +157,9 @@ class WhisperWorker:
                     meta,
                 )
                 continue
+
+            streams.pop("audio")  # only write metadata shards
+            meta = meta[0]  # remove when unifying workers (needs to be list)
 
             successes += 1
             status = "success"
