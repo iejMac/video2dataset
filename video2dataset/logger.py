@@ -1,5 +1,6 @@
 """logging utils for the downloader"""
 
+import os 
 import wandb
 import time
 from collections import Counter
@@ -8,7 +9,9 @@ import json
 import multiprocessing
 import queue
 import traceback
+import subprocess
 
+from .aws_utils import ls_aws
 
 class CappedCounter:
     """Maintain a counter with a capping to avoid memory issues"""
@@ -233,7 +236,7 @@ class LoggerProcess(multiprocessing.context.SpawnProcess):
         enable_wandb,
         wandb_project,
         config_parameters,
-        log_interval=5,
+        log_interval=300,
     ):
         super().__init__()
         self.log_interval = log_interval
@@ -259,12 +262,13 @@ class LoggerProcess(multiprocessing.context.SpawnProcess):
             )
         else:
             self.current_run = None
+            return
         self.total_speed_logger = SpeedLogger("total", enable_wandb=self.enable_wandb)
         self.status_table_logger = StatusTableLogger(enable_wandb=self.enable_wandb)
         last_check = 0
         total_status_dict = CappedCounter()
         while True:
-            time.sleep(0.1)
+            time.sleep(0.1) 
             try:
                 self.q.get(False)
                 last_one = True
