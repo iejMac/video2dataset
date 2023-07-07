@@ -1,11 +1,7 @@
 """Reader is module to read the url list and return shards"""
 import braceexpand
 import fsspec
-import random
-import time
-import subprocess
 
-from .aws_utils import ls_aws
 
 class OutputSharder:
     """
@@ -48,7 +44,6 @@ class OutputSharder:
 
         num_shards = len(self.shards)
         print(f"Processing a total of {num_shards} shards!")
-
 
     def __iter__(self):
         """

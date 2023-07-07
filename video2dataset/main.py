@@ -28,7 +28,6 @@ from .distributor import (
 )
 from .workers import DownloadWorker, SubsetWorker, OpticalFlowWorker, CaptionWorker, WhisperWorker
 from .configs import CONFIGS
-from .aws_utils import ls_aws
 
 
 def identity(x):

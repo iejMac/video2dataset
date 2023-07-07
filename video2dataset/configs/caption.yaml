@@ -3,13 +3,11 @@ subsampling:
         args:
             captioner_args:
                 video_captioner: "kpyu/video-blip-flan-t5-xl-ego4d"
-                llm: "TheBloke/Wizard-Vicuna-13B-Uncensored-HF"
                 prompt: null
 
 reading:
     dataloader_args:
-        batch_size: 32 # for vblip on g40
-        # batch_size: 2 # for vblip + llm on g40
+        batch_size: 32
         resize_size: [224, 224]
         decoder_kwargs:
             subsample_frames: 8
@@ -25,30 +23,9 @@ storage:
     oom_shard_count: 5
     captions_are_subtitles: False
 
-# distribution:
-#     processes_count: 1
-#     thread_count: 8
-#     subjob_size: 1000
-#     distributor: "multiprocessing"
-
 distribution:
     processes_count: 1
     thread_count: 8
     subjob_size: 1000
     distributor: "multiprocessing"
-
-# distribution:
-#     processes_count: 1
-#     thread_count: 8
-#     subjob_size: 1000
-#     distributor: "slurm"
-#     distributor_args:
-#         cpus_per_task: 12
-#         gpus_per_node: 8
-#         tasks_per_node: 8
-#         job_name: "v2ds"
-#         partition: "g40"
-#         n_nodes: 1
-#         account: "stability"
-#         cache_path: "/fsx/home-sumith/video2dataset/examples/.slurm_cache"
 
