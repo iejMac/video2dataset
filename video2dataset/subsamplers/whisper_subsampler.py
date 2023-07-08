@@ -4,6 +4,7 @@ Whisper subsampler - transcribes audio using the Whisper model from OAI using Wh
 code: https://github.com/m-bain/whisperX
 """
 import os
+import time
 import tempfile
 
 try:
@@ -30,15 +31,26 @@ class WhisperSubsampler(Subsampler):
         model_name="large-v2",
         batch_size=16,
         compute_type="float16",
+        download_root=None,
         is_slurm_task=False,
     ):
         if is_slurm_task:
-            local_rank = os.environ["LOCAL_RANK"]
-            device = f"cuda:{local_rank}"
+            global_rank = os.environ["GLOBAL_RANK"]
+            if global_rank != 0:
+                time.sleep(20) # let master worker download model
+
+            device, device_index = "cuda", int(os.environ["LOCAL_RANK"])
+            for i in range(3):  # 3 retries
+                try:
+                    self.model = whisperx.load_model(model_name, device=device, device_index=device_index, compute_type=compute_type, download_root=download_root)
+                    break
+                except:
+                    print("loading failed, retrying...")
+                    continue
         else:
             device = "cuda" if torch.cuda.is_available() else "cpu"
+            self.model = whisperx.load_model(model_name, device=device, compute_type=compute_type, download_root=download_root)
 
-        self.model = whisperx.load_model(model_name, device, compute_type=compute_type)
         self.batch_size = batch_size
 
     def __call__(self, streams, metadata=None):
