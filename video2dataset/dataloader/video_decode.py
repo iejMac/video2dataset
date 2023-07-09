@@ -61,8 +61,8 @@ class VideoDecorder(AbstractVideoDecoder):
                 fps,
             ]
         if subsample_frames is not None:
-            assert n_frames is None, f"n_frames not compatible with subsample_frames..."
-            assert fps is None, f"fps not compatible with subsample_frames..."
+            assert n_frames is None, "n_frames not compatible with subsample_frames..."
+            assert fps is None, "fps not compatible with subsample_frames..."
         self.subsample_frames = subsample_frames
         self.fps = fps
         self.min_fps = min_fps
@@ -162,7 +162,7 @@ class VideoDecorder(AbstractVideoDecoder):
             indices = np.clip(indices, 0, t - 1).astype(int)
             frames, start_frame, pad_start = reader.get_batch(indices), indices[0], len(indices)
         else:
-            additional_info.update({"fps_id": torch.Tensor([fs_id] * n_frames).long()})        
+            additional_info.update({"fps_id": torch.Tensor([fs_id] * n_frames).long()})
             frames, start_frame, pad_start = self.get_frames(reader, n_frames, stride, scene_list=scene_list)
         frames = frames.float().numpy()
 
@@ -209,7 +209,6 @@ class VideoDecorderWithCutDetection(VideoDecorder):
         return super().__call__(key, data, scene_list=cut_list)
 
     def get_frames(self, reader, n_frames, stride, scene_list):  # pylint: disable=arguments-differ
-
         min_len = n_frames * stride
         # filter out subclips shorther than minimal required length
         scene_list = list(filter(lambda x: x[1] - x[0] > min_len, scene_list))

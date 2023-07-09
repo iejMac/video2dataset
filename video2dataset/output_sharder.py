@@ -16,7 +16,6 @@ class OutputSharder:
     """
 
     def __init__(self, shard_list, input_format, done_shards, sampler=lambda x: x) -> None:
-
         self.input_format = input_format
         self.done_shards = done_shards
         fs, url_path = fsspec.core.url_to_fs(shard_list)

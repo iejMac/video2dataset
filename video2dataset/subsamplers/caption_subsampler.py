@@ -2,16 +2,10 @@
 video captioner
 """
 import os
-import glob
-import json
-import argparse
-import string
-from pathlib import Path
-from functools import partial
 
 import torch
-import torch.nn as nn
-from einops import rearrange, repeat
+from torch import nn
+from einops import rearrange
 
 from transformers import (
     AutoModelForCausalLM,
@@ -44,6 +38,7 @@ class VideoBlipVisionModel(Blip2VisionModel):
     A simple, augmented version of Blip2VisionModel to handle videos.
     Source: https://github.com/yukw777/VideoBLIP
     """
+
     def forward(
         self,
         pixel_values: torch.FloatTensor = None,
@@ -62,23 +57,15 @@ class VideoBlipVisionModel(Blip2VisionModel):
             return_dict=True,
         )
         seq_len = vision_outputs.last_hidden_state.size(1)
-        last_hidden_state = vision_outputs.last_hidden_state.view(
-            batch, time * seq_len, -1
-        )
+        last_hidden_state = vision_outputs.last_hidden_state.view(batch, time * seq_len, -1)
         pooler_output = vision_outputs.pooler_output.view(batch, time, -1)
         hidden_states = (
-            tuple(
-                hidden.view(batch, time * seq_len, -1)
-                for hidden in vision_outputs.hidden_states
-            )
+            tuple(hidden.view(batch, time * seq_len, -1) for hidden in vision_outputs.hidden_states)
             if vision_outputs.hidden_states is not None
             else None
         )
         attentions = (
-            tuple(
-                hidden.view(batch, time, -1, seq_len, seq_len)
-                for hidden in vision_outputs.attentions
-            )
+            tuple(hidden.view(batch, time, -1, seq_len, seq_len) for hidden in vision_outputs.attentions)
             if vision_outputs.attentions is not None
             else None
         )
@@ -93,16 +80,17 @@ class VideoBlipVisionModel(Blip2VisionModel):
 
 
 class VideoBlipForConditionalGeneration(Blip2ForConditionalGeneration):
+    """
+    A simple, augmented version of Blip2ForConditionalGeneration to handle videos.
+    Source: https://github.com/yukw777/VideoBLIP
+    """
+
     def __init__(self, config: Blip2Config) -> None:
         super(Blip2ForConditionalGeneration, self).__init__(config)
         self.vision_model = VideoBlipVisionModel(config.vision_config)
-        self.query_tokens = nn.Parameter(
-            torch.zeros(1, config.num_query_tokens, config.qformer_config.hidden_size)
-        )
+        self.query_tokens = nn.Parameter(torch.zeros(1, config.num_query_tokens, config.qformer_config.hidden_size))
         self.qformer = Blip2QFormerModel(config.qformer_config)
-        self.language_projection = nn.Linear(
-            config.qformer_config.hidden_size, config.text_config.hidden_size
-        )
+        self.language_projection = nn.Linear(config.qformer_config.hidden_size, config.text_config.hidden_size)
         if config.use_decoder_only_language_model:
             language_model = AutoModelForCausalLM.from_config(config.text_config)
         else:
@@ -112,6 +100,8 @@ class VideoBlipForConditionalGeneration(Blip2ForConditionalGeneration):
 
 
 class VideoCaptioner:
+    """Synthetic video captioner using the VideoBLIP model."""
+
     def __init__(self, args):
         assert args.video_captioner in ["kpyu/video-blip-flan-t5-xl-ego4d", "kpyu/video-blip-opt-2.7b-ego4d"]
         model = args.video_captioner
@@ -123,38 +113,42 @@ class VideoCaptioner:
         self.device = args.get("device", "cuda")
         self.processor = Blip2Processor.from_pretrained(model)
 
-        if ':' in self.device:
-            device_map = {'': int(self.device.split(':')[-1])}
+        if ":" in self.device:
+            device_map = {"": int(self.device.split(":")[-1])}
         else:
-            device_map = {'': 0}
+            device_map = {"": 0}
         self.model = VideoBlipForConditionalGeneration.from_pretrained(model, load_in_8bit=True, device_map=device_map)
 
     def __call__(self, video):
         video = video * 0.00392156862745098
-        video = (video - torch.Tensor([0.48145466, 0.4578275, 0.40821073])) / torch.Tensor([0.26862954, 0.26130258, 0.27577711])
-        video = rearrange(video, 'b t h w c -> b c t h w').to(torch.float16)
+        video = (video - torch.Tensor([0.48145466, 0.4578275, 0.40821073])) / torch.Tensor(
+            [0.26862954, 0.26130258, 0.27577711]
+        )
+        video = rearrange(video, "b t h w c -> b c t h w").to(torch.float16)
 
         inputs = self.processor(images=None, text=[self.prompt] * video.shape[0], return_tensors="pt")
-        inputs['pixel_values'] = video
+        inputs["pixel_values"] = video
         inputs = inputs.to(self.device)
-        
+
         with torch.no_grad():
-            generated_ids = self.model.generate(**inputs, 
+            generated_ids = self.model.generate(
+                **inputs,
                 max_new_tokens=100,
-                num_beams=10, 
+                num_beams=10,
                 early_stopping=True,
                 do_sample=True,
-                temperature=1.,
-                top_k=50, 
-                top_p=1.0, 
+                temperature=1.0,
+                top_k=50,
+                top_p=1.0,
             )
         generated_text = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
-        for idx in range(len(generated_text)):
-            generated_text[idx] = generated_text[idx].strip()
+        generated_text = [x.strip() for x in generated_text]
         return generated_text
 
 
 class CaptionSubsampler(Subsampler):
+    """A class to generate synthetic text caption from video frames."""
+
     def __init__(
         self,
         captioner_args=None,
@@ -175,6 +169,8 @@ class CaptionSubsampler(Subsampler):
     def __call__(self, frames, original_caption):
         try:
             combined_caption = self.captioner(frames)
-            return [combined_caption, ], None
+            return [
+                combined_caption,
+            ], None
         except Exception as err:  # pylint: disable=broad-except
             return [], str(err)

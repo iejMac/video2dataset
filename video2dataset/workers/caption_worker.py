@@ -4,7 +4,6 @@ Worker for caption stage
 import time
 import pyarrow as pa
 import traceback
-import io
 import numpy as np
 import torch
 import fsspec
@@ -120,7 +119,7 @@ class CaptionWorker:
         for sample in dset:
             batch_size = len(sample["__key__"])
             count += batch_size
-            
+
             bad_batch_idx = []
             for batch_idx in range(batch_size):
                 corrupted = sample["__corrupted__"][batch_idx]
@@ -145,7 +144,7 @@ class CaptionWorker:
                         meta,
                     )
                     continue
-            
+
             if len(bad_batch_idx) != 0:
                 bad_batch_idx.sort(reverse=True)
                 for key in sample:
