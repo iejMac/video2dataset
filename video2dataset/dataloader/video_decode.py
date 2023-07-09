@@ -44,7 +44,7 @@ class VideoDecorder(AbstractVideoDecoder):
     def __init__(
         self,
         n_frames=None,
-        subsample_frames=None,
+        uniformly_sample=None,
         fps=None,
         num_threads=4,
         tmpdir="/tmp/",
@@ -60,10 +60,9 @@ class VideoDecorder(AbstractVideoDecoder):
             fps = [
                 fps,
             ]
-        if subsample_frames is not None:
-            assert n_frames is None, "n_frames not compatible with subsample_frames..."
-            assert fps is None, "fps not compatible with subsample_frames..."
-        self.subsample_frames = subsample_frames
+        if uniformly_sample:
+            assert fps is None, "fps not compatible with uniformly_sample..."
+        self.uniformly_sample = uniformly_sample
         self.fps = fps
         self.min_fps = min_fps
         self.max_fps = max_fps
@@ -155,10 +154,10 @@ class VideoDecorder(AbstractVideoDecoder):
         else:
             n_frames = self.n_frames
 
-        if self.subsample_frames is not None:
-            additional_info.update({"fps_id": torch.Tensor([fs_id] * self.subsample_frames).long()})
+        if self.uniformly_sample:
+            additional_info.update({"fps_id": torch.Tensor([fs_id] * self.n_frames).long()})
             t = len(reader)
-            indices = np.linspace(0, t - 1, self.subsample_frames)
+            indices = np.linspace(0, t - 1, self.n_frames)
             indices = np.clip(indices, 0, t - 1).astype(int)
             frames, start_frame, pad_start = reader.get_batch(indices), indices[0], len(indices)
         else:
