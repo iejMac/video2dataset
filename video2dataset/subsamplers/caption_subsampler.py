@@ -15,7 +15,6 @@ from transformers import (
     Blip2Processor,
     Blip2QFormerModel,
     Blip2VisionModel,
-    Blip2PreTrainedModel
 )
 
 from transformers.modeling_outputs import BaseModelOutputWithPooling
@@ -87,7 +86,7 @@ class VideoBlipForConditionalGeneration(Blip2ForConditionalGeneration):
     """
 
     def __init__(self, config: Blip2Config) -> None:
-        Blip2PreTrainedModel.__init__(self, config)
+        super(Blip2ForConditionalGeneration, self).__init__(config)  # pylint: disable=E1003
         self.vision_model = VideoBlipVisionModel(config.vision_config)
         self.query_tokens = nn.Parameter(torch.zeros(1, config.num_query_tokens, config.qformer_config.hidden_size))
         self.qformer = Blip2QFormerModel(config.qformer_config)
