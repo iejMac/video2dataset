@@ -44,6 +44,7 @@ class VideoDecorder(AbstractVideoDecoder):
     def __init__(
         self,
         n_frames=None,
+        uniformly_sample=None,
         fps=None,
         num_threads=4,
         tmpdir="/tmp/",
@@ -59,6 +60,9 @@ class VideoDecorder(AbstractVideoDecoder):
             fps = [
                 fps,
             ]
+        if uniformly_sample:
+            assert fps is None, "fps not compatible with uniformly_sample..."
+        self.uniformly_sample = uniformly_sample
         self.fps = fps
         self.min_fps = min_fps
         self.max_fps = max_fps
@@ -149,9 +153,16 @@ class VideoDecorder(AbstractVideoDecoder):
             n_frames = len(reader) // stride
         else:
             n_frames = self.n_frames
-        additional_info.update({"fps_id": torch.Tensor([fs_id] * n_frames).long()})
 
-        frames, start_frame, pad_start = self.get_frames(reader, n_frames, stride, scene_list=scene_list)
+        if self.uniformly_sample:
+            additional_info.update({"fps_id": torch.Tensor([fs_id] * self.n_frames).long()})
+            t = len(reader)
+            indices = np.linspace(0, t - 1, self.n_frames)
+            indices = np.clip(indices, 0, t - 1).astype(int)
+            frames, start_frame, pad_start = reader.get_batch(indices), indices[0], len(indices)
+        else:
+            additional_info.update({"fps_id": torch.Tensor([fs_id] * n_frames).long()})
+            frames, start_frame, pad_start = self.get_frames(reader, n_frames, stride, scene_list=scene_list)
         frames = frames.float().numpy()
 
         additional_info["original_height"] = torch.full((frames.shape[0],), fill_value=frames.shape[1]).long()
@@ -197,7 +208,6 @@ class VideoDecorderWithCutDetection(VideoDecorder):
         return super().__call__(key, data, scene_list=cut_list)
 
     def get_frames(self, reader, n_frames, stride, scene_list):  # pylint: disable=arguments-differ
-
         min_len = n_frames * stride
         # filter out subclips shorther than minimal required length
         scene_list = list(filter(lambda x: x[1] - x[0] > min_len, scene_list))
