@@ -167,7 +167,7 @@ class CaptionSubsampler(Subsampler):
 
         self.captioner = VideoCaptioner(captioner_args)
 
-    def __call__(self, frames, original_caption):
+    def __call__(self, frames):
         try:
             combined_caption = self.captioner(frames)
             return [
