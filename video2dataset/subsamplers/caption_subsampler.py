@@ -16,14 +16,11 @@ from einops import rearrange, repeat
 from transformers import (
     AutoModelForCausalLM,
     AutoModelForSeq2SeqLM,
-    BatchEncoding,
     Blip2Config,
     Blip2ForConditionalGeneration,
     Blip2Processor,
     Blip2QFormerModel,
     Blip2VisionModel,
-    AutoTokenizer,
-    BitsAndBytesConfig
 )
 
 from transformers.modeling_outputs import BaseModelOutputWithPooling
