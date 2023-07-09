@@ -16,7 +16,6 @@ class OutputSharder:
     """
 
     def __init__(self, shard_list, input_format, done_shards, sampler=lambda x: x) -> None:
-
         self.input_format = input_format
         self.done_shards = done_shards
         fs, url_path = fsspec.core.url_to_fs(shard_list)
@@ -30,6 +29,9 @@ class OutputSharder:
         else:
             self.shard_list = list(braceexpand.braceexpand(shard_list))
 
+        num_shards = len(self.shard_list)
+        print(f"Found a total of {num_shards} shards!")
+
         if self.input_format == "webdataset":
             self.shard_ids = [s.split("/")[-1][: -len(".tar")] for s in self.shard_list]
         elif self.input_format == "files":
@@ -38,6 +40,9 @@ class OutputSharder:
         self.shards = sampler(
             [(s_id, s) for s_id, s in zip(self.shard_ids, self.shard_list) if int(s_id) not in self.done_shards]
         )
+
+        num_shards = len(self.shards)
+        print(f"Processing a total of {num_shards} shards!")
 
     def __iter__(self):
         """

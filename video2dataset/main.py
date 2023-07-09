@@ -26,7 +26,7 @@ from .distributor import (
     SlurmDistributor,
     SlurmShardSampler,
 )
-from .workers import DownloadWorker, SubsetWorker, OpticalFlowWorker, WhisperWorker
+from .workers import DownloadWorker, SubsetWorker, OpticalFlowWorker, CaptionWorker, WhisperWorker
 from .configs import CONFIGS
 
 
@@ -82,7 +82,8 @@ def video2dataset(
         WARNING: To be depracated soon (this information should be deduced based on config)
         - download, when input is some tabular format and data must be downloaded first
         - subset, tar files are already written and we would like to re-process (input_format == "webdataset")
-        - optical_flow, tar files are written and we woudl like to compute optical_flow and save to md shards
+        - optical_flow, tar files are written and we would like to compute optical_flow and save to md shards
+        - caption, tar files are written and we would like to generate caption and save to md shards
     url_col: Column in input (if has columns) that contains the url
     caption_col: Column in input (if has columns) that contains captions (to be written as txt)
     clip_col: Column in input (if has columns) that contains timeframes of clips for how to split video
@@ -114,6 +115,7 @@ def video2dataset(
             * config["distribution"]["distributor_args"]["tasks_per_node"]
         )
         config["reading"]["sampler"] = SlurmShardSampler(global_task_id=global_task_id, num_tasks=num_tasks)
+        config["distribution"]["distributor"] = "multiprocessing"
 
         # Only log from master
         enable_wandb = enable_wandb and (global_task_id == 0)
@@ -232,6 +234,18 @@ def video2dataset(
             is_slurm_task=is_slurm_task,
             config=config,
         )
+    elif stage == "caption":
+        shard_iterator = OutputSharder(  # type: ignore
+            url_list, input_format, done_shards, sampler=config["reading"]["sampler"]
+        )
+        is_slurm_task = "GLOBAL_RANK" in os.environ and config["distribution"]["distributor"] == "multiprocessing"
+        worker = CaptionWorker(  # type: ignore
+            sample_writer_class=sample_writer_class,
+            output_folder=output_folder,
+            encode_formats=encode_formats,
+            is_slurm_task=is_slurm_task,
+            config=config,
+        )
     elif stage == "whisper":
         shard_iterator = OutputSharder(  # type: ignore
             url_list, input_format, done_shards, sampler=config["reading"]["sampler"]
@@ -249,7 +263,7 @@ def video2dataset(
 
     print("Starting the downloading of this file")
     if config["distribution"]["distributor"] == "multiprocessing" or called_from_slurm:
-        distributor_fn = multiprocessing_distributor if stage != "whisper" else no_distributor
+        distributor_fn = multiprocessing_distributor if stage not in ["whisper", "caption"] else no_distributor
         called_from_slurm = "GLOBAL_RANK" in os.environ
     elif config["distribution"]["distributor"] == "pyspark":
         distributor_fn = pyspark_distributor
