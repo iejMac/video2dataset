@@ -169,7 +169,7 @@ class CaptionWorker:
 
             meta = sample["json"]
             streams = {}
-            caption, error_message = self.caption_subsampler(sample.get("mp4"), sample["txt"])
+            caption, error_message = self.caption_subsampler(sample.get("mp4"))
 
             if error_message is not None:
                 for batch_idx in range(batch_size):
