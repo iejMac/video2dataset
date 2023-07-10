@@ -60,11 +60,26 @@ Whenever we do a large dataset processing job we document them in [dataset examp
 
 The tool will automatically download the urls and store them with the format:
 
-* output_folder
-    * 00000{.ext if output_format != files, can be tar, parquet, tfrecord, etc.}
-        * 000000000.mp4
-        * 000000001.mp4
-        * 000000002.mp4
+```
+output-folder
+ ├── 00000{.ext if output_format != files, can be tar, parquet, tfrecord, etc.}
+ |     ├── 00000.mp4
+ |     ├── 00000.txt
+ |     ├── 00000.json
+ |     ├── 00001.mp4
+ |     ├── 00001.txt
+ |     ├── 00001.json
+ |     └── ...
+ |     ├── 10000.mp4
+ |     ├── 10000.txt
+ |     ├── 10000.json
+ ├── 00001.ext
+ |     ├── 10001.mp4
+ |     ├── 10001.txt
+ |     ├── 10001.json
+ │     ...
+ ...
+```
 
 with each number being the position in the input table or the input sample ID. The subfolders avoid having too many files in a single folder. If **captions** are provided, they will be saved as 0.txt, 1.txt, etc. (matching the ID of the sample they belong to). This can then easily be fed into machine learning training or any other use case.
 
