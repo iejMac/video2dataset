@@ -162,8 +162,8 @@ if __name__ == "__main__":
     spark = aws_ec2_s3_spark_session(f"spark://{master_node}:7077", num_cores=48, mem_gb=256)
 
     video2dataset(
-        url_list="/admin/home-iejmac/datasets/acav100m/ACAV1M_clip_unique.parquet",
-        output_folder="s3://s-laion/acav100m/test_acav100m",
+        url_list="urls",
+        output_folder="out",
         output_format="webdataset",
         input_format="parquet",
         url_col="videoLoc",
