@@ -94,7 +94,7 @@ Also .json files named 0.json, 1.json,... are saved with these keys:
 Also a .parquet file will be saved with the same name as the subfolder/tar files containing these same metadata.
 It can be used to analyze the results efficiently.
 
-.json files will also be saved with the same name suffixed by _stats, they contain stats collected during downloading (download time, number of success, ...)
+.json files will also be saved with the same name suffixed by \_stats, they contain stats collected during downloading (download time, number of success, ...)
 
 ### Output format choice
 
@@ -256,8 +256,8 @@ You can use `make black` to reformat the code
 
 ## Citation
 ```
-@misc{beaumont-2023-video2dataset,
-  author = {Romain Beaumont, Maciej Kilian},
+@misc{kilian-2023-video2dataset,
+  author = {Maciej Kilian, Romain Beaumont, Daniel Mendelevitch, Andreas Blattmann},
   title = {video2dataset: Easily turn large sets of video urls to a video dataset},
   year = {2023},
   publisher = {GitHub},
