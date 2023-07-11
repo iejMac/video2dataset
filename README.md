@@ -257,7 +257,7 @@ You can use `make black` to reformat the code
 ## Citation
 ```
 @misc{kilian-2023-video2dataset,
-  author = {Maciej Kilian, Romain Beaumont, Daniel Mendelevitch, Andreas Blattmann},
+  author = {Maciej Kilian, Romain Beaumont, Daniel Mendelevitch, Sumith Kulal, Andreas Blattmann},
   title = {video2dataset: Easily turn large sets of video urls to a video dataset},
   year = {2023},
   publisher = {GitHub},
