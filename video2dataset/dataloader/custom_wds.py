@@ -13,7 +13,7 @@ import torch.distributed as dist
 from torch.utils.data import IterableDataset
 from torch.utils.data.datapipes.iter import IterableWrapper
 from torch.utils.data.datapipes.utils.common import StreamWrapper
-from torchdata.datapipes.iter import S3FileLoader, IterDataPipe, FileOpener
+from torchdata.datapipes.iter import S3FileLoader, IterDataPipe, FSSpecFileOpener
 from torchdata.datapipes.iter import TarArchiveLoader
 from torchdata.datapipes.utils.common import validate_pathname_binary_tuple
 
@@ -532,7 +532,7 @@ class TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
             main_datapipe = S3FileLoader(main_datapipe, buffer_size=buffer_size)
         else:
             # regular fileopener
-            main_datapipe = FileOpener(main_datapipe, mode="b")
+            main_datapipe = FSSpecFileOpener(main_datapipe, mode="b")
         # adapted TarLoader which closes open tarfile handles after exceeding them
         main_datapipe = TarArchiveLoaderAndCloser(datapipe=main_datapipe, handler=handler).groupby(grouper)
         if sample_shuffle > 0:
