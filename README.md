@@ -5,6 +5,8 @@ Easily create large video dataset from video urls. Can download and package 10M 
 
 ![video2dataset design overview](docs/video2dataset_overview.png)
 
+If you believe in making reusable tools to make data easy to use for ML and you would like to contribute, please join the [DataToML](https://discord.gg/ep8yUUtCnp) chat.
+
 ## Install
 
 ```
