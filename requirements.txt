@@ -11,7 +11,7 @@ wandb
 pandas
 tqdm
 timeout-decorator
-scenedetect[opencv]
+scenedetect[opencv]==0.6.1
 decord
 torch==2.0.0
 langdetect
