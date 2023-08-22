@@ -43,7 +43,7 @@ class WhisperWorker:
         self.save_caption = False
         self.config = config
 
-        if config['distribution']['distributor'] != "slurm":
+        if config["distribution"]["distributor"] != "slurm":
             self.whisper_subsampler = WhisperSubsampler(
                 **self.config["subsampling"]["WhisperSubsampler"]["args"],
                 is_slurm_task=is_slurm_task,

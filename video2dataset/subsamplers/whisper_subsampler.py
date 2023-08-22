@@ -37,7 +37,7 @@ class WhisperSubsampler(Subsampler):
         if is_slurm_task:
             global_rank = os.environ["GLOBAL_RANK"]
             if global_rank != 0:
-                time.sleep(20) # let master worker download model
+                time.sleep(20)  # let master worker download model
 
             device, device_index = "cuda", int(os.environ["LOCAL_RANK"])
             while True:
@@ -47,13 +47,17 @@ class WhisperSubsampler(Subsampler):
                         device=device,
                         device_index=device_index,
                         compute_type=compute_type,
-                        download_root=download_root
+                        download_root=download_root,
                     )
                     print("model_loaded", os.environ["GLOBAL_RANK"], flush=True)
                     break
                 except Exception as e:  # pylint: disable=(broad-except)
                     print(str(e), flush=True)
-                    print("loading failed, retrying...", os.environ["GLOBAL_RANK"], flush=True)
+                    print(
+                        "loading failed, retrying...",
+                        os.environ["GLOBAL_RANK"],
+                        flush=True,
+                    )
                     continue
         else:
             device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -61,7 +65,7 @@ class WhisperSubsampler(Subsampler):
                 model_name,
                 device=device,
                 compute_type=compute_type,
-                download_root=download_root
+                download_root=download_root,
             )
 
         self.batch_size = batch_size
