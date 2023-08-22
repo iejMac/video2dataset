@@ -40,19 +40,29 @@ class WhisperSubsampler(Subsampler):
                 time.sleep(20) # let master worker download model
 
             device, device_index = "cuda", int(os.environ["LOCAL_RANK"])
-            # for i in range(3):  # 3 retries
             while True:
                 try:
-                    self.model = whisperx.load_model(model_name, device=device, device_index=device_index, compute_type=compute_type, download_root=download_root)
+                    self.model = whisperx.load_model(
+                        model_name,
+                        device=device,
+                        device_index=device_index,
+                        compute_type=compute_type,
+                        download_root=download_root
+                    )
                     print("model_loaded", os.environ["GLOBAL_RANK"], flush=True)
                     break
-                except Exception as e:
+                except Exception as e:  # pylint: disable=(broad-except)
                     print(str(e), flush=True)
                     print("loading failed, retrying...", os.environ["GLOBAL_RANK"], flush=True)
                     continue
         else:
             device = "cuda" if torch.cuda.is_available() else "cpu"
-            self.model = whisperx.load_model(model_name, device=device, compute_type=compute_type, download_root=download_root)
+            self.model = whisperx.load_model(
+                model_name,
+                device=device,
+                compute_type=compute_type,
+                download_root=download_root
+            )
 
         self.batch_size = batch_size
 
