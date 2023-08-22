@@ -43,10 +43,11 @@ class WhisperWorker:
         self.save_caption = False
         self.config = config
 
-        self.whisper_subsampler = WhisperSubsampler(
-            **self.config["subsampling"]["WhisperSubsampler"]["args"],
-            is_slurm_task=is_slurm_task,
-        )
+        if config["distribution"]["distributor"] != "slurm":
+            self.whisper_subsampler = WhisperSubsampler(
+                **self.config["subsampling"]["WhisperSubsampler"]["args"],
+                is_slurm_task=is_slurm_task,
+            )
 
     def __call__(
         self,
@@ -139,12 +140,14 @@ class WhisperWorker:
                 )
                 continue
             meta = [json.loads(sample.get("json", b"{}").decode("utf-8"))]
+
             streams = {"audio": [sample[self.encode_formats["audio"]]]}
             streams, meta, error_message = self.whisper_subsampler(streams, meta)
             if error_message is not None:
                 failed_to_subsample += 1
                 status = "failed_to_subsample"
                 status_dict.increment(error_message)
+                meta = meta[0]
                 meta["key"] = key
                 meta["url"] = sample["__url__"]
                 meta["status"] = status

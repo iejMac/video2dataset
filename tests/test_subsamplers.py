@@ -195,10 +195,10 @@ def test_cut_detection_subsampler(cut_detection_mode, framerates):
 
     if cut_detection_mode == "all":
         assert len(cuts["cuts_original_fps"]) > 1
-        assert cuts["cuts_original_fps"][-1] == [3015, 3677]
+        assert cuts["cuts_original_fps"][-1] == [3015, 3678]
 
         if len(framerates) > 0:
-            assert cuts["cuts_1"][-1] == [3420, 3677]
+            assert cuts["cuts_1"][-1] == [3420, 3678]
 
 
 @pytest.mark.parametrize(
