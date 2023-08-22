@@ -4,6 +4,7 @@ Whisper subsampler - transcribes audio using the Whisper model from OAI using Wh
 code: https://github.com/m-bain/whisperX
 """
 import os
+import time
 import tempfile
 
 try:
@@ -30,15 +31,29 @@ class WhisperSubsampler(Subsampler):
         model_name="large-v2",
         batch_size=16,
         compute_type="float16",
+        download_root=None,
         is_slurm_task=False,
     ):
         if is_slurm_task:
-            local_rank = os.environ["LOCAL_RANK"]
-            device = f"cuda:{local_rank}"
+            global_rank = os.environ["GLOBAL_RANK"]
+            if global_rank != 0:
+                time.sleep(20) # let master worker download model
+
+            device, device_index = "cuda", int(os.environ["LOCAL_RANK"])
+            # for i in range(3):  # 3 retries
+            while True:
+                try:
+                    self.model = whisperx.load_model(model_name, device=device, device_index=device_index, compute_type=compute_type, download_root=download_root)
+                    print("model_loaded", os.environ["GLOBAL_RANK"], flush=True)
+                    break
+                except Exception as e:
+                    print(str(e), flush=True)
+                    print("loading failed, retrying...", os.environ["GLOBAL_RANK"], flush=True)
+                    continue
         else:
             device = "cuda" if torch.cuda.is_available() else "cpu"
+            self.model = whisperx.load_model(model_name, device=device, compute_type=compute_type, download_root=download_root)
 
-        self.model = whisperx.load_model(model_name, device, compute_type=compute_type)
         self.batch_size = batch_size
 
     def __call__(self, streams, metadata=None):
@@ -46,7 +61,7 @@ class WhisperSubsampler(Subsampler):
 
         for i, aud_bytes in enumerate(audio_bytes):
             # TODO: .m4a not always
-            with tempfile.NamedTemporaryFile(suffix=".m4a") as tmpfile:
+            with tempfile.NamedTemporaryFile(suffix=".mp3") as tmpfile:
                 tmpfile.write(aud_bytes)
                 tmpfile.flush()  # ensure all data is written
                 try:
@@ -54,6 +69,6 @@ class WhisperSubsampler(Subsampler):
                     result = self.model.transcribe(audio, batch_size=self.batch_size)
                     metadata[i]["whisper_transcript"] = result
                 except Exception as err:  # pylint: disable=broad-except
-                    return [], {}, str(err)
+                    return [], metadata, str(err)
 
         return streams, metadata, None
