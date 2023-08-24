@@ -197,7 +197,8 @@ class WhisperWorker:
                 meta = {}
                 meta["url"] = url
                 meta["key"] = key
-                error_message = "corrupted sample"
+                # error_message = "corrupted sample"
+                error_message = sample["meta"][0]["error_message"]
                 failed_to_subsample += 1
                 status = "failed_to_subsample"
                 status_dict.increment(error_message)
@@ -210,11 +211,11 @@ class WhisperWorker:
                     None,
                     meta,
                 )
-                semaphore.release() if from_wds else None
+                semaphore.release() if not from_wds else None
                 continue
             meta = [json.loads(sample.get("json", b"{}").decode("utf-8"))] if from_wds else sample.pop("meta")
 
-            streams = {"audio": [sample[self.encode_formats["audio"]]]} if from_wds else {"audio": sample["audio"]}
+            streams = {"audio": [sample[self.encode_formats["audio"]]]} if from_wds else {"audio": [sample["audio"]]}
             streams, meta, error_message = self.whisper_subsampler(streams, meta)
             if error_message is not None:
                 failed_to_subsample += 1
@@ -232,7 +233,7 @@ class WhisperWorker:
                     None,
                     meta,
                 )
-                semaphore.release() if from_wds else None
+                semaphore.release() if not from_wds else None
                 continue
 
             streams.pop("audio")  # only write metadata shards
@@ -241,8 +242,10 @@ class WhisperWorker:
             successes += 1
             status = "success"
             status_dict.increment(status)
+            meta["url"] = sample["__url__"]
             meta["status"] = status
             meta["__corrupted__"] = False
+
 
             sample_writer.write(
                 streams,
@@ -250,7 +253,7 @@ class WhisperWorker:
                 None,
                 meta,
             )
-            semaphore.release() if from_wds else None
+            semaphore.release() if not from_wds else None
 
         sample_writer.close()
         end_time = time.time()
