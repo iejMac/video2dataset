@@ -2,15 +2,30 @@
 Worker for optical flow stage
 """
 import time
+import math
 import traceback
 import json
 import fsspec
 import pyarrow as pa
 import webdataset as wds
 
+from multiprocessing.pool import ThreadPool
+from threading import Semaphore
+
+from video2dataset.data_reader import VideoDataReader
 from video2dataset.logger import CappedCounter, write_stats
 from video2dataset.subsamplers import WhisperSubsampler
 from video2dataset.dataloader import get_video_dataset
+
+
+
+def compute_key(key, shard_id, oom_sample_per_shard, oom_shard_count):
+    true_key = (10**oom_sample_per_shard) * shard_id + key
+    key_format = oom_sample_per_shard + oom_shard_count
+    str_key = "{true_key:0{key_format}d}".format(  # pylint: disable=consider-using-f-string
+        key_format=key_format, true_key=true_key
+    )
+    return str_key
 
 
 class WhisperWorker:
@@ -33,15 +48,20 @@ class WhisperWorker:
         self,
         sample_writer_class,
         output_folder,
+        column_list,
+        tmp_dir,
         encode_formats,
         is_slurm_task,
         config,
     ) -> None:
         self.sample_writer_class = sample_writer_class
         self.output_folder = output_folder
+        self.column_list = column_list
         self.encode_formats = encode_formats
         self.save_caption = False
         self.config = config
+
+        self.data_reader = VideoDataReader(encode_formats, tmp_dir, config["reading"])
 
         if config["distribution"]["distributor"] != "slurm":
             self.whisper_subsampler = WhisperSubsampler(
@@ -77,19 +97,47 @@ class WhisperWorker:
         shard, shard_id = row
         start_time = time.time()
 
-        try:
-            fs, shard_path = fsspec.core.url_to_fs(shard[: -len(".tar")] + ".parquet")
+        from_wds = shard.endswith(".tar")
 
+        if from_wds:
+            try:
+                fs, shard_path = fsspec.core.url_to_fs(shard[: -len(".tar")] + ".parquet")
+
+                with fs.open(shard_path, "rb") as f:
+                    df = pa.parquet.read_table(f)
+                    schema = df.schema
+            except Exception as e:  # pylint: disable=broad-except,unused-variable
+                fields = [
+                    pa.field("key", pa.string()),
+                    pa.field("status", pa.string()),
+                    pa.field("error_message", pa.string()),
+                ]
+                schema = pa.schema(fields)
+            semaphore = None
+        else:
+            fs, shard_path = fsspec.core.url_to_fs(shard)
             with fs.open(shard_path, "rb") as f:
-                df = pa.parquet.read_table(f)
-                schema = df.schema
-        except Exception as e:  # pylint: disable=broad-except,unused-variable
-            fields = [
-                pa.field("key", pa.string()),
-                pa.field("status", pa.string()),
-                pa.field("error_message", pa.string()),
-            ]
-            schema = pa.schema(fields)
+                df = pa.ipc.open_file(f).read_all()
+            schema = df.schema
+            schema = (
+                schema.append(pa.field("key", pa.string()))
+                .append(pa.field("status", pa.string()))
+                .append(pa.field("error_message", pa.string()))
+            )
+
+            pydict = df.select(self.column_list).to_pydict()
+            shard_to_dl = list(enumerate(zip(*(pydict[col] for col in self.column_list))))
+            del pydict
+            del df
+            url_indice = self.column_list.index("url")
+            key_url_list = [(key, x[url_indice]) for key, x in shard_to_dl]
+            semaphore = Semaphore(self.config["distribution"]["thread_count"])
+            def data_generator():
+                for e in key_url_list:
+                    semaphore.acquire()  # pylint: disable=(consider-using-with)
+                    yield e
+
+            loader = data_generator()
 
         status_dict = CappedCounter()
 
@@ -102,19 +150,43 @@ class WhisperWorker:
             schema,
             self.encode_formats,
         )
+        oom_sample_per_shard = math.ceil(math.log10(self.config["storage"]["number_sample_per_shard"]))
 
         successes = 0
         failed_to_subsample = 0
 
-        dset = get_video_dataset(
-            urls=shard,
-            batch_size=1,
-            decoder_kwargs={},
-            video_key=self.encode_formats["audio"],
-            enforce_additional_keys=[],
-            return_always=True,
-            handler=wds.warn_and_continue,
-        )
+        if from_wds:
+            dset = get_video_dataset(
+                urls=shard,
+                batch_size=1,
+                decoder_kwargs={},
+                video_key=self.encode_formats["audio"],
+                enforce_additional_keys=[],
+                return_always=True,
+                handler=wds.warn_and_continue,
+            )
+        else:
+            def create_dset():
+                with ThreadPool(self.config["distribution"]["thread_count"]) as thread_pool:
+                    for key, streams, yt_meta_dict, error_message in thread_pool.imap_unordered(
+                        self.data_reader, loader
+                    ):
+                        sample = {"__key__": key, "__url__": shard, "__corrupted__": error_message is not None}
+                        str_key = compute_key(
+                            key, shard_id, oom_sample_per_shard, self.config["storage"]["oom_shard_count"]
+                        )
+
+                        meta = [{
+                            "key": str_key,
+                            "status": None,
+                            "error_message": error_message,
+                            "yt_meta_dict": yt_meta_dict,
+                        }]
+                        sample.update(streams)
+                        sample["meta"] = meta
+                        yield sample
+            dset = create_dset()
+
         count = 0
         for sample in dset:
             count += 1
@@ -138,10 +210,11 @@ class WhisperWorker:
                     None,
                     meta,
                 )
+                semaphore.release() if from_wds else None
                 continue
-            meta = [json.loads(sample.get("json", b"{}").decode("utf-8"))]
+            meta = [json.loads(sample.get("json", b"{}").decode("utf-8"))] if from_wds else sample.pop("meta")
 
-            streams = {"audio": [sample[self.encode_formats["audio"]]]}
+            streams = {"audio": [sample[self.encode_formats["audio"]]]} if from_wds else {"audio": sample["audio"]}
             streams, meta, error_message = self.whisper_subsampler(streams, meta)
             if error_message is not None:
                 failed_to_subsample += 1
@@ -159,6 +232,7 @@ class WhisperWorker:
                     None,
                     meta,
                 )
+                semaphore.release() if from_wds else None
                 continue
 
             streams.pop("audio")  # only write metadata shards
@@ -176,6 +250,8 @@ class WhisperWorker:
                 None,
                 meta,
             )
+            semaphore.release() if from_wds else None
+
         sample_writer.close()
         end_time = time.time()
 
