@@ -166,7 +166,6 @@ class WhisperWorker:
                 handler=wds.warn_and_continue,
             )
         else:
-
             def create_dset():
                 with ThreadPool(self.config["distribution"]["thread_count"]) as thread_pool:
                     for (
@@ -175,18 +174,17 @@ class WhisperWorker:
                         yt_meta_dict,
                         error_message,
                     ) in thread_pool.imap_unordered(self.data_reader, loader):
-                        sample = {
-                            "__key__": key,
-                            "__url__": shard,
-                            "__corrupted__": error_message is not None,
-                        }
                         str_key = compute_key(
                             key,
                             shard_id,
                             oom_sample_per_shard,
                             self.config["storage"]["oom_shard_count"],
                         )
-
+                        sample = {
+                            "__key__": str_key,
+                            "__url__": shard,
+                            "__corrupted__": error_message is not None,
+                        }
                         meta = [
                             {
                                 "key": str_key,
