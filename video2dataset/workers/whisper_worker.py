@@ -21,10 +21,8 @@ from video2dataset.dataloader import get_video_dataset
 def compute_key(key, shard_id, oom_sample_per_shard, oom_shard_count):
     true_key = (10**oom_sample_per_shard) * shard_id + key
     key_format = oom_sample_per_shard + oom_shard_count
-    str_key = (
-        "{true_key:0{key_format}d}".format(  # pylint: disable=consider-using-f-string
-            key_format=key_format, true_key=true_key
-        )
+    str_key = "{true_key:0{key_format}d}".format(  # pylint: disable=consider-using-f-string
+        key_format=key_format, true_key=true_key
     )
     return str_key
 
@@ -102,9 +100,7 @@ class WhisperWorker:
 
         if from_wds:
             try:
-                fs, shard_path = fsspec.core.url_to_fs(
-                    shard[: -len(".tar")] + ".parquet"
-                )
+                fs, shard_path = fsspec.core.url_to_fs(shard[: -len(".tar")] + ".parquet")
 
                 with fs.open(shard_path, "rb") as f:
                     df = pa.parquet.read_table(f)
@@ -129,9 +125,7 @@ class WhisperWorker:
             )
 
             pydict = df.select(self.column_list).to_pydict()
-            shard_to_dl = list(
-                enumerate(zip(*(pydict[col] for col in self.column_list)))
-            )
+            shard_to_dl = list(enumerate(zip(*(pydict[col] for col in self.column_list))))
             del pydict
             del df
             url_indice = self.column_list.index("url")
@@ -156,9 +150,7 @@ class WhisperWorker:
             schema,
             self.encode_formats,
         )
-        oom_sample_per_shard = math.ceil(
-            math.log10(self.config["storage"]["number_sample_per_shard"])
-        )
+        oom_sample_per_shard = math.ceil(math.log10(self.config["storage"]["number_sample_per_shard"]))
 
         successes = 0
         failed_to_subsample = 0
@@ -176,9 +168,7 @@ class WhisperWorker:
         else:
 
             def create_dset():
-                with ThreadPool(
-                    self.config["distribution"]["thread_count"]
-                ) as thread_pool:
+                with ThreadPool(self.config["distribution"]["thread_count"]) as thread_pool:
                     for (
                         key,
                         streams,
@@ -237,17 +227,9 @@ class WhisperWorker:
                 )
                 _ = semaphore.release() if not from_wds else None
                 continue
-            meta = (
-                [json.loads(sample.get("json", b"{}").decode("utf-8"))]
-                if from_wds
-                else sample.pop("meta")
-            )
+            meta = [json.loads(sample.get("json", b"{}").decode("utf-8"))] if from_wds else sample.pop("meta")
 
-            streams = (
-                {"audio": [sample[self.encode_formats["audio"]]]}
-                if from_wds
-                else {"audio": [sample["audio"]]}
-            )
+            streams = {"audio": [sample[self.encode_formats["audio"]]]} if from_wds else {"audio": [sample["audio"]]}
             streams, meta, error_message = self.whisper_subsampler(streams, meta)
             if error_message is not None:
                 failed_to_subsample += 1
