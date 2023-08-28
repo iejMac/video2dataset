@@ -166,6 +166,7 @@ class WhisperWorker:
                 handler=wds.warn_and_continue,
             )
         else:
+
             def create_dset():
                 with ThreadPool(self.config["distribution"]["thread_count"]) as thread_pool:
                     for (
