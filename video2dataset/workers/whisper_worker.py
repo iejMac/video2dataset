@@ -97,7 +97,7 @@ class WhisperWorker:
         shard, shard_id = row
         start_time = time.time()
 
-        from_wds = shard.endswith(".tar")
+        _ = from_wds = shard.endswith(".tar")
 
         if from_wds:
             try:
@@ -211,7 +211,7 @@ class WhisperWorker:
                     None,
                     meta,
                 )
-                semaphore.release() if not from_wds else None
+                _ = semaphore.release() if not from_wds else None
                 continue
             meta = [json.loads(sample.get("json", b"{}").decode("utf-8"))] if from_wds else sample.pop("meta")
 
@@ -233,7 +233,7 @@ class WhisperWorker:
                     None,
                     meta,
                 )
-                semaphore.release() if not from_wds else None
+                _ = semaphore.release() if not from_wds else None
                 continue
 
             streams.pop("audio")  # only write metadata shards
@@ -253,7 +253,7 @@ class WhisperWorker:
                 None,
                 meta,
             )
-            semaphore.release() if not from_wds else None
+            _ = semaphore.release() if not from_wds else None
 
         sample_writer.close()
         end_time = time.time()
