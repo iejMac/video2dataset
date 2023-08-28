@@ -75,14 +75,14 @@ class WhisperSubsampler(Subsampler):
 
         for i, aud_bytes in enumerate(audio_bytes):
             # TODO: .m4a not always
-            with tempfile.NamedTemporaryFile(suffix=".mp3") as tmpfile:
-                tmpfile.write(aud_bytes)
-                tmpfile.flush()  # ensure all data is written
-                try:
+            try:
+                with tempfile.NamedTemporaryFile(suffix=".mp3") as tmpfile:
+                    tmpfile.write(aud_bytes)
+                    tmpfile.flush()  # ensure all data is written
                     audio = whisperx.load_audio(tmpfile.name)
                     result = self.model.transcribe(audio, batch_size=self.batch_size)
                     metadata[i]["whisper_transcript"] = result
-                except Exception as err:  # pylint: disable=broad-except
-                    return [], metadata, str(err)
+            except Exception as err:  # pylint: disable=broad-except
+                return [], metadata, str(err)
 
         return streams, metadata, None

@@ -112,7 +112,8 @@ class DownloadWorker:
     ):
         """Function to start an video downloading in one process"""
 
-        shard_id, shard_file = row
+        # shard_id, shard_file = row
+        shard_file, shard_id = row
         start_time = time.time()
 
         fs, shard_path = fsspec.core.url_to_fs(shard_file)
