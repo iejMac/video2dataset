@@ -185,7 +185,7 @@ class InputSharder:
 
             for shard_id, arrow_file in shards:
                 yield (
-                    shard_id,
                     arrow_file,
+                    shard_id,
                 )
             start_shard_id += number_shards

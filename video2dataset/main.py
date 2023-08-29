@@ -189,7 +189,11 @@ def video2dataset(
     else:
         raise ValueError(f"Invalid output format {output_format}")
 
-    if stage == "download":
+    if input_format == "webdataset":
+        shard_iterator = OutputSharder(  # type: ignore
+            url_list, input_format, done_shards, sampler=config["reading"]["sampler"]
+        )
+    else:
         shard_iterator = InputSharder(  # type: ignore
             url_list,
             input_format,
@@ -202,6 +206,8 @@ def video2dataset(
             tmp_path,
             config["reading"]["sampler"],
         )
+
+    if stage == "download":
         worker = DownloadWorker(
             sample_writer_class=sample_writer_class,
             save_caption=save_caption,
@@ -212,10 +218,6 @@ def video2dataset(
             config=config,
         )
     elif stage == "subset":
-        shard_iterator = OutputSharder(
-            url_list, input_format, done_shards, sampler=config["reading"]["sampler"]  # type: ignore
-        )
-
         worker = SubsetWorker(  # type: ignore
             sample_writer_class=sample_writer_class,
             output_folder=output_folder,
@@ -223,9 +225,6 @@ def video2dataset(
             config=config,
         )
     elif stage == "optical_flow":
-        shard_iterator = OutputSharder(  # type: ignore
-            url_list, input_format, done_shards, sampler=config["reading"]["sampler"]
-        )
         is_slurm_task = "GLOBAL_RANK" in os.environ and config["distribution"]["distributor"] == "multiprocessing"
         worker = OpticalFlowWorker(  # type: ignore
             sample_writer_class=sample_writer_class,
@@ -235,9 +234,6 @@ def video2dataset(
             config=config,
         )
     elif stage == "caption":
-        shard_iterator = OutputSharder(  # type: ignore
-            url_list, input_format, done_shards, sampler=config["reading"]["sampler"]
-        )
         is_slurm_task = "GLOBAL_RANK" in os.environ and config["distribution"]["distributor"] == "multiprocessing"
         worker = CaptionWorker(  # type: ignore
             sample_writer_class=sample_writer_class,
@@ -247,13 +243,12 @@ def video2dataset(
             config=config,
         )
     elif stage == "whisper":
-        shard_iterator = OutputSharder(  # type: ignore
-            url_list, input_format, done_shards, sampler=config["reading"]["sampler"]
-        )
         is_slurm_task = "GLOBAL_RANK" in os.environ and config["distribution"]["distributor"] == "multiprocessing"
         worker = WhisperWorker(  # type: ignore
             sample_writer_class=sample_writer_class,
             output_folder=output_folder,
+            column_list=shard_iterator.column_list,
+            tmp_dir=tmp_dir,
             encode_formats=encode_formats,
             is_slurm_task=is_slurm_task,
             config=config,
