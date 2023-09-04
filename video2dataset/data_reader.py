@@ -214,6 +214,7 @@ class YtDlpDownloader:
                 "outtmpl": video_path,
                 "format": video_format_string,
                 "quiet": True,
+                "no_warnings": True,
             }
 
             err = None
