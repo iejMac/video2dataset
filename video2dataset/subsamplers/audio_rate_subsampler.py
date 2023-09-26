@@ -19,8 +19,9 @@ class AudioRateSubsampler:
         self.sample_rate = sample_rate
         self.encode_formats = encode_formats
 
-    def __call__(self, audio_bytes):
-        subsampled_bytes = []
+    def __call__(self, streams, metadata=None):
+        audio_bytes = streams.pop("audio")
+        subsampled_bytes, subsampled_metas = [], []
         for aud_bytes in audio_bytes:
             with tempfile.TemporaryDirectory() as tmpdir:
                 with open(os.path.join(tmpdir, "input.m4a"), "wb") as f:
@@ -36,4 +37,5 @@ class AudioRateSubsampler:
 
                 with open(f"{tmpdir}/output.{ext}", "rb") as f:
                     subsampled_bytes.append(f.read())
-        return subsampled_bytes, None, None
+        streams["audio"] = subsampled_bytes
+        return streams, metadata, None
