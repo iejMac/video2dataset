@@ -18,7 +18,7 @@ class AudioRateSubsampler:
     def __init__(self, sample_rate, encode_formats, n_audio_channels=None):
         self.sample_rate = sample_rate
         self.encode_formats = encode_formats
-        self.n_audio_channels = None
+        self.n_audio_channels = n_audio_channels
 
     def __call__(self, streams, metadata=None):
         audio_bytes = streams.pop("audio")
