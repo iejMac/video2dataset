@@ -15,9 +15,10 @@ class AudioRateSubsampler:
         frame_rate (int): Target frame rate of the videos.
     """
 
-    def __init__(self, sample_rate, encode_formats):
+    def __init__(self, sample_rate, encode_formats, n_audio_channels=None):
         self.sample_rate = sample_rate
         self.encode_formats = encode_formats
+        self.n_audio_channels = None
 
     def __call__(self, streams, metadata=None):
         audio_bytes = streams.pop("audio")
@@ -30,6 +31,8 @@ class AudioRateSubsampler:
                 try:
                     # TODO: for now assuming m4a, change this
                     ffmpeg_args = {"ar": str(self.sample_rate), "f": ext}
+                    if self.n_audio_channels is not None:
+                        ffmpeg_args["ac"] = str(self.n_audio_channels)
                     _ = ffmpeg.input(f"{tmpdir}/input.m4a")
                     _ = _.output(f"{tmpdir}/output.{ext}", **ffmpeg_args).run(capture_stdout=True, quiet=True)
                 except Exception as err:  # pylint: disable=broad-except
