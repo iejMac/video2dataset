@@ -71,8 +71,7 @@ class SubsetWorker:
 
         audio_subsamplers: List[Any] = []
         if "AudioRateSubsampler" in self.config["subsampling"]:
-            video_subsamplers.append(AudioRateSubsampler(**self.config["subsampling"]["AudioRateSubsampler"]["args"]))
-
+            audio_subsamplers.append(AudioRateSubsampler(**self.config["subsampling"]["AudioRateSubsampler"]["args"]))
         self.subsamplers = {"video": video_subsamplers, "audio": audio_subsamplers}
 
     def __call__(
@@ -112,6 +111,13 @@ class SubsetWorker:
 
         status_dict = CappedCounter()
 
+        # The subsamplers might change the output format, so we need to update the writer
+        writer_encode_formats = self.encode_formats.copy()
+        if self.subsamplers["audio"]:
+            writer_encode_formats["audio"] = self.subsamplers["audio"][0].encode_formats["audio"]
+        if self.subsamplers["video"]:
+            writer_encode_formats["video"] = self.subsamplers["video"][0].encode_formats["video"]
+
         # give schema to writer
         sample_writer = self.sample_writer_class(
             shard_id,
@@ -119,7 +125,7 @@ class SubsetWorker:
             self.save_caption,
             self.config["storage"]["oom_shard_count"],
             schema,
-            self.encode_formats,
+            writer_encode_formats,
         )
 
         successes = 0

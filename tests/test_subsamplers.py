@@ -150,16 +150,19 @@ def test_frame_rate_subsampler(target_frame_rate):
         assert frame_rate == target_frame_rate
 
 
-@pytest.mark.parametrize("sample_rate", [44100, 24000])
-def test_audio_rate_subsampler(sample_rate):
+@pytest.mark.parametrize("sample_rate,n_audio_channels", [(44100, 1), (24000, 2)])
+def test_audio_rate_subsampler(sample_rate, n_audio_channels):
     current_folder = os.path.dirname(__file__)
     audio = os.path.join(current_folder, "test_files/test_audio.mp3")
     with open(audio, "rb") as aud_f:
         audio_bytes = aud_f.read()
 
-    subsampler = AudioRateSubsampler(sample_rate, {"audio": "mp3"})
+    streams = {"audio": [audio_bytes]}
+    subsampler = AudioRateSubsampler(sample_rate, {"audio": "mp3"}, n_audio_channels)
 
-    subsampled_audios, _, error_message = subsampler([audio_bytes])
+    subsampled_streams, _, error_message = subsampler(streams)
+    assert error_message is None
+    subsampled_audios = subsampled_streams["audio"]
 
     with tempfile.NamedTemporaryFile(suffix=".mp3") as tmp:
         tmp.write(subsampled_audios[0])
@@ -169,8 +172,9 @@ def test_audio_rate_subsampler(sample_rate):
 
         result = ffmpeg.probe(tmp.name)
         read_sample_rate = result["streams"][0]["sample_rate"]
-
+        read_num_channels = result["streams"][0]["channels"]
         assert int(read_sample_rate) == sample_rate
+        assert int(read_num_channels) == n_audio_channels
 
 
 @pytest.mark.parametrize(

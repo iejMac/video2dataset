@@ -19,8 +19,11 @@ build-pex:
 	. .pexing/bin/activate && python -m pex setuptools . -o video2dataset.pex -v
 	rm -rf .pexing
 
+
+TEST_ARGS = tests ## set default to run all tests
+## to run specific test, run `make test TEST_ARGS="tests/test_subsamplers.py::test_audio_rate_subsampler"`
 test: ## [Local development] Run unit tests
-	python -m pytest -x -s -v tests
+	python -m pytest -x -s -v $(TEST_ARGS)
 
 .PHONY: help
 
