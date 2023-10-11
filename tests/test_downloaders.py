@@ -8,6 +8,7 @@ from video2dataset.data_reader import YtDlpDownloader, WebFileDownloader
 
 
 YT_URL = "https://www.youtube.com/watch?v=jLX0D8qQUBM"
+DM_URL = "https://www.dailymotion.com/video/x29ryo7"
 MP4_URL = "https://ak.picdn.net/shutterstock/videos/1053841541/preview/stock-footage-travel-blogger-shoot-a-story-on-top-of-mountains-young-man-holds-camera-in-forest.mp4"
 
 full_encode_formats = {"video": "mp4", "audio": "m4a"}
@@ -15,13 +16,14 @@ full_encode_formats = {"video": "mp4", "audio": "m4a"}
 
 @pytest.mark.parametrize("modalities", [["video", "audio"], ["video"], ["audio"]])
 @pytest.mark.parametrize("video_size", [361, 1080])
-def test_yt_downloader(modalities, video_size):
+@pytest.mark.parametrize("url", [YT_URL, DM_URL])
+def test_yt_downloader(modalities, video_size, url):
     encode_formats = dict([(modality, full_encode_formats[modality]) for modality in modalities])
     yt_args = {"download_size": video_size, "yt_metadata_args": None}
 
     ytdlp_downloader = YtDlpDownloader(encode_formats, "/tmp", yt_args)
 
-    modality_paths, yt_meta_dict, error_message = ytdlp_downloader(YT_URL)
+    modality_paths, yt_meta_dict, error_message = ytdlp_downloader(url)
     assert error_message is None
 
     for modality, path in modality_paths.items():
