@@ -9,3 +9,5 @@ wandb
 *.pex
 .pexing
 **/dataset/*
+dist/
+build/
