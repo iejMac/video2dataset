@@ -42,7 +42,7 @@ def video2dataset(
     output_folder: str = "dataset",
     output_format: str = "files",
     input_format: str = "csv",
-    encode_formats: dict = None,
+    encode_formats: Optional[dict] = None,
     stage: str = "download",
     url_col: str = "url",
     caption_col: Optional[str] = None,
