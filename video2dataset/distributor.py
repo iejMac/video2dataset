@@ -226,6 +226,7 @@ srun --account {self.account} bash {self.launcher_path}
     def _make_launch_cpu(
         self,
     ):
+        """Create cpu launcher"""
 
         venv = os.environ.get("VIRTUAL_ENV")
         if venv:
@@ -236,7 +237,7 @@ srun --account {self.account} bash {self.launcher_path}
                 venv_activate = f"conda activate {conda_env}"
             else:
                 raise ValueError("You need to specify either a virtual environment or a conda environment.")
-        
+
         cdir = os.path.abspath(os.path.dirname(__file__))
         script = os.path.join(cdir, "slurm_executor.py")
         project_root = os.path.abspath(os.path.join(cdir, ".."))
