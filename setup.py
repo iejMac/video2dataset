@@ -26,7 +26,18 @@ if __name__ == "__main__":
         author="Maciej Kilian",
         author_email="kilianmaciej6@gmail.com",
         url="https://github.com/iejMac/video2dataset",
-        data_files=[(".", ["README.md"])],
+        data_files=[
+            (
+                ".",
+                [
+                    "README.md",
+                    "video2dataset/configs/caption.yaml",
+                    "video2dataset/configs/default.yaml",
+                    "video2dataset/configs/downsample_ml.yaml",
+                    "video2dataset/configs/optical_flow.yaml",
+                ],
+            )
+        ],
         keywords=["machine learning"],
         install_requires=REQUIREMENTS,
         classifiers=[
