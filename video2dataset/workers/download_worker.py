@@ -206,7 +206,8 @@ class DownloadWorker:
                             raise ValueError("failed_to_subsample")
 
                     if self.config["storage"]["captions_are_subtitles"]:  # create clips
-                        subtitles = meta["yt_meta_dict"]["subtitles"]
+                        # all langs have same start and end times
+                        subtitles = meta["yt_meta_dict"]["subtitles"][list(meta["yt_meta_dict"]["subtitles"].keys())[0]]
                         meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
                     elif self.cut_detector is not None:  # apply cut detection to get clips
                         streams, cuts, error_message = self.cut_detector(streams)
