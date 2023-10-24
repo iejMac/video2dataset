@@ -84,10 +84,8 @@ def get_yt_meta(url, yt_metadata_args: dict) -> dict:
         if write_subs:
             full_sub_dict = {}
             for lang in yt_metadata_args["subtitleslangs"]:
-                print(lang)
                 if lang not in info_dict["requested_subtitles"]:
                     continue
-                print("1")
                 sub_url = info_dict["requested_subtitles"][lang]["url"]
                 res = requests.get(sub_url, timeout=10)
                 sub = io.TextIOWrapper(io.BytesIO(res.content)).read()
@@ -105,7 +103,6 @@ def get_yt_meta(url, yt_metadata_args: dict) -> dict:
         else:
             info_dict = None
         
-        print(full_sub_dict)
         yt_meta_dict = {"info": info_dict, "subtitles": full_sub_dict}
 
         return yt_meta_dict
