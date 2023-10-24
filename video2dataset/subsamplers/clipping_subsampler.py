@@ -221,7 +221,6 @@ class ClippingSubsampler(Subsampler):
                         for lang, subtitles in meta_clip["yt_meta_dict"]["subtitles"].items():
                             for idx, line in enumerate(subtitles):
                                 line_dict = {lang: line["lines"]}
-
                                 s, e = _get_seconds(line["start"]), _get_seconds(line["end"])
                                 if max(s_c, s) < min(e_c, e):
                                     if idx < len(clip_subtitles):
