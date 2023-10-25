@@ -218,16 +218,18 @@ class ClippingSubsampler(Subsampler):
                     if (yt_md_dict is not None) and (yt_md_dict.get("subtitles", None) is not None):
                         clip_subtitles = []
                         s_c, e_c = _get_seconds(clip_span[0]), _get_seconds(clip_span[1])
-                        for lang, subtitles in meta_clip["yt_meta_dict"]["subtitles"].items():
+                        for lang_id, (lang, subtitles) in enumerate(meta_clip["yt_meta_dict"]["subtitles"].items()):
+                            idx = 0
                             for idx, line in enumerate(subtitles):
                                 line_dict = {lang: line["lines"]}
                                 s, e = _get_seconds(line["start"]), _get_seconds(line["end"])
                                 if max(s_c, s) < min(e_c, e):
-                                    if idx < len(clip_subtitles):
-                                        clip_subtitles[idx]["lines"] |= line_dict
+                                    if lang_id != 0:
+                                        clip_subtitles[idx]["lines"].update(line_dict)
+                                        idx += 1
                                     else:
                                         line["lines"] = line_dict
-                                        clip_subtitles.apppend(line)
+                                        clip_subtitles.append(line)
                                 elif s > e_c:
                                     break
                         # full video subtitles might still be useful for context
@@ -236,5 +238,9 @@ class ClippingSubsampler(Subsampler):
                     metadata_clips.append(meta_clip)
 
                 streams_clips[k] = stream_clips
+        
+        # remove redundant metadata from clips after the first
+        for metadata in metadata_clips[1:]:
+            metadata["yt_meta_dict"] = {}    
 
         return streams_clips, metadata_clips, None
