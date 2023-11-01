@@ -56,6 +56,27 @@ def _adjust_ranges_to_keyframes(ranges, keyframes):
     return adjusted_ranges
 
 
+def _extract_subtitles(clip_span, meta_clip):
+    clip_subtitles = []
+    s_c, e_c = _get_seconds(clip_span[0]), _get_seconds(clip_span[1])
+    for lang_id, (lang, subtitles) in enumerate(meta_clip["yt_meta_dict"]["subtitles"].items()):
+        idx = 0
+        for idx, line in enumerate(subtitles):
+            line_dict = {lang: line["lines"]}
+            s, e = _get_seconds(line["start"]), _get_seconds(line["end"])
+            if max(s_c, s) < min(e_c, e):
+                if lang_id != 0:
+                    clip_subtitles[idx]["lines"].update(line_dict)
+                    idx += 1
+                else:
+                    line["lines"] = line_dict
+                    clip_subtitles.append(line)
+            elif s > e_c:
+                break
+
+    return clip_subtitles
+             
+
 class ClippingSubsampler(Subsampler):
     """
     Cuts videos up into segments according to the 'clips' metadata
@@ -216,31 +237,15 @@ class ClippingSubsampler(Subsampler):
 
                     yt_md_dict = meta_clip.get("yt_meta_dict", {})
                     if (yt_md_dict is not None) and (yt_md_dict.get("subtitles", None) is not None):
-                        clip_subtitles = []
-                        s_c, e_c = _get_seconds(clip_span[0]), _get_seconds(clip_span[1])
-                        for lang_id, (lang, subtitles) in enumerate(meta_clip["yt_meta_dict"]["subtitles"].items()):
-                            idx = 0
-                            for idx, line in enumerate(subtitles):
-                                line_dict = {lang: line["lines"]}
-                                s, e = _get_seconds(line["start"]), _get_seconds(line["end"])
-                                if max(s_c, s) < min(e_c, e):
-                                    if lang_id != 0:
-                                        clip_subtitles[idx]["lines"].update(line_dict)
-                                        idx += 1
-                                    else:
-                                        line["lines"] = line_dict
-                                        clip_subtitles.append(line)
-                                elif s > e_c:
-                                    break
                         # full video subtitles might still be useful for context
-                        meta_clip["clip_subtitles"] = clip_subtitles
+                        meta_clip["clip_subtitles"] = _extract_subtitles(clip_span, meta_clip)
 
                     metadata_clips.append(meta_clip)
 
                 streams_clips[k] = stream_clips
-        
+
         # remove redundant metadata from clips after the first
-        for metadata in metadata_clips[1:]:
-            metadata["yt_meta_dict"] = {}    
+        for m_clips in metadata_clips[1:]:
+            m_clips["yt_meta_dict"] = {}
 
         return streams_clips, metadata_clips, None

@@ -102,7 +102,7 @@ def get_yt_meta(url, yt_metadata_args: dict) -> dict:
             info_dict.pop("automatic_captions")
         else:
             info_dict = None
-        
+
         yt_meta_dict = {"info": info_dict, "subtitles": full_sub_dict}
 
         return yt_meta_dict
