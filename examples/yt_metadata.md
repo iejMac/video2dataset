@@ -9,7 +9,7 @@ yt_args:
     download_size: 360
     download_audio_rate: 44100
     yt_metadata_args:
-        writesubtitles:  True
+        writesubtitles: 'all'
         subtitleslangs: ['en']
         writeautomaticsub: True
         get_info: True

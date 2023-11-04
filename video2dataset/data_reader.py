@@ -56,22 +56,19 @@ def get_yt_meta(url, yt_metadata_args: dict) -> dict:
     """Return yt meta dict with meta data and/or subtitles
     yt_metadata_args is a dict of follwing format:
     yt_metadata_args = {
-        'writesubtitles': True,
-        'writealllangs': True,
+        'writesubtitles': 'first',
         'subtitleslangs': ['en'],
         'writeautomaticsub': True,
         'get_info': True
     }
 
-    writesubtitles:    Whether to write subtitles
-    writealllangs:     Whether to write subtitles for each provided language or just the first present
+    writesubtitles:    Whether to write subtitles for each provided language or just the first present
     writeautomaticsub: Write the automatically generated subtitles to a file
     subtitleslangs:    List of languages of the subtitles to download.
-    get_info: whether to add info (title, description, tags etc) to the output.
+    get_info:          Whether to add info (title, description, tags etc) to the output.
     """
 
     write_subs = yt_metadata_args.get("writesubtitles", None)
-    write_all_langs = yt_metadata_args.get("writealllangs", False)
 
     yt_metadata_args["skip_download"] = True
     yt_metadata_args["ignoreerrors"] = True
@@ -91,7 +88,7 @@ def get_yt_meta(url, yt_metadata_args: dict) -> dict:
                 sub = io.TextIOWrapper(io.BytesIO(res.content)).read()
                 full_sub_dict[lang] = sub_to_dict(sub)
 
-                if not write_all_langs:
+                if write_subs == "first":
                     break
 
         if yt_metadata_args["get_info"]:
