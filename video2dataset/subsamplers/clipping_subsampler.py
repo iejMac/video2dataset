@@ -61,7 +61,7 @@ def _extract_subtitles(clip_span, meta_clip):
     s_c, e_c = _get_seconds(clip_span[0]), _get_seconds(clip_span[1])
     for lang_id, (lang, subtitles) in enumerate(meta_clip["yt_meta_dict"]["subtitles"].items()):
         idx = 0
-        for idx, line in enumerate(subtitles):
+        for line in subtitles:
             line_dict = {lang: line["lines"]}
             s, e = _get_seconds(line["start"]), _get_seconds(line["end"])
             if max(s_c, s) < min(e_c, e):
@@ -69,8 +69,9 @@ def _extract_subtitles(clip_span, meta_clip):
                     clip_subtitles[idx]["lines"].update(line_dict)
                     idx += 1
                 else:
-                    line["lines"] = line_dict
-                    clip_subtitles.append(line)
+                    temp_line = copy.deepcopy(line)
+                    temp_line["lines"] = line_dict
+                    clip_subtitles.append(temp_line)
             elif s > e_c:
                 break
 
