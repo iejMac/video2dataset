@@ -123,3 +123,118 @@ For every sample the metadata will be present in the json file as such:
 ```
 
 And since we specified that captions_are_subtitles the txt file will have the subtitle for that given clip inside of it. For this particular example it would be: "analytics to assess performance based on"
+
+#### Multilingual Subtitles
+To control the language/s of the subtitles from your videos, you can prvoide either `'first'` or `'all'` for `writesubtitles` (any value that evalutes to True will work also work as `'all'`).
+
+`first`: This will extract subtitles for the first language that is in `subtitleslangs` for which there exists subtitles. \
+`all`: Attempt to extract subtitles for every language in `subtitleslangs`.
+
+Below are some example outputs with `subtitleslangs: ['en', 'es', 'fr']`.
+
+Using `writesubtitles: 'first'`:
+```json
+{
+    "url": "https://www.youtube.com/watch?v=CvHAfXKIvgw",
+    ...
+    "yt_meta_dict": {
+        ...
+        "subtitles": {
+            "en": [
+                {
+                    "start": "00:00:02.100",
+                    "end": "00:00:03.360",
+                    "lines": [
+                        "Good morning Lisa"
+                    ]
+                },
+                ...
+            ]
+        }
+    },
+    "clips": [
+        [
+            2.1,
+            3.36
+        ]
+    ],
+    "clip_subtitles": [
+        {
+            "start": "00:00:02.100",
+            "end": "00:00:03.360",
+            "lines": {
+                "en": [
+                    "Good morning Lisa"
+                ]
+            }
+        }
+    ]
+}
+```
+
+
+Using `writesubtitles: 'all'`:
+```json
+{
+    "url": "https://www.youtube.com/watch?v=CvHAfXKIvgw",
+    ...
+    "yt_meta_dict": {
+        ...
+        "subtitles": {
+            "en": [
+                {
+                    "start": "00:00:02.100",
+                    "end": "00:00:03.360",
+                    "lines": [
+                        "Good morning Lisa"
+                    ]
+                },
+                ...
+            ],
+            "es": [
+                {
+                    "start": "00:00:02.100",
+                    "end": "00:00:03.360",
+                    "lines": [
+                        "Buenos d\u00edas Lisa"
+                    ]
+                },
+                ...
+            ],
+            "fr": [
+                {
+                    "start": "00:00:02.100",
+                    "end": "00:00:03.360",
+                    "lines": [
+                        "Bonjour Lisa"
+                    ]
+                },
+                ...
+            ]
+        }
+    },
+    "clips": [
+        [
+            2.1,
+            3.36
+        ]
+    ],
+    "clip_subtitles": [
+        {
+            "start": "00:00:02.100",
+            "end": "00:00:03.360",
+            "lines": {
+                "en": [
+                    "Good morning Lisa"
+                ],
+                "es": [
+                    "Buenos d\u00edas Lisa"
+                ],
+                "fr": [
+                    "Bonjour Lisa"
+                ]
+            }
+        }
+    ]
+}
+```
