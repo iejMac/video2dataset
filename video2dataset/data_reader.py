@@ -256,10 +256,8 @@ class VideoDataReader:
             # TODO: make nice function to detect what type of link we're dealing with
             if get_file_info(url):  # web file that can be directly downloaded
                 modality_paths, error_message = self.webfile_downloader(url)
-            elif "youtube" in url:  # youtube link
-                modality_paths, meta_dict, error_message = self.yt_downloader(url)
             else:
-                modality_paths, error_message = {}, "Warning: Unsupported URL type"
+                modality_paths, meta_dict, error_message = self.yt_downloader(url)
         except Exception as e:  # pylint: disable=(broad-except)
             modality_paths, meta_dict, error_message = {}, None, str(e)
 

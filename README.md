@@ -23,12 +23,13 @@ pip install -e .
 
 ## Usage
 
-First get some video urls and metadata. For example lets save this small animal video dataset to a csv file called `videos.csv`
+First get some video urls and metadata (all [supported sites](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md) by yt-dlp). For example lets save this small animal video dataset to a csv file called `videos.csv`
 ```
 url,caption
 https://www.youtube.com/watch?v=od_PmtmMDV0,Driving to the banana store
 https://www.youtube.com/watch?v=8FhGOV7fs64,Polar bear eating
 https://www.youtube.com/watch?v=TReCLbmhlMs,Cat scared of printer
+https://www.dailymotion.com/video/x29ryo7,Cat and owl playing
 ```
 
 Then, run the tool:
