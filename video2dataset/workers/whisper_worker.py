@@ -128,8 +128,20 @@ class WhisperWorker:
             shard_to_dl = list(enumerate(zip(*(pydict[col] for col in self.column_list))))
             del pydict
             del df
+
+            status_dict = CappedCounter()
+
+            count = len(shard_to_dl)
+            successes = 0
+            failed = {
+                "failed_to_download": 0,
+                "failed_to_subsample": 0,
+            }
+            bytes_downloaded = 0
             url_indice = self.column_list.index("url")
+            caption_indice = self.column_list.index("caption") if "caption" in self.column_list else None
             key_url_list = [(key, x[url_indice]) for key, x in shard_to_dl]
+
             semaphore = Semaphore(self.config["distribution"]["thread_count"])
 
             def data_generator():
@@ -186,11 +198,13 @@ class WhisperWorker:
                             "__url__": shard,
                             "__corrupted__": error_message is not None,
                         }
+                        _, sample_data = shard_to_dl[key]
                         meta = [
                             {
                                 "key": str_key,
                                 "status": None,
                                 "error_message": error_message,
+                                **{self.column_list[i]: sample_data[i] for i in range(len(self.column_list))},
                                 "yt_meta_dict": yt_meta_dict,
                             }
                         ]
@@ -207,7 +221,7 @@ class WhisperWorker:
             key = sample["__key__"]
             if corrupted:
                 url = sample["__url__"]
-                meta = {}
+                meta = sample["meta"][0]
                 meta["url"] = url
                 meta["key"] = key
                 # error_message = "corrupted sample"

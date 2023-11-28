@@ -182,14 +182,15 @@ class YtDlpDownloader:
             f"bv/b[ext=mp4]{'[codec=avc1]' if self.specify_codec else ''}"
         )
         audio_fmt_string = (
-            f"wa[asr>={self.audio_rate}][ext=m4a] / ba[ext=m4a]" if self.audio_rate > 0 else "ba[ext=m4a]"
+            # f"wa[asr>={self.audio_rate}][ext=m4a] / ba[ext=m4a]" if self.audio_rate > 0 else "ba[ext=m4a]"
+            # f"wa[asr>={self.audio_rate}][ext=mp3] / ba[ext=mp3]" if self.audio_rate > 0 else "ba[ext=mp3]"
         )
 
         if self.encode_formats.get("audio", None):
             audio_path_m4a = f"{self.tmp_dir}/{str(uuid.uuid4())}.m4a"
             ydl_opts = {
                 "outtmpl": audio_path_m4a,
-                "format": audio_fmt_string,
+                # "format": audio_fmt_string,
                 "quiet": True,
             }
 
