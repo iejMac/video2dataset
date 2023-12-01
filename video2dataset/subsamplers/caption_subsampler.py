@@ -6,6 +6,7 @@ import os
 import torch
 from torch import nn
 from einops import rearrange
+from typing import Optional
 
 from transformers import (
     AutoModelForCausalLM,
@@ -41,11 +42,12 @@ class VideoBlipVisionModel(Blip2VisionModel):
 
     def forward(
         self,
-        pixel_values: torch.FloatTensor = None,
-        output_attentions: bool = None,
-        output_hidden_states: bool = None,
-        return_dict: bool = None,
+        pixel_values: Optional[torch.FloatTensor] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        return_dict: Optional[bool] = None,
     ):
+        """Forward method for vision blip model"""
         if pixel_values is None:
             raise ValueError("You have to specify pixel_values")
         batch, _, time, _, _ = pixel_values.size()

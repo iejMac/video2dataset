@@ -22,7 +22,7 @@ class AudioRateSubsampler:
 
     def __call__(self, streams, metadata=None):
         audio_bytes = streams.pop("audio")
-        subsampled_bytes, subsampled_metas = [], []
+        subsampled_bytes = []
         for aud_bytes in audio_bytes:
             with tempfile.TemporaryDirectory() as tmpdir:
                 with open(os.path.join(tmpdir, "input.m4a"), "wb") as f:
