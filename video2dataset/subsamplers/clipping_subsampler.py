@@ -57,6 +57,7 @@ def _adjust_ranges_to_keyframes(ranges, keyframes):
 
 
 def _extract_subtitles(clip_span, meta_clip):
+    """Extracts subtitles and groups them by language"""
     clip_subtitles = []
     s_c, e_c = _get_seconds(clip_span[0]), _get_seconds(clip_span[1])
     for lang_id, (lang, subtitles) in enumerate(meta_clip["yt_meta_dict"]["subtitles"].items()):
@@ -76,7 +77,7 @@ def _extract_subtitles(clip_span, meta_clip):
                 break
 
     return clip_subtitles
-             
+
 
 class ClippingSubsampler(Subsampler):
     """
