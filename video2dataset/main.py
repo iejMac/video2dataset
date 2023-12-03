@@ -126,8 +126,8 @@ def video2dataset(
         assert clip_col is None  # no weird double-clipping
         if config["reading"]["yt_args"]["yt_metadata_args"] is None:
             config["reading"]["yt_args"]["yt_metadata_args"] = {}
-        if config["reading"]["yt_args"]["yt_metadata_args"]["writesubtitles"] is None:
-            config["reading"]["yt_args"]["yt_metadata_args"]["writesubtitles"] = "all"
+        if not config["reading"]["yt_args"]["yt_metadata_args"].get("writesubtitles", None):  # type: ignore
+            config["reading"]["yt_args"]["yt_metadata_args"]["writesubtitles"] = "all"  # type: ignore
 
     if encode_formats is None:
         encode_formats = {"video": "mp4"}
