@@ -18,11 +18,13 @@ class ResolutionSubsampler(Subsampler):
             scale: scale video keeping aspect ratios (currently always picks video height)
             crop: center crop to video_size x video_size
             pad: center pad to video_size x video_size
+        encode_format (str): Format to encode in (i.e. mp4)
     """
 
-    def __init__(self, video_size, resize_mode):
+    def __init__(self, video_size, resize_mode, encode_format="mp4"):
         self.video_size = video_size
         self.resize_mode = resize_mode
+        self.encode_format = encode_format
 
     def __call__(self, streams, metadata=None):
         video_bytes = streams["video"]
