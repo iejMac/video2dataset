@@ -11,35 +11,29 @@ from .subsampler import Subsampler
 
 class ResolutionSubsampler(Subsampler):
     """
-    Adjusts the resolution of the videos to the specified height and width.
+    Adjusts the resolution of the videos to the specified height and width. Please do not set both video_size and height/width. This will result in an error. If both height and width are set, scale mode output will have the specified height (ignoring width).
 
     Args:
         resize_mode (list[str]): List of resize modes to apply. Possible options are:
-            scale: scale video keeping aspect ratios (currently always picks video height)
+            scale: scale video keeping aspect ratios
             crop: center crop to video_size x video_size
             pad: center pad to video_size x video_size
-        video_size (int): Target resolution of the videos (both height and width).
-        height (int): Height of video - video_size will be ignored if this is set.
-        width (int): Width of video - video_size will be ignored if this is set.
+        height (int): Height of video.
+        width (int): Width of video.
+        video_size (int): Both height and width.
     """
 
     def __init__(
         self,
         resize_mode: Literal["scale", "crop", "pad"],
-        video_size: int = -1,
         height: int = -1,
         width: int = -1,
+        video_size: int = -1,
     ):
-        if height > 0 and width > 0:
-            self.height = height
-            self.width = width
-        elif height > 0 or width > 0:
-            return None, None, "Either both height and width must be set or neither - you can also use video_size instead if you want to set both values simultaneously"
-        elif video_size > 0:
-            self.height = video_size
-            self.width = video_size
-        else:
-            return None, None, "Either video_size or both height and width must be set"
+        if video_size > 0 and (height > 0 or width > 0):
+            return None, None, "Either set video_size, or set height and/or width"
+        self.height = height if video_size < 0 else video_size
+        self.width = width if video_size < 0 else video_size
         self.resize_mode = resize_mode
 
     def __call__(self, streams, metadata=None):
@@ -52,7 +46,10 @@ class ResolutionSubsampler(Subsampler):
                 try:
                     _ = ffmpeg.input(f"{tmpdir}/input.mp4")
                     if "scale" in self.resize_mode:
-                        _ = _.filter("scale", w=self.width, h=self.height)
+                        if self.height > 0:
+                            _ = _.filter("scale", -2, self.height)
+                        else:
+                            _ = _.filter("scale", self.width, -2)
                     if "crop" in self.resize_mode:
                         _ = _.filter("crop", w=self.width, h=self.height)
                     if "pad" in self.resize_mode:
