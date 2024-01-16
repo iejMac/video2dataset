@@ -46,4 +46,4 @@ class ResolutionSubsampler(Subsampler):
                 with open(f"{tmpdir}/output.mp4", "rb") as f:
                     subsampled_bytes.append(f.read())
         streams["video"] = subsampled_bytes
-        return streams, None, None
+        return streams, metadata, None
