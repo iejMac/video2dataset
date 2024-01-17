@@ -19,13 +19,13 @@ Or from source via
 git clone https://github.com/iejMac/video2dataset
 cd video2dataset
 pip install -e .
-
+```
 
 #### Mac Installation
 
 
 On Mac, replace 'decord' with 'eva_decord' in requirements.txt. For details, see https://github.com/dmlc/decord/issues/213.
-```
+
 
 ## Usage
 
