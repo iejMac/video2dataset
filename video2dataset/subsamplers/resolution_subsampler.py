@@ -31,7 +31,7 @@ class ResolutionSubsampler(Subsampler):
         video_size: int = -1,
     ):
         if video_size > 0 and (height > 0 or width > 0):
-            return None, None, "Either set video_size, or set height and/or width"
+            raise Exception("Either set video_size, or set height and/or width")
         self.height = height if video_size < 0 else video_size
         self.width = width if video_size < 0 else video_size
         self.resize_mode = resize_mode
