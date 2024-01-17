@@ -158,7 +158,7 @@ def test_audio_rate_subsampler(sample_rate, n_audio_channels):
         audio_bytes = aud_f.read()
 
     streams = {"audio": [audio_bytes]}
-    subsampler = AudioRateSubsampler(sample_rate, {"audio": "mp3"}, n_audio_channels)
+    subsampler = AudioRateSubsampler(sample_rate, "mp3", n_audio_channels)
 
     subsampled_streams, _, error_message = subsampler(streams)
     assert error_message is None
