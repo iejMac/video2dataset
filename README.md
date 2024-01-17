@@ -21,6 +21,12 @@ cd video2dataset
 pip install -e .
 ```
 
+#### Mac Installation
+
+
+On Mac, replace 'decord' with 'eva_decord' in requirements.txt. For details, see https://github.com/dmlc/decord/issues/213.
+
+
 ## Usage
 
 First get some video urls and metadata (all [supported sites](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md) by yt-dlp). For example lets save this small animal video dataset to a csv file called `videos.csv`
