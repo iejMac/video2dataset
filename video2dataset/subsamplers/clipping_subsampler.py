@@ -55,15 +55,15 @@ def _split_time_frame(s: float, e: float, min_length: float, max_length: float) 
 
 def _adjust_clip_times_to_keyframes(clip_times: list[ClipTimes], keyframes: list[float]) -> list[ClipTimes]:
     """Translates clip_times into keyframe vocab"""
-    adjusted_ranges = []
+    adjusted_clip_times = []
     for start, end in clip_times:
         keyframes_in_range = [k for k in keyframes if start <= k <= end]
         if keyframes_in_range:
             adjusted_start = min(keyframes_in_range)
             adjusted_end = max(keyframes_in_range)
             if adjusted_start != adjusted_end:
-                adjusted_ranges.append((adjusted_start, adjusted_end))
-    return adjusted_ranges
+                adjusted_clip_times.append((adjusted_start, adjusted_end))
+    return adjusted_clip_times
 
 
 def _adjust_clip_times(
@@ -89,27 +89,25 @@ def _adjust_clip_times(
     return filtered_clip_times
 
 
-def _get_clip_intervals(clip_times: list[ClipTimes]) -> tuple[str, list[int]]:
-    s_clip, e_clip = clip_times[0]
-    skip_first_interval = int(s_clip > 0.0)
+def _get_clip_times(clip_times: list[ClipTimes]) -> tuple[str, list[int]]:
+    all_clip_times = [0.0]
+    clip_idxs = []
+    e_prev = 0.0
+    clip_idx = 0
 
-    # which timestamp intervals to take, used to discard non-contiguous sections
-    intervals = [skip_first_interval]
-    timestamps = [0.0] + skip_first_interval * [s_clip] + [e_clip]
-    interval = 1 + skip_first_interval
-    for s, e in clip_times[1:]:
-        if s == e_clip:  # situations like [0, 1], [1, 2], [2, 3] -> 1, 2
-            timestamps += [e]
-            intervals.append(interval)
-            interval += 1
-        else:
-            timestamps += [s, e]
-            intervals.append(interval + 1)
-            interval += 2
-        e_clip = e
+    for s, e in clip_times:
+        if s == e_prev:  # clip starts where last one left off
+            all_clip_times += [e]
+            clip_idxs.append(clip_idx)
+            clip_idx += 1
+        else:  # next clip skips over some time
+            all_clip_times += [s, e]
+            clip_idxs.append(clip_idx + 1)
+            clip_idx += 2
+        e_prev = e
 
-    timestamps = ",".join([str(time) for time in timestamps])
-    return timestamps, intervals
+    all_clip_times = ",".join([str(time) for time in all_clip_times])
+    return all_clip_times, clip_idxs
 
 
 class ClippingSubsampler(Subsampler):
@@ -175,16 +173,16 @@ class ClippingSubsampler(Subsampler):
         if len(clip_times) == 0:
             return {}, [], f"Video had no clip_times longer than {self.min_length}"
 
-        timestamps, intervals = _get_clip_intervals(clip_times)
+        all_clip_times, clip_idxs = _get_clip_times(clip_times)
 
         ffmpeg_kwargs = {
             "map": 0,
             "f": "segment",
-            "segment_times": timestamps,
+            "segment_times": all_clip_times,
             "reset_timestamps": 1,
         }
         if self.precision == "exact":
-            ffmpeg_kwargs["force_key_frames"] = timestamps
+            ffmpeg_kwargs["force_key_frames"] = all_clip_times
         else:
             ffmpeg_kwargs["c"] = "copy"
 
@@ -220,10 +218,10 @@ class ClippingSubsampler(Subsampler):
                 stream_clips.sort(key=lambda x: int(x.split("_")[-1].split(".")[0]))
 
                 correct_clips = []
-                for clip_id, (clip, ind) in enumerate(zip(clip_times, intervals)):
+                for clip_id, (clip, ind) in enumerate(zip(clip_times, clip_idxs)):
                     if ind < len(stream_clips):
                         correct_clips.append((clip_id, clip, stream_clips[ind]))
-                # clips_lost = len(intervals) - len(correct_clips) # TODO report this somehow
+                # clips_lost = len(clip_idxs) - len(correct_clips) # TODO report this somehow
 
                 stream_clips, metadata_clips = [], []
                 for clip_id, clip_span, clip_pth in correct_clips:
