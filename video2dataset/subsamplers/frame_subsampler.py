@@ -22,6 +22,7 @@ class FrameSubsampler(Subsampler):
             yt_subtitle: temporary special case where you want a frame at the beginning of each yt_subtitle
                          we will want to turn this into something like frame_timestamps and introduce
                          this as a fusing option with clipping_subsampler
+        encode_format (str): Format to encode in (i.e. mp4)
 
     TODO: n_frame
     TODO: generalize interface, should be like (frame_rate, n_frames, sampler, output_format)
@@ -31,10 +32,11 @@ class FrameSubsampler(Subsampler):
     # output_format - save as video, or images
     """
 
-    def __init__(self, frame_rate, downsample_method="fps"):
+    def __init__(self, frame_rate, downsample_method="fps", encode_format="mp4"):
         self.frame_rate = frame_rate
         self.downsample_method = downsample_method
         self.output_modality = "video" if downsample_method == "fps" else "jpg"
+        self.encode_format = encode_format
 
     def __call__(self, streams, metadata=None):
         # TODO: you might not want to pop it (f.e. in case of other subsamplers)

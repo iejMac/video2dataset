@@ -23,20 +23,23 @@ class ResolutionSubsampler(Subsampler):
         height (int): Height of video.
         width (int): Width of video.
         video_size (int): Both height and width.
+        encode_format (str): Format to encode in (i.e. mp4)
     """
-
     def __init__(
         self,
         resize_mode: Literal["scale", "crop", "pad"],
         height: int = -1,
         width: int = -1,
         video_size: int = -1,
+        encode_format: str = "mp4",
     ):
         if video_size > 0 and (height > 0 or width > 0):
             raise Exception("Either set video_size, or set height and/or width")
+        self.resize_mode = resize_mode
         self.height = height if video_size < 0 else video_size
         self.width = width if video_size < 0 else video_size
-        self.resize_mode = resize_mode
+        self.video_size = video_size
+        self.encode_format = encode_format
 
     def __call__(self, streams, metadata=None):
         video_bytes = streams["video"]
