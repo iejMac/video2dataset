@@ -7,12 +7,26 @@ import glob
 import ffmpeg
 import tempfile
 from collections.abc import Iterable
+from typing import Annotated, TypedDict, Literal, cast
 
 import datetime
 from .subsampler import Subsampler
 
 
-def _get_seconds(t):
+ClipTimes = Annotated[list[float], 2]
+
+
+class EncodeFormats(TypedDict):
+    video: str
+    audio: str
+
+
+class Streams(TypedDict):
+    video: bytes
+    audio: bytes
+
+
+def _get_seconds(t: str | float) -> float:
     if not isinstance(t, str):
         return float(t)  # already seconds
     time_format = "%H:%M:%S.%f"  # TODO: maybe parameterize this?
@@ -20,7 +34,7 @@ def _get_seconds(t):
     return t_obj.second + t_obj.microsecond / 1e6 + t_obj.minute * 60 + t_obj.hour * 3600
 
 
-def _get_strtime(t_sec):
+def _get_strtime(t_sec: float) -> str:
     hour = int(t_sec // 3600)
     minute = int((t_sec // 60) % 60)
     second = int(t_sec % 60)
@@ -29,24 +43,20 @@ def _get_strtime(t_sec):
     return f"{hour:02d}:{minute:02d}:{second:02d}.{microsecond:03d}"
 
 
-def _split_time_frame(s, e, min_length, max_length):
+def _split_time_frame(s: float, e: float, min_length: float, max_length: float) -> list[ClipTimes]:
     """Filters out cuts by min and max length"""
     time_d = e - s
-    time_frames = [
-        (s + i * max_length, min(s + (i + 1) * max_length, e))
-        for i in range(int(time_d // max_length) + (1 if time_d % max_length > 0 else 0))
-    ]
-    if len(time_frames) == 0:
-        return []
-    last_time_d = time_frames[-1][1] - time_frames[-1][0]
-    time_frames = time_frames if last_time_d >= min_length else time_frames[:-1]
-    return time_frames
+    n_full_clips = int(time_d // max_length)
+    clip_times = [[s + i * max_length, s + (i + 1) * max_length] for i in range(n_full_clips)] + (
+        [[s + (n_full_clips - 1) * max_length, e]] if time_d % max_length > min_length else []
+    )
+    return clip_times
 
 
-def _adjust_ranges_to_keyframes(ranges, keyframes):
-    """Translates ranges into keyframe vocab"""
+def _adjust_clip_times_to_keyframes(clip_times: list[ClipTimes], keyframes: list[float]) -> list[ClipTimes]:
+    """Translates clip_times into keyframe vocab"""
     adjusted_ranges = []
-    for start, end in ranges:
+    for start, end in clip_times:
         keyframes_in_range = [k for k in keyframes if start <= k <= end]
         if keyframes_in_range:
             adjusted_start = min(keyframes_in_range)
@@ -54,6 +64,52 @@ def _adjust_ranges_to_keyframes(ranges, keyframes):
             if adjusted_start != adjusted_end:
                 adjusted_ranges.append((adjusted_start, adjusted_end))
     return adjusted_ranges
+
+
+def _adjust_clip_times(
+    clip_times: list[ClipTimes],
+    keyframe_timestamps: list[float] | None,
+    min_length: float,
+    max_length: float,
+    max_length_strategy: str,
+) -> list[ClipTimes]:
+    if not isinstance(clip_times[0], Iterable):  # make sure clip_times looks like [[start, end]] and not [start, end]
+        clip_times = cast(list[ClipTimes], [clip_times])
+    clip_times = [[_get_seconds(s), _get_seconds(e)] for [s, e] in clip_times]
+
+    if keyframe_timestamps:
+        clip_times = _adjust_clip_times_to_keyframes(clip_times, keyframe_timestamps)
+
+    filtered_clip_times = []
+    for s, e in clip_times:
+        max_len_clip_times = _split_time_frame(s, e, min_length, max_length)
+        if max_length_strategy == "first":
+            max_len_clip_times = max_len_clip_times[:1]
+        filtered_clip_times += max_len_clip_times
+    return filtered_clip_times
+
+
+def _get_clip_intervals(clip_times: list[ClipTimes]) -> tuple[str, list[int]]:
+    s_clip, e_clip = clip_times[0]
+    skip_first_interval = int(s_clip > 0.0)
+
+    # which timestamp intervals to take, used to discard non-contiguous sections
+    intervals = [skip_first_interval]
+    timestamps = [0.0] + skip_first_interval * [s_clip] + [e_clip]
+    interval = 1 + skip_first_interval
+    for s, e in clip_times[1:]:
+        if s == e_clip:  # situations like [0, 1], [1, 2], [2, 3] -> 1, 2
+            timestamps += [e]
+            intervals.append(interval)
+            interval += 1
+        else:
+            timestamps += [s, e]
+            intervals.append(interval + 1)
+            interval += 2
+        e_clip = e
+
+    timestamps = ",".join([str(time) for time in timestamps])
+    return timestamps, intervals
 
 
 class ClippingSubsampler(Subsampler):
@@ -85,72 +141,59 @@ class ClippingSubsampler(Subsampler):
 
     def __init__(
         self,
-        oom_clip_count,
-        encode_formats,
-        min_length=0.0,
-        max_length=999999.0,
-        max_length_strategy="all",
-        precision="low",
+        oom_clip_count: int,
+        encode_formats: EncodeFormats,
+        min_length: float = 0.0,
+        max_length: float = 999999.0,
+        max_length_strategy: Literal["all", "first"] = "all",
+        precision: Literal["low", "keyframe_adjusted", "exact"] = "low",
     ):
+        assert max_length_strategy in ["all", "first"]
+        assert precision in ["exact", "low", "keyframe_adjusted"]
         self.oom_clip_count = oom_clip_count
         self.encode_formats = encode_formats
         self.min_length = min_length
-        self.max_length, self.max_length_strategy = max_length, max_length_strategy
-        assert precision in ["exact", "low", "keyframe_adjusted"]
+        self.max_length = max_length
+        self.max_length_strategy = max_length_strategy
         self.precision = precision
 
     def __call__(self, streams, metadata):
-        clips = metadata.pop("clips")
+        strtime_formatting = isinstance(metadata["clips"][0][0], str)
 
-        if not isinstance(clips[0], Iterable):  # make sure clips looks like [[start, end]] and not [start, end]
-            clips = [clips]
+        clip_times = _adjust_clip_times(
+            clip_times=metadata.pop("clips"),
+            keyframe_timestamps=(
+                # TODO: make it so if keyframe timestamps not present, get it yourself
+                metadata["video_metadata"].pop("keyframe_timestamps")
+                if self.precision == "keyframe_adjusted"
+                else None
+            ),
+            min_length=self.min_length,
+            max_length=self.max_length,
+            max_length_strategy=self.max_length_strategy,
+        )
+        if len(clip_times) == 0:
+            return {}, [], f"Video had no clip_times longer than {self.min_length}"
 
-        is_strtime = isinstance(clips[0][0], str)
+        timestamps, intervals = _get_clip_intervals(clip_times)
 
-        if self.precision == "keyframe_adjusted":
-            # TODO: make it so if not present, get it yourself
-            keyframe_timestamps = metadata["video_metadata"].pop("keyframe_timestamps")
-            s_clips = [[_get_seconds(s), _get_seconds(e)] for (s, e) in clips]
-            clips = _adjust_ranges_to_keyframes(s_clips, keyframe_timestamps)
+        ffmpeg_kwargs = {
+            "map": 0,
+            "f": "segment",
+            "segment_times": timestamps,
+            "reset_timestamps": 1,
+        }
+        if self.precision == "exact":
+            ffmpeg_kwargs["force_key_frames"] = timestamps
+        else:
+            ffmpeg_kwargs["c"] = "copy"
 
-        filtered_clips = []
-        for s, e in clips:
-            max_len_clips = _split_time_frame(_get_seconds(s), _get_seconds(e), self.min_length, self.max_length)
 
-            if self.max_length_strategy == "first":
-                max_len_clips = max_len_clips[:1]
 
-            filtered_clips += max_len_clips
-        clips = filtered_clips
 
-        if len(clips) == 0:
-            # return an error
-            return {}, [], f"Video had no clips longer than {self.min_length}"
 
-        start_0 = _get_seconds(clips[0][0]) == 0.0
 
-        ind = 1 + int(not start_0)
-        s_p, e_p = clips[0]
-        s_p, e_p = _get_seconds(s_p), _get_seconds(e_p)
-        splits = (not start_0) * [s_p] + [e_p]
-        # list of indicies of clips to take, used to discard non-contiguous sections
-        take_inds = [int(not start_0)]
 
-        # TODO: make nicer
-        for s, e in clips[1:]:
-            s, e = _get_seconds(s), _get_seconds(e)
-
-            if s == e_p:  # situations like [0, 1], [1, 2], [2, 3] -> 1, 2
-                splits += [e]
-                take_inds.append(ind)
-                ind += 1
-            else:
-                splits += [s, e]
-                take_inds.append(ind + 1)
-                ind += 2
-            e_p = e
-
-        segment_times = ",".join([str(spl) for spl in splits])
         streams_clips = {}
 
         for k in streams.keys():
@@ -165,25 +208,11 @@ class ClippingSubsampler(Subsampler):
                 with open(os.path.join(tmpdir, f"input.{encode_format}"), "wb") as f:
                     f.write(stream_bytes)
                 try:
-                    kwargs = {
-                        "map": 0,
-                        "f": "segment",
-                        "segment_times": segment_times,
-                        "reset_timestamps": 1,
-                    }
-
-                    # Precision things, tradeoff for speed
-                    if self.precision != "exact":
-                        kwargs["c"] = "copy"
-                    else:
-                        kwargs["force_key_frames"] = segment_times
-
-                    _ = (
+                    (
                         ffmpeg.input(f"{tmpdir}/input.{encode_format}")
-                        .output(f"{tmpdir}/clip_%d.{encode_format}", **kwargs)
+                        .output(f"{tmpdir}/clip_%d.{encode_format}", **ffmpeg_kwargs)
                         .run(capture_stdout=True, quiet=True)
                     )
-
                 except Exception as err:  # pylint: disable=broad-except
                     return {}, [], str(err)
 
@@ -191,10 +220,10 @@ class ClippingSubsampler(Subsampler):
                 stream_clips.sort(key=lambda x: int(x.split("_")[-1].split(".")[0]))
 
                 correct_clips = []
-                for clip_id, (clip, ind) in enumerate(zip(clips, take_inds)):
+                for clip_id, (clip, ind) in enumerate(zip(clip_times, intervals)):
                     if ind < len(stream_clips):
                         correct_clips.append((clip_id, clip, stream_clips[ind]))
-                # clips_lost = len(take_inds) - len(correct_clips) # TODO report this somehow
+                # clips_lost = len(intervals) - len(correct_clips) # TODO report this somehow
 
                 stream_clips, metadata_clips = [], []
                 for clip_id, clip_span, clip_pth in correct_clips:
@@ -207,8 +236,8 @@ class ClippingSubsampler(Subsampler):
                     )
                     meta_clip = copy.deepcopy(metadata)
                     # set the timeframe of this clip
-                    if is_strtime:
-                        #  Keep clips in the original format to be compatible with the data schema.
+                    if strtime_formatting:
+                        #  Keep clip_times in the original format to be compatible with the data schema.
                         meta_clip["clips"] = [(_get_strtime(clip_span[0]), _get_strtime(clip_span[1]))]
                     else:
                         meta_clip["clips"] = [clip_span]
