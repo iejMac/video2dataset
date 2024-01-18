@@ -114,20 +114,14 @@ class SubsetWorker:
         # The subsamplers might change the output format, so we need to update the writer
         writer_encode_formats = self.encode_formats.copy()
         if self.subsamplers["audio"]:
-            assert len(
-                {
-                    s.encode_format
-                    for s in self.subsamplers["audio"]
-                }
-            ) == 1  # assert that all audio subsamplers have the same output format
+            assert (
+                len({s.encode_format for s in self.subsamplers["audio"]}) == 1
+            )  # assert that all audio subsamplers have the same output format
             writer_encode_formats["audio"] = self.subsamplers["audio"][0].encode_format
         if self.subsamplers["video"]:
-            assert len(
-                {
-                    s.encode_format
-                    for s in self.subsamplers["video"]
-                }
-            ) == 1  # assert that all video subsamplers have the same output format
+            assert (
+                len({s.encode_format for s in self.subsamplers["video"]}) == 1
+            )  # assert that all video subsamplers have the same output format
             writer_encode_formats["video"] = self.subsamplers["video"][0].encode_format
 
         # give schema to writer
