@@ -25,6 +25,7 @@ class ResolutionSubsampler(Subsampler):
         video_size (int): Both height and width.
         encode_format (str): Format to encode in (i.e. mp4)
     """
+
     def __init__(
         self,
         resize_mode: Literal["scale", "crop", "pad"],
