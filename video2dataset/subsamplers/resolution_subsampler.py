@@ -11,7 +11,9 @@ from .subsampler import Subsampler
 
 class ResolutionSubsampler(Subsampler):
     """
-    Adjusts the resolution of the videos to the specified height and width. Please do not set both video_size and height/width. This will result in an error. If both height and width are set, scale mode output will have the specified height (ignoring width).
+    Adjusts the resolution of the videos to the specified height and width.
+    Please do not set both video_size and height/width. This will result in an error.
+    If both height and width are set, scale mode output will have the specified height (ignoring width).
 
     Args:
         resize_mode (list[str]): List of resize modes to apply. Possible options are:
