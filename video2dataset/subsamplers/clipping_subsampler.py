@@ -7,13 +7,13 @@ import glob
 import ffmpeg
 import tempfile
 from collections.abc import Iterable
-from typing import Any, Annotated, TypedDict, Literal, cast
+from typing import Any, Union, List, TypedDict, Literal, cast
 
 import datetime
 from .subsampler import Subsampler
 
 
-ClipSpans = Annotated[list[float], 2]
+ClipSpans = List[float]  # [start, end]
 
 
 class EncodeFormats(TypedDict):
@@ -22,11 +22,11 @@ class EncodeFormats(TypedDict):
 
 
 class Streams(TypedDict):
-    video: list[bytes]
-    audio: list[bytes]
+    video: List[bytes]
+    audio: List[bytes]
 
 
-def _get_seconds(t: str | float) -> float:
+def _get_seconds(t: Union[str, float]) -> float:
     """Converts time to seconds"""
     if not isinstance(t, str):
         return float(t)  # already seconds
@@ -45,7 +45,7 @@ def _get_strtime(t_sec: float) -> str:
     return f"{hour:02d}:{minute:02d}:{second:02d}.{microsecond:03d}"
 
 
-def _split_time_frame(s: float, e: float, min_length: float, max_length: float) -> list[ClipSpans]:
+def _split_time_frame(s: float, e: float, min_length: float, max_length: float) -> List[ClipSpans]:
     """Filters out cuts by min and max length"""
     time_d = e - s
     n_full_clips = int(time_d // max_length)
@@ -55,7 +55,7 @@ def _split_time_frame(s: float, e: float, min_length: float, max_length: float) 
     return clip_spans
 
 
-def _adjust_clip_spans_to_keyframes(clip_spans: list[ClipSpans], keyframes: list[float]) -> list[ClipSpans]:
+def _adjust_clip_spans_to_keyframes(clip_spans: List[ClipSpans], keyframes: List[float]) -> List[ClipSpans]:
     """Translates clip_spans into keyframe vocab"""
     adjusted_clip_spans = []
     for start, end in clip_spans:
@@ -69,15 +69,15 @@ def _adjust_clip_spans_to_keyframes(clip_spans: list[ClipSpans], keyframes: list
 
 
 def _adjust_clip_spans(
-    clip_spans: list[ClipSpans],
-    keyframe_timestamps: list[float] | None,
+    clip_spans: List[ClipSpans],
+    keyframe_timestamps: List[float] | None,
     min_length: float,
     max_length: float,
     max_length_strategy: str,
-) -> list[ClipSpans]:
+) -> List[ClipSpans]:
     """Adjusts cut times around keyframes, filtering by min and max length"""
     if not isinstance(clip_spans[0], Iterable):  # make sure clip_spans looks like [[start, end]] and not [start, end]
-        clip_spans = cast(list[ClipSpans], [clip_spans])
+        clip_spans = cast(List[ClipSpans], [clip_spans])
     clip_spans = [[_get_seconds(s), _get_seconds(e)] for [s, e] in clip_spans]
 
     if keyframe_timestamps:
@@ -92,7 +92,7 @@ def _adjust_clip_spans(
     return filtered_clip_spans
 
 
-def _collate_clip_spans(clip_spans: list[ClipSpans]) -> tuple[str, list[int]]:
+def _collate_clip_spans(clip_spans: List[ClipSpans]) -> tuple[str, List[int]]:
     """Collates clip spans into a single string for ffmpeg and a list of clip idxs"""
     clip_times = []
     clip_idxs = []
@@ -119,7 +119,7 @@ def _process_stream(
     stream_bytes: bytes,
     encode_format: str,
     ffmpeg_kwargs: dict,
-) -> list[str]:
+) -> List[str]:
     """Processes a stream into clips using ffmpeg"""
     # TODO: we need to put the extension into the metadata
     # TODO: This can be done better using pipes I just don't feel like sinking too much time into this rn
@@ -139,12 +139,12 @@ def _process_stream(
 
 
 def _get_clip_metadata(
-    clip_spans: list[ClipSpans],
-    clip_idxs: list[int],
+    clip_spans: List[ClipSpans],
+    clip_idxs: List[int],
     metadata: dict,
     oom_clip_count: int,
     strtime_formatting: bool,
-) -> list[dict]:
+) -> List[dict]:
     """Gets metadata for each clip"""
     metadata_clips = []
     for clip_id, (clip_span, _) in enumerate(zip(clip_spans, clip_idxs)):
@@ -180,11 +180,11 @@ def _get_clips(
     streams: Streams,
     encode_formats: EncodeFormats,
     precision: str,
-    clip_spans: list[ClipSpans],
+    clip_spans: List[ClipSpans],
     metadata: dict,
     oom_clip_count: int,
     strtime_formatting: bool,
-) -> tuple[dict[str, list[str]], list[dict]]:
+) -> tuple[dict[str, List[str]], List[dict]]:
     """Gets clips from streams"""
     clip_times, clip_idxs = _collate_clip_spans(clip_spans)
 
