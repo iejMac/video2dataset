@@ -213,7 +213,7 @@ def _get_clips(
                     encode_format=encode_formats[k],
                     ffmpeg_kwargs=ffmpeg_kwargs,
                 )
-            except Exception as err:
+            except Exception as err:  # pylint: disable=broad-except
                 raise err
 
             clips[k] = []
@@ -306,7 +306,7 @@ class ClippingSubsampler(Subsampler):
                 oom_clip_count=self.oom_clip_count,
                 strtime_formatting=strtime_formatting,
             )
-        except Exception as err:
+        except Exception as err:  # pylint: disable=broad-except
             return {}, [], str(err)
 
         return clips, clip_metadata, None
