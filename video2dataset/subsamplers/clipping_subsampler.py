@@ -7,7 +7,7 @@ import glob
 import ffmpeg
 import tempfile
 from collections.abc import Iterable
-from typing import Any, Union, List, TypedDict, Literal, cast
+from typing import Any, Union, List, Tuple, Dict, TypedDict, Literal, cast
 
 import datetime
 from .subsampler import Subsampler
@@ -64,13 +64,13 @@ def _adjust_clip_spans_to_keyframes(clip_spans: List[ClipSpans], keyframes: List
             adjusted_start = min(keyframes_in_range)
             adjusted_end = max(keyframes_in_range)
             if adjusted_start != adjusted_end:
-                adjusted_clip_spans.append((adjusted_start, adjusted_end))
+                adjusted_clip_spans.append([adjusted_start, adjusted_end])
     return adjusted_clip_spans
 
 
 def _adjust_clip_spans(
     clip_spans: List[ClipSpans],
-    keyframe_timestamps: List[float] | None,
+    keyframe_timestamps: Union[List[float], None],
     min_length: float,
     max_length: float,
     max_length_strategy: str,
@@ -92,7 +92,7 @@ def _adjust_clip_spans(
     return filtered_clip_spans
 
 
-def _collate_clip_spans(clip_spans: List[ClipSpans]) -> tuple[str, List[int]]:
+def _collate_clip_spans(clip_spans: List[ClipSpans]) -> Tuple[str, List[int]]:
     """Collates clip spans into a single string for ffmpeg and a list of clip idxs"""
     clip_times = []
     clip_idxs = []
@@ -110,8 +110,8 @@ def _collate_clip_spans(clip_spans: List[ClipSpans]) -> tuple[str, List[int]]:
             clip_idx += 2
         e_prev = e
 
-    clip_times = ",".join([str(time) for time in clip_times])
-    return clip_times, clip_idxs
+    clip_times_str = ",".join([str(time) for time in clip_times])
+    return clip_times_str, clip_idxs
 
 
 def _process_stream(
@@ -184,7 +184,7 @@ def _get_clips(
     metadata: dict,
     oom_clip_count: int,
     strtime_formatting: bool,
-) -> tuple[dict[str, List[str]], List[dict]]:
+) -> Tuple[Dict[str, List[bytes]], List[dict]]:
     """Gets clips from streams"""
     clip_times, clip_idxs = _collate_clip_spans(clip_spans)
 
@@ -199,8 +199,10 @@ def _get_clips(
     else:
         ffmpeg_kwargs["c"] = "copy"
 
-    clips = {}
-    for k in streams.keys():
+    clips: Dict[str, List[bytes]] = {}
+    for k in Streams.__annotations__.keys():
+        if k not in streams:
+            continue
         with tempfile.TemporaryDirectory() as tmpdir:
             stream_bytes = streams[k][0]  # pre-broadcast so only one
             if stream_bytes is None:
