@@ -7,7 +7,7 @@ import glob
 import ffmpeg
 import tempfile
 from collections.abc import Iterable
-from typing import Annotated, TypedDict, Literal, cast
+from typing import Any, Annotated, TypedDict, Literal, cast
 
 import datetime
 from .subsampler import Subsampler
@@ -89,42 +89,46 @@ def _adjust_clip_spans(
     return filtered_clip_spans
 
 
-def _get_clip_spans(clip_spans: list[ClipSpans]) -> tuple[str, list[int]]:
-    segment_times = [0.0]
+def _collate_clip_spans(clip_spans: list[ClipSpans]) -> tuple[str, list[int]]:
+    clip_times = [0.0]
     clip_idxs = []
     e_prev = 0.0
     clip_idx = 0
 
     for s, e in clip_spans:
         if s == e_prev:  # clip starts where last one left off
-            segment_times += [e]
+            clip_times += [e]
             clip_idxs.append(clip_idx)
             clip_idx += 1
         else:  # next clip skips over some time
-            segment_times += [s, e]
+            clip_times += [s, e]
             clip_idxs.append(clip_idx + 1)
             clip_idx += 2
         e_prev = e
 
-    segment_times = ",".join([str(time) for time in segment_times])
-    return segment_times, clip_idxs
+    clip_times = ",".join([str(time) for time in clip_times])
+    return clip_times, clip_idxs
 
 
-def _process_stream(stream_bytes: bytes, encode_format: str, ffmpeg_kwargs: dict) -> list[str]:
-    with tempfile.TemporaryDirectory() as tmpdir:
-        # TODO: we need to put the extension into the metadata
-        # TODO: This can be done better using pipes I just don't feel like sinking too much time into this rn
-        with open(os.path.join(tmpdir, f"input.{encode_format}"), "wb") as f:
-            f.write(stream_bytes)
-        try:
-            (
-                ffmpeg.input(f"{tmpdir}/input.{encode_format}")
-                .output(f"{tmpdir}/clip_%d.{encode_format}", **ffmpeg_kwargs)
-                .run(capture_stdout=True, quiet=True)
-            )
-        except Exception as err:  # pylint: disable=broad-except
-            raise err
-        stream_clips = glob.glob(f"{tmpdir}/clip*.{encode_format}")
+def _process_stream(
+    tmpdir: Any,  # BytesPath
+    stream_bytes: bytes,
+    encode_format: str,
+    ffmpeg_kwargs: dict,
+) -> list[str]:
+    # TODO: we need to put the extension into the metadata
+    # TODO: This can be done better using pipes I just don't feel like sinking too much time into this rn
+    with open(os.path.join(tmpdir, f"input.{encode_format}"), "wb") as f:
+        f.write(stream_bytes)
+    try:
+        (
+            ffmpeg.input(f"{tmpdir}/input.{encode_format}")
+            .output(f"{tmpdir}/clip_%d.{encode_format}", **ffmpeg_kwargs)
+            .run(capture_stdout=True, quiet=True)
+        )
+    except Exception as err:  # pylint: disable=broad-except
+        raise err
+    stream_clips = glob.glob(f"{tmpdir}/clip*.{encode_format}")
     stream_clips.sort(key=lambda x: int(x.split("_")[-1].split(".")[0]))
     return stream_clips
 
@@ -175,38 +179,40 @@ def _get_clips(
     oom_clip_count: int,
     strtime_formatting: bool,
 ) -> tuple[dict[str, list[str]], list[dict]]:
-    segment_times, clip_idxs = _get_clip_spans(clip_spans)
+    clip_times, clip_idxs = _collate_clip_spans(clip_spans)
 
     ffmpeg_kwargs = {
         "map": 0,
         "f": "segment",
-        "segment_times": segment_times,
+        "segment_times": clip_times,
         "reset_timestamps": 1,
     }
     if precision == "exact":
-        ffmpeg_kwargs["force_key_frames"] = segment_times
+        ffmpeg_kwargs["force_key_frames"] = clip_times
     else:
         ffmpeg_kwargs["c"] = "copy"
 
     clips = {}
     for k in streams.keys():
-        stream_bytes = streams[k][0]  # pre-broadcast so only one
-        if stream_bytes is None:
-            continue
-        try:
-            stream_clips = _process_stream(
-                stream_bytes=stream_bytes,
-                encode_format=encode_formats[k],
-                ffmpeg_kwargs=ffmpeg_kwargs,
-            )
-        except Exception as err:
-            raise err
+        with tempfile.TemporaryDirectory() as tmpdir:
+            stream_bytes = streams[k][0]  # pre-broadcast so only one
+            if stream_bytes is None:
+                continue
+            try:
+                stream_clips = _process_stream(
+                    tmpdir=tmpdir,
+                    stream_bytes=stream_bytes,
+                    encode_format=encode_formats[k],
+                    ffmpeg_kwargs=ffmpeg_kwargs,
+                )
+            except Exception as err:
+                raise err
 
-        clips[k] = []
-        for _, (_, clip_idx) in enumerate(zip(clip_spans, clip_idxs)):
-            with open(stream_clips[clip_idx], "rb") as vid_f:
-                clip_bytes = vid_f.read()
-            clips[k].append(clip_bytes)
+            clips[k] = []
+            for _, (_, clip_idx) in enumerate(zip(clip_spans, clip_idxs)):
+                with open(stream_clips[clip_idx], "rb") as vid_f:
+                    clip_bytes = vid_f.read()
+                    clips[k].append(clip_bytes)
 
     clip_metadata = _get_clip_metadata(
         clip_spans=clip_spans,
