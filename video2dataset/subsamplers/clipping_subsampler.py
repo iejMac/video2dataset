@@ -22,8 +22,8 @@ class EncodeFormats(TypedDict):
 
 
 class Streams(TypedDict):
-    video: bytes
-    audio: bytes
+    video: list[bytes]
+    audio: list[bytes]
 
 
 def _get_seconds(t: str | float) -> float:
@@ -50,7 +50,7 @@ def _split_time_frame(s: float, e: float, min_length: float, max_length: float) 
     time_d = e - s
     n_full_clips = int(time_d // max_length)
     clip_spans = [[s + i * max_length, s + (i + 1) * max_length] for i in range(n_full_clips)] + (
-        [[s + (n_full_clips - 1) * max_length, e]] if time_d % max_length > min_length else []
+        [[s + (n_full_clips) * max_length, e]] if time_d % max_length > min_length else []
     )
     return clip_spans
 
@@ -94,7 +94,7 @@ def _adjust_clip_spans(
 
 def _collate_clip_spans(clip_spans: list[ClipSpans]) -> tuple[str, list[int]]:
     """Collates clip spans into a single string for ffmpeg and a list of clip idxs"""
-    clip_times = [0.0]
+    clip_times = []
     clip_idxs = []
     e_prev = 0.0
     clip_idx = 0
@@ -216,7 +216,7 @@ def _get_clips(
                 raise err
 
             clips[k] = []
-            for _, (_, clip_idx) in enumerate(zip(clip_spans, clip_idxs)):
+            for clip_idx in clip_idxs:
                 with open(stream_clips[clip_idx], "rb") as vid_f:
                     clip_bytes = vid_f.read()
                     clips[k].append(clip_bytes)
