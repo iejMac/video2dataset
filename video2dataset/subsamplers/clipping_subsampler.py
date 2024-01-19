@@ -27,6 +27,7 @@ class Streams(TypedDict):
 
 
 def _get_seconds(t: str | float) -> float:
+    """Converts time to seconds"""
     if not isinstance(t, str):
         return float(t)  # already seconds
     time_format = "%H:%M:%S.%f"  # TODO: maybe parameterize this?
@@ -35,6 +36,7 @@ def _get_seconds(t: str | float) -> float:
 
 
 def _get_strtime(t_sec: float) -> str:
+    """Converts time to string"""
     hour = int(t_sec // 3600)
     minute = int((t_sec // 60) % 60)
     second = int(t_sec % 60)
@@ -73,6 +75,7 @@ def _adjust_clip_spans(
     max_length: float,
     max_length_strategy: str,
 ) -> list[ClipSpans]:
+    """Adjusts cut times around keyframes, filtering by min and max length"""
     if not isinstance(clip_spans[0], Iterable):  # make sure clip_spans looks like [[start, end]] and not [start, end]
         clip_spans = cast(list[ClipSpans], [clip_spans])
     clip_spans = [[_get_seconds(s), _get_seconds(e)] for [s, e] in clip_spans]
@@ -90,6 +93,7 @@ def _adjust_clip_spans(
 
 
 def _collate_clip_spans(clip_spans: list[ClipSpans]) -> tuple[str, list[int]]:
+    """Collates clip spans into a single string for ffmpeg and a list of clip idxs"""
     clip_times = [0.0]
     clip_idxs = []
     e_prev = 0.0
@@ -116,6 +120,7 @@ def _process_stream(
     encode_format: str,
     ffmpeg_kwargs: dict,
 ) -> list[str]:
+    """Processes a stream into clips using ffmpeg"""
     # TODO: we need to put the extension into the metadata
     # TODO: This can be done better using pipes I just don't feel like sinking too much time into this rn
     with open(os.path.join(tmpdir, f"input.{encode_format}"), "wb") as f:
@@ -140,6 +145,7 @@ def _get_clip_metadata(
     oom_clip_count: int,
     strtime_formatting: bool,
 ) -> list[dict]:
+    """Gets metadata for each clip"""
     metadata_clips = []
     for clip_id, (clip_span, _) in enumerate(zip(clip_spans, clip_idxs)):
         clip_key = "{clip_id:0{oom_clip_count}d}".format(  # pylint: disable=consider-using-f-string
@@ -179,6 +185,7 @@ def _get_clips(
     oom_clip_count: int,
     strtime_formatting: bool,
 ) -> tuple[dict[str, list[str]], list[dict]]:
+    """Gets clips from streams"""
     clip_times, clip_idxs = _collate_clip_spans(clip_spans)
 
     ffmpeg_kwargs = {
