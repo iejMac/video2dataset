@@ -1,13 +1,13 @@
 """
 clipping subsampler turns full videos into clips of videos according to clip_col
 """
-import os
-import copy
-import glob
-import ffmpeg
-import tempfile
 from collections.abc import Iterable
 from typing import Any, Union, List, Tuple, Dict, TypedDict, Literal, cast
+import copy
+import ffmpeg
+import glob
+import os
+import tempfile
 
 import datetime
 from .subsampler import Subsampler
