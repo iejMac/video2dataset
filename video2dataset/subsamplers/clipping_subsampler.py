@@ -200,9 +200,8 @@ def _get_clips(
         ffmpeg_kwargs["c"] = "copy"
 
     clips: Dict[str, List[bytes]] = {}
-    for k in Streams.__annotations__.keys():
-        if k not in streams:
-            continue
+    for k in streams.keys():
+        k = cast(Literal["audio", "video"], k)
         with tempfile.TemporaryDirectory() as tmpdir:
             stream_bytes = streams[k][0]  # pre-broadcast so only one
             if stream_bytes is None:
