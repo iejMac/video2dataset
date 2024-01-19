@@ -90,7 +90,7 @@ class DownloadWorker:
 
         audio_subsamplers: List[Any] = []
         if "AudioRateSubsampler" in self.config["subsampling"]:
-            video_subsamplers.append(AudioRateSubsampler(**self.config["subsampling"]["AudioRateSubsampler"]["args"]))
+            audio_subsamplers.append(AudioRateSubsampler(**self.config["subsampling"]["AudioRateSubsampler"]["args"]))
 
         self.subsamplers = {"video": video_subsamplers, "audio": audio_subsamplers}
 
