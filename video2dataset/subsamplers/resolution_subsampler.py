@@ -35,7 +35,7 @@ class ResolutionSubsampler(Subsampler):
         encode_format: str = "mp4",
     ):
         if video_size > 0 and (height > 0 or width > 0):
-            raise Exception("Either set video_size, or set height and/or width")
+            raise ValueError("Either set video_size, or set height and/or width")
         self.resize_mode = resize_mode
         self.height = height if video_size < 0 else video_size
         self.width = width if video_size < 0 else video_size

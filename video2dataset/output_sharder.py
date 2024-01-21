@@ -26,7 +26,7 @@ class OutputSharder:
             if "s3://" in shard_list:
                 self.shard_list = ["s3://" + s for s in self.shard_list]
             if len(self.shard_list) == 0:
-                raise Exception(f"No file found at path {url_path} with extension {input_format}")
+                raise ValueError(f"No file found at path {url_path} with extension {input_format}")
         else:
             self.shard_list = list(braceexpand.braceexpand(shard_list))
 
