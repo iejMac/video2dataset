@@ -67,7 +67,6 @@ def get_video_dataset(
     return_always: bool = False,
     handler=wds.reraise_exception,
 ):
-
     """
     Generates a webdataset given the specified parameters.
     Parameters:

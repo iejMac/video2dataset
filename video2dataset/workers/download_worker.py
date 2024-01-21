@@ -90,7 +90,7 @@ class DownloadWorker:
 
         audio_subsamplers: List[Any] = []
         if "AudioRateSubsampler" in self.config["subsampling"]:
-            video_subsamplers.append(AudioRateSubsampler(**self.config["subsampling"]["AudioRateSubsampler"]["args"]))
+            audio_subsamplers.append(AudioRateSubsampler(**self.config["subsampling"]["AudioRateSubsampler"]["args"]))
 
         self.subsamplers = {"video": video_subsamplers, "audio": audio_subsamplers}
 
@@ -153,6 +153,13 @@ class DownloadWorker:
 
         loader = data_generator()
 
+        # The subsamplers might change the output format, so we need to update the writer
+        writer_encode_formats = self.encode_formats.copy()
+        if self.subsamplers["audio"]:
+            writer_encode_formats["audio"] = self.subsamplers["audio"][0].encode_formats["audio"]
+        if self.subsamplers["video"]:
+            writer_encode_formats["video"] = self.subsamplers["video"][0].encode_formats["video"]
+
         # give schema to writer
         sample_writer = self.sample_writer_class(
             shard_id,
@@ -160,7 +167,7 @@ class DownloadWorker:
             self.save_caption,
             self.config["storage"]["oom_shard_count"],
             schema,
-            self.encode_formats,
+            writer_encode_formats,
         )
         oom_sample_per_shard = math.ceil(math.log10(self.config["storage"]["number_sample_per_shard"]))
 
@@ -186,7 +193,7 @@ class DownloadWorker:
                         print(error_message)
                         if "[youtube]" in error_message:  # video-specific error, remove videoID
                             error_message = "ERROR: [youtube]:" + error_message.split(":")[-1]
-                        raise Exception("failed_to_download")
+                        raise ValueError("failed_to_download")
 
                     for stream in streams.values():
                         bytes_downloaded += len(stream)
@@ -196,16 +203,17 @@ class DownloadWorker:
                     if self.ffprobe_subsampler is not None:
                         streams, meta, error_message = self.ffprobe_subsampler(streams, meta)
                         if error_message is not None:
-                            raise Exception("failed_to_subsample")
+                            raise ValueError("failed_to_subsample")
 
                     if self.config["storage"]["captions_are_subtitles"]:  # create clips
-                        subtitles = meta["yt_meta_dict"]["subtitles"]
+                        # all langs have same start and end times
+                        subtitles = meta["yt_meta_dict"]["subtitles"][list(meta["yt_meta_dict"]["subtitles"].keys())[0]]
                         meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
                     elif self.cut_detector is not None:  # apply cut detection to get clips
                         streams, cuts, error_message = self.cut_detector(streams)
 
                         if error_message is not None:
-                            raise Exception("failed_to_subsample")
+                            raise ValueError("failed_to_subsample")
 
                         meta["cuts"] = cuts
 
@@ -232,7 +240,7 @@ class DownloadWorker:
 
                     if error_message is not None:
                         meta["clips"] = []
-                        raise Exception("failed_to_subsample")
+                        raise ValueError("failed_to_subsample")
 
                     successes += 1
                     status = "success"
@@ -245,7 +253,7 @@ class DownloadWorker:
 
                         text_caption = sample_data[caption_indice] if caption_indice is not None else None
                         if self.config["storage"]["captions_are_subtitles"]:
-                            text_caption = meta.get("clip_subtitles")[0]["lines"][0]
+                            text_caption = meta.get("clip_subtitles")[0]["lines"]
 
                         sample_writer.write(
                             subsampled_streams,

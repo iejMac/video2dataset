@@ -371,7 +371,6 @@ class PrefixResampler(IterDataPipe):
 
     def __iter__(self):
         while self.it < self.__len__():
-
             # sample prefix with corresponding probs
             prefix_id = np.random.choice(len(self.ps), 1, p=list(self.ps.values())).item()
             prefix = list(self.ps.keys())[prefix_id]
@@ -458,10 +457,10 @@ class TorchDataWebdataset(DataPipeline, FluidInterfaceWithChangedDecode):
     def __init__(
         self,
         urls: Union[List[str], str],
-        repeat: int = None,
+        repeat: Optional[int] = None,
         shardshuffle: int = 10000,
         sample_shuffle: int = 0,
-        buffer_size: int = None,
+        buffer_size: Optional[int] = None,
         resample_prefixes: bool = False,
         prefix_probs: Optional[List[float]] = None,
         drop_last: bool = False,

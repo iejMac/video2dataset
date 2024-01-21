@@ -84,7 +84,7 @@ def test_clipping_subsampler(clips):
             s_target, e_target = clips[key_ind]
             s_target, e_target = _get_seconds(s_target), _get_seconds(e_target)
             expected_clips = _split_time_frame(s_target, e_target, min_length, max_length)
-            assert (s, e) in expected_clips
+            assert (_get_seconds(s), _get_seconds(e)) in expected_clips
             assert _get_seconds(e) - _get_seconds(s) >= min_length
 
             s_s, e_s = _get_seconds(s), _get_seconds(e)
@@ -97,14 +97,14 @@ def test_clipping_subsampler(clips):
 
 
 @pytest.mark.parametrize("size,resize_mode", [(144, ["scale"]), (1620, ["scale", "crop", "pad"])])
-def test_resolution_subsampler(size, resize_mode):
+def test_resolution_subsampler_video_size(size, resize_mode):
     current_folder = os.path.dirname(__file__)
     # video lenght - 2:02, 1080x1920
     video = os.path.join(current_folder, "test_files/test_video.mp4")
     with open(video, "rb") as vid_f:
         video_bytes = vid_f.read()
 
-    subsampler = ResolutionSubsampler(size, resize_mode)
+    subsampler = ResolutionSubsampler(video_size=size, resize_mode=resize_mode)
 
     streams = {"video": [video_bytes]}
     subsampled_streams, _, error_message = subsampler(streams)
@@ -123,6 +123,36 @@ def test_resolution_subsampler(size, resize_mode):
             assert w_vid == 256  # 1920 / (1080/144)
         else:
             assert w_vid == size
+
+
+@pytest.mark.parametrize("height,width,resize_mode", [(-1, 128, ["scale"]), (1620, 1620, ["scale", "crop", "pad"])])
+def test_resolution_subsampler_height_and_width(height, width, resize_mode):
+    current_folder = os.path.dirname(__file__)
+    # video lenght - 2:02, 1080x1920
+    video = os.path.join(current_folder, "test_files/test_video.mp4")
+    with open(video, "rb") as vid_f:
+        video_bytes = vid_f.read()
+
+    subsampler = ResolutionSubsampler(height=height, width=width, resize_mode=resize_mode)
+
+    streams = {"video": [video_bytes]}
+    subsampled_streams, _, error_message = subsampler(streams)
+    assert error_message is None
+    subsampled_videos = subsampled_streams["video"]
+
+    with tempfile.NamedTemporaryFile() as tmp:
+        tmp.write(subsampled_videos[0])
+
+        probe = ffmpeg.probe(tmp.name)
+        video_stream = [stream for stream in probe["streams"] if stream["codec_type"] == "video"][0]
+        h_vid, w_vid = video_stream["height"], video_stream["width"]
+
+        if resize_mode == ["scale"]:
+            assert h_vid == 72
+            assert w_vid == 128
+        else:
+            assert h_vid == height
+            assert w_vid == width
 
 
 @pytest.mark.parametrize("target_frame_rate", [6, 15, 30])
@@ -150,16 +180,19 @@ def test_frame_rate_subsampler(target_frame_rate):
         assert frame_rate == target_frame_rate
 
 
-@pytest.mark.parametrize("sample_rate", [44100, 24000])
-def test_audio_rate_subsampler(sample_rate):
+@pytest.mark.parametrize("sample_rate,n_audio_channels", [(44100, 1), (24000, 2)])
+def test_audio_rate_subsampler(sample_rate, n_audio_channels):
     current_folder = os.path.dirname(__file__)
     audio = os.path.join(current_folder, "test_files/test_audio.mp3")
     with open(audio, "rb") as aud_f:
         audio_bytes = aud_f.read()
 
-    subsampler = AudioRateSubsampler(sample_rate, {"audio": "mp3"})
+    streams = {"audio": [audio_bytes]}
+    subsampler = AudioRateSubsampler(sample_rate, "mp3", n_audio_channels)
 
-    subsampled_audios, _, error_message = subsampler([audio_bytes])
+    subsampled_streams, _, error_message = subsampler(streams)
+    assert error_message is None
+    subsampled_audios = subsampled_streams["audio"]
 
     with tempfile.NamedTemporaryFile(suffix=".mp3") as tmp:
         tmp.write(subsampled_audios[0])
@@ -169,8 +202,9 @@ def test_audio_rate_subsampler(sample_rate):
 
         result = ffmpeg.probe(tmp.name)
         read_sample_rate = result["streams"][0]["sample_rate"]
-
+        read_num_channels = result["streams"][0]["channels"]
         assert int(read_sample_rate) == sample_rate
+        assert int(read_num_channels) == n_audio_channels
 
 
 @pytest.mark.parametrize(

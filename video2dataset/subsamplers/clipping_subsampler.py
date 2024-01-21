@@ -6,8 +6,9 @@ import copy
 import glob
 import ffmpeg
 import tempfile
+from collections.abc import Iterable
 
-from datetime import datetime
+import datetime
 from .subsampler import Subsampler
 
 
@@ -15,8 +16,17 @@ def _get_seconds(t):
     if not isinstance(t, str):
         return float(t)  # already seconds
     time_format = "%H:%M:%S.%f"  # TODO: maybe parameterize this?
-    t_obj = datetime.strptime(t, time_format).time()
+    t_obj = datetime.datetime.strptime(t, time_format).time()
     return t_obj.second + t_obj.microsecond / 1e6 + t_obj.minute * 60 + t_obj.hour * 3600
+
+
+def _get_strtime(t_sec):
+    hour = int(t_sec // 3600)
+    minute = int((t_sec // 60) % 60)
+    second = int(t_sec % 60)
+    # Use round to solve machine error problem (e.g. t_sec=13.6)
+    microsecond = round((t_sec - int(t_sec)) * 1000)
+    return f"{hour:02d}:{minute:02d}:{second:02d}.{microsecond:03d}"
 
 
 def _split_time_frame(s, e, min_length, max_length):
@@ -44,6 +54,29 @@ def _adjust_ranges_to_keyframes(ranges, keyframes):
             if adjusted_start != adjusted_end:
                 adjusted_ranges.append((adjusted_start, adjusted_end))
     return adjusted_ranges
+
+
+def _extract_subtitles(clip_span, meta_clip):
+    """Extracts subtitles and groups them by language"""
+    clip_subtitles = []
+    s_c, e_c = _get_seconds(clip_span[0]), _get_seconds(clip_span[1])
+    for lang_id, (lang, subtitles) in enumerate(meta_clip["yt_meta_dict"]["subtitles"].items()):
+        idx = 0
+        for line in subtitles:
+            line_dict = {lang: line["lines"]}
+            s, e = _get_seconds(line["start"]), _get_seconds(line["end"])
+            if max(s_c, s) < min(e_c, e):
+                if lang_id != 0:
+                    clip_subtitles[idx]["lines"].update(line_dict)
+                    idx += 1
+                else:
+                    temp_line = copy.deepcopy(line)
+                    temp_line["lines"] = line_dict
+                    clip_subtitles.append(temp_line)
+            elif s > e_c:
+                break
+
+    return clip_subtitles
 
 
 class ClippingSubsampler(Subsampler):
@@ -92,8 +125,10 @@ class ClippingSubsampler(Subsampler):
     def __call__(self, streams, metadata):
         clips = metadata.pop("clips")
 
-        if isinstance(clips[0], float):  # make sure clips looks like [[start, end]] and not [start, end]
+        if not isinstance(clips[0], Iterable):  # make sure clips looks like [[start, end]] and not [start, end]
             clips = [clips]
+
+        is_strtime = isinstance(clips[0][0], str)
 
         if self.precision == "keyframe_adjusted":
             # TODO: make it so if not present, get it yourself
@@ -195,24 +230,24 @@ class ClippingSubsampler(Subsampler):
                     )
                     meta_clip = copy.deepcopy(metadata)
                     # set the timeframe of this clip
-                    meta_clip["clips"] = [clip_span]
+                    if is_strtime:
+                        #  Keep clips in the original format to be compatible with the data schema.
+                        meta_clip["clips"] = [(_get_strtime(clip_span[0]), _get_strtime(clip_span[1]))]
+                    else:
+                        meta_clip["clips"] = [clip_span]
                     meta_clip["key"] = f"{meta_clip['key']}_{clip_key}"
 
                     yt_md_dict = meta_clip.get("yt_meta_dict", {})
                     if (yt_md_dict is not None) and (yt_md_dict.get("subtitles", None) is not None):
-                        clip_subtitles = []
-                        s_c, e_c = _get_seconds(clip_span[0]), _get_seconds(clip_span[1])
-                        for line in meta_clip["yt_meta_dict"]["subtitles"]:
-                            s, e = _get_seconds(line["start"]), _get_seconds(line["end"])
-                            if max(s_c, s) < min(e_c, e):
-                                clip_subtitles.append(line)
-                            elif s > e_c:
-                                break
                         # full video subtitles might still be useful for context
-                        meta_clip["clip_subtitles"] = clip_subtitles
+                        meta_clip["clip_subtitles"] = _extract_subtitles(clip_span, meta_clip)
 
                     metadata_clips.append(meta_clip)
 
                 streams_clips[k] = stream_clips
+
+        # remove redundant metadata from clips after the first
+        for m_clips in metadata_clips[1:]:
+            m_clips["yt_meta_dict"] = {}
 
         return streams_clips, metadata_clips, None

@@ -115,7 +115,7 @@ class VideoDecorder(AbstractVideoDecoder):
         # can just output first_pad_index or a mask or something
         pad_start = len(frames)
         if self.pad_frames and frames.shape[0] < self.n_frames:
-            frames = F.pad(frames, (0, 0) * 3 + (0, self.n_frames - frames.shape[0]))
+            frames = F.pad(frames, (0, 0) * 3 + (0, self.n_frames - frames.shape[0]))  # pylint: disable=not-callable
 
         return frames, frame_start, pad_start
 

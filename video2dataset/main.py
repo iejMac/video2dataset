@@ -42,7 +42,7 @@ def video2dataset(
     output_folder: str = "dataset",
     output_format: str = "files",
     input_format: str = "csv",
-    encode_formats: dict = None,
+    encode_formats: Optional[dict] = None,
     stage: str = "download",
     url_col: str = "url",
     caption_col: Optional[str] = None,
@@ -126,7 +126,8 @@ def video2dataset(
         assert clip_col is None  # no weird double-clipping
         if config["reading"]["yt_args"]["yt_metadata_args"] is None:
             config["reading"]["yt_args"]["yt_metadata_args"] = {}
-        config["reading"]["yt_args"]["yt_metadata_args"]["writesubtitles"] = True  # type: ignore
+        if not config["reading"]["yt_args"]["yt_metadata_args"].get("writesubtitles", None):  # type: ignore
+            config["reading"]["yt_args"]["yt_metadata_args"]["writesubtitles"] = "all"  # type: ignore
 
     if encode_formats is None:
         encode_formats = {"video": "mp4"}

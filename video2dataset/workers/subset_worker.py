@@ -71,8 +71,7 @@ class SubsetWorker:
 
         audio_subsamplers: List[Any] = []
         if "AudioRateSubsampler" in self.config["subsampling"]:
-            video_subsamplers.append(AudioRateSubsampler(**self.config["subsampling"]["AudioRateSubsampler"]["args"]))
-
+            audio_subsamplers.append(AudioRateSubsampler(**self.config["subsampling"]["AudioRateSubsampler"]["args"]))
         self.subsamplers = {"video": video_subsamplers, "audio": audio_subsamplers}
 
     def __call__(
@@ -112,6 +111,19 @@ class SubsetWorker:
 
         status_dict = CappedCounter()
 
+        # The subsamplers might change the output format, so we need to update the writer
+        writer_encode_formats = self.encode_formats.copy()
+        if self.subsamplers["audio"]:
+            assert (
+                len({s.encode_format for s in self.subsamplers["audio"]}) == 1
+            )  # assert that all audio subsamplers have the same output format
+            writer_encode_formats["audio"] = self.subsamplers["audio"][0].encode_format
+        if self.subsamplers["video"]:
+            assert (
+                len({s.encode_format for s in self.subsamplers["video"]}) == 1
+            )  # assert that all video subsamplers have the same output format
+            writer_encode_formats["video"] = self.subsamplers["video"][0].encode_format
+
         # give schema to writer
         sample_writer = self.sample_writer_class(
             shard_id,
@@ -119,7 +131,7 @@ class SubsetWorker:
             self.save_caption,
             self.config["storage"]["oom_shard_count"],
             schema,
-            self.encode_formats,
+            writer_encode_formats,
         )
 
         successes = 0
@@ -150,7 +162,7 @@ class SubsetWorker:
                 if self.ffprobe_subsampler is not None:
                     streams, meta, error_message = self.ffprobe_subsampler(streams, meta)
                     if error_message is not None:
-                        raise Exception("failed_to_subsample")
+                        raise ValueError("failed_to_subsample")
 
                 if self.config["storage"]["captions_are_subtitles"]:  # create clips
                     subtitles = meta["yt_meta_dict"]["subtitles"]
@@ -158,7 +170,7 @@ class SubsetWorker:
                 elif self.cut_detector is not None:  # apply cut detection to get clips
                     streams, cuts, error_message = self.cut_detector(streams)
                     if error_message is not None:
-                        raise Exception("failed_to_subsample")
+                        raise ValueError("failed_to_subsample")
 
                     meta["cuts"] = cuts
 
@@ -176,14 +188,14 @@ class SubsetWorker:
                 subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
                 if error_message is not None:
                     meta["clips"] = []
-                    raise Exception("failed_to_subsample")
+                    raise ValueError("failed_to_subsample")
 
                 for modality in list(subsampled_streams.keys()):
                     for modality_subsampler in self.subsamplers[modality]:
                         subsampled_streams, metas, error_message = modality_subsampler(subsampled_streams, metas)
 
                 if error_message is not None:
-                    raise Exception("failed_to_subsample")
+                    raise ValueError("failed_to_subsample")
 
                 successes += 1
                 status = "success"

@@ -48,7 +48,7 @@ def multiprocessing_distributor(processes_count, worker, input_sharder, _, max_s
 
         def run(gen):
             failed_shards = []
-            for (status, row) in tqdm(process_pool.imap_unordered(worker, gen)):
+            for status, row in tqdm(process_pool.imap_unordered(worker, gen)):
                 if status is False:
                     failed_shards.append(row)
             return failed_shards
@@ -76,7 +76,7 @@ def pyspark_distributor(processes_count, worker, input_sharder, subjob_size, max
             failed_shards = []
             for batch in batcher(gen, subjob_size):
                 rdd = spark.sparkContext.parallelize(batch, len(batch))
-                for (status, row) in rdd.map(worker).collect():
+                for status, row in rdd.map(worker).collect():
                     if status is False:
                         failed_shards.append(row)
             return failed_shards
@@ -154,6 +154,7 @@ class SlurmDistributor:
         gpus_per_node=0,
         tasks_per_node=1,
         nodelist=None,
+        constraint=None,
         exclude=None,
         cache_path=None,
         timeout=None,
@@ -167,6 +168,7 @@ class SlurmDistributor:
         self.account = account
         self.tasks_per_node = tasks_per_node
         self.nodelist = nodelist
+        self.constraint = constraint
         self.exclude = exclude
         self.cache_path = cache_path
         if not cache_path:
@@ -197,10 +199,10 @@ class SlurmDistributor:
         print(f"Wrote sbatch to {self.sbatch_path}")
 
     def _make_sbatch(self):
-
         nodelist = ("#SBATCH --nodelist " + self.nodelist) if self.nodelist is not None else ""
         exclude = ("#SBATCH --exclude " + self.exclude) if self.exclude is not None else ""
         account = ("#SBATCH --account " + self.account) if self.account is not None else ""
+        constraint = ("#SBATCH --constraint " + self.constraint) if self.constraint is not None else ""
         return f"""#!/bin/bash
 #SBATCH --partition={self.partition}
 #SBATCH --job-name={self.job_name}
@@ -213,6 +215,7 @@ class SlurmDistributor:
 {nodelist}
 {exclude}
 {account}
+{constraint}
 #SBATCH --open-mode append
 
 srun --account {self.account} bash {self.launcher_path}
@@ -222,8 +225,18 @@ srun --account {self.account} bash {self.launcher_path}
     def _make_launch_cpu(
         self,
     ):
+        """Create cpu launcher"""
 
-        venv = os.environ["VIRTUAL_ENV"]
+        venv = os.environ.get("VIRTUAL_ENV")
+        if venv:
+            venv_activate = f"source {venv}/bin/activate"
+        else:
+            conda_env = os.environ.get("CONDA_ENV")
+            if conda_env:
+                venv_activate = f"conda activate {conda_env}"
+            else:
+                raise ValueError("You need to specify either a virtual environment or a conda environment.")
+
         cdir = os.path.abspath(os.path.dirname(__file__))
         script = os.path.join(cdir, "slurm_executor.py")
         project_root = os.path.abspath(os.path.join(cdir, ".."))
@@ -241,7 +254,7 @@ export S3_VERIFY_SSL=0
 export CALLED_FROM_SLURM=1
 
 cd {project_root}
-source {venv}/bin/activate
+{venv_activate}
 
 python {script} --worker_args {self.worker_args_as_file} --node_id $SLURM_NODEID --n_nodes $SLURM_JOB_NUM_NODES --num_tasks_per_node $SLURM_NTASKS_PER_NODE --subtask_id $SLURM_LOCALID
 """

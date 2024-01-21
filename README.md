@@ -9,31 +9,38 @@ If you believe in making reusable tools to make data easy to use for ML and you 
 
 ## Install
 
-```
+```bash
 pip install video2dataset
 ```
 
 Or from source via
 
-```
+```bash
 git clone https://github.com/iejMac/video2dataset
 cd video2dataset
 pip install -e .
 ```
 
+#### Mac Installation
+
+
+On Mac, replace 'decord' with 'eva_decord' in requirements.txt. For details, see https://github.com/dmlc/decord/issues/213.
+
+
 ## Usage
 
-First get some video urls and metadata. For example lets save this small animal video dataset to a csv file called `videos.csv`
-```
+First get some video urls and metadata (all [supported sites](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md) by yt-dlp). For example lets save this small animal video dataset to a csv file called `videos.csv`
+```csv
 url,caption
 https://www.youtube.com/watch?v=od_PmtmMDV0,Driving to the banana store
 https://www.youtube.com/watch?v=8FhGOV7fs64,Polar bear eating
 https://www.youtube.com/watch?v=TReCLbmhlMs,Cat scared of printer
+https://www.dailymotion.com/video/x29ryo7,Cat and owl playing
 ```
 
 Then, run the tool:
 
-```
+```bash
 video2dataset --url_list="videos.csv" --url_col="url" --caption_col="caption" --output_folder="dataset"
 ```
 If you go into the output folder you should see a nice small video dataset stored with all relevant metadata.
@@ -168,7 +175,7 @@ Some of these file systems require installing an additional package (for example
 See fsspec doc for all the details.
 
 If you need specific configuration for your filesystem, you may handle this problem by using the [fsspec configuration system](https://filesystem-spec.readthedocs.io/en/latest/features.html#configuration) that makes it possible to create a file such as `.config/fsspec/s3.json` and have information in it such as:
-```
+```json
 {
   "s3": {
     "client_kwargs": {
@@ -236,18 +243,18 @@ Either locally, or in [gitpod](https://gitpod.io/#https://github.com/iejMac/vide
 
 Setup a virtualenv:
 
-```
+```bash
 python3 -m venv .env
 source .env/bin/activate
 pip install -e .
 ```
 
 to run tests:
-```
+```bash
 pip install -r requirements-test.txt
 ```
 then 
-```
+```bash
 make lint
 make test
 ```
@@ -257,7 +264,7 @@ You can use `make black` to reformat the code
 `python -m pytest -x -s -v tests -k "dummy"` to run a specific test
 
 ## Citation
-```
+```bibtex
 @misc{kilian-2023-video2dataset,
   author = {Maciej Kilian, Romain Beaumont, Daniel Mendelevitch, Sumith Kulal, Andreas Blattmann},
   title = {video2dataset: Easily turn large sets of video urls to a video dataset},
