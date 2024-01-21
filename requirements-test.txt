@@ -1,6 +1,6 @@
 black==22.3.0
 mypy==1.6.0
-types-requests==2.31.0.8
+types-requests==2.31.0.20240106
 types-PyYAML==6.0.12.12
 pylint==2.13.4
 pytest-cov==3.0.0
