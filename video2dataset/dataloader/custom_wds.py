@@ -371,7 +371,6 @@ class PrefixResampler(IterDataPipe):
 
     def __iter__(self):
         while self.it < self.__len__():
-
             # sample prefix with corresponding probs
             prefix_id = np.random.choice(len(self.ps), 1, p=list(self.ps.values())).item()
             prefix = list(self.ps.keys())[prefix_id]

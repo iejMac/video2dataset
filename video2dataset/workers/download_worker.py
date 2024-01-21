@@ -193,7 +193,7 @@ class DownloadWorker:
                         print(error_message)
                         if "[youtube]" in error_message:  # video-specific error, remove videoID
                             error_message = "ERROR: [youtube]:" + error_message.split(":")[-1]
-                        raise Exception("failed_to_download")
+                        raise ValueError("failed_to_download")
 
                     for stream in streams.values():
                         bytes_downloaded += len(stream)
@@ -203,7 +203,7 @@ class DownloadWorker:
                     if self.ffprobe_subsampler is not None:
                         streams, meta, error_message = self.ffprobe_subsampler(streams, meta)
                         if error_message is not None:
-                            raise Exception("failed_to_subsample")
+                            raise ValueError("failed_to_subsample")
 
                     if self.config["storage"]["captions_are_subtitles"]:  # create clips
                         subtitles = meta["yt_meta_dict"]["subtitles"]
@@ -212,7 +212,7 @@ class DownloadWorker:
                         streams, cuts, error_message = self.cut_detector(streams)
 
                         if error_message is not None:
-                            raise Exception("failed_to_subsample")
+                            raise ValueError("failed_to_subsample")
 
                         meta["cuts"] = cuts
 
@@ -239,7 +239,7 @@ class DownloadWorker:
 
                     if error_message is not None:
                         meta["clips"] = []
-                        raise Exception("failed_to_subsample")
+                        raise ValueError("failed_to_subsample")
 
                     successes += 1
                     status = "success"

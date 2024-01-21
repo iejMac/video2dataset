@@ -162,7 +162,7 @@ class SubsetWorker:
                 if self.ffprobe_subsampler is not None:
                     streams, meta, error_message = self.ffprobe_subsampler(streams, meta)
                     if error_message is not None:
-                        raise Exception("failed_to_subsample")
+                        raise ValueError("failed_to_subsample")
 
                 if self.config["storage"]["captions_are_subtitles"]:  # create clips
                     subtitles = meta["yt_meta_dict"]["subtitles"]
@@ -170,7 +170,7 @@ class SubsetWorker:
                 elif self.cut_detector is not None:  # apply cut detection to get clips
                     streams, cuts, error_message = self.cut_detector(streams)
                     if error_message is not None:
-                        raise Exception("failed_to_subsample")
+                        raise ValueError("failed_to_subsample")
 
                     meta["cuts"] = cuts
 
@@ -188,14 +188,14 @@ class SubsetWorker:
                 subsampled_streams, metas, error_message = broadcast_subsampler(streams, meta)
                 if error_message is not None:
                     meta["clips"] = []
-                    raise Exception("failed_to_subsample")
+                    raise ValueError("failed_to_subsample")
 
                 for modality in list(subsampled_streams.keys()):
                     for modality_subsampler in self.subsamplers[modality]:
                         subsampled_streams, metas, error_message = modality_subsampler(subsampled_streams, metas)
 
                 if error_message is not None:
-                    raise Exception("failed_to_subsample")
+                    raise ValueError("failed_to_subsample")
 
                 successes += 1
                 status = "success"

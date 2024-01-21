@@ -6,6 +6,7 @@ import tempfile
 
 from .subsampler import Subsampler
 
+
 # TODO: figuer out why this is so slow (12 samples/s)
 class FFProbeSubsampler(Subsampler):
     """
