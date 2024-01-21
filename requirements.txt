@@ -14,7 +14,7 @@ timeout-decorator
 scenedetect[opencv]==0.6
 decord
 #eva-decord  # use eva-decord instead of decord on Mac (https://github.com/dmlc/decord/issues/213)
-torch==2.0.0
+torch==2.1.2
 langdetect
 torchdata==0.7.1
 torchaudio==2.0.0
