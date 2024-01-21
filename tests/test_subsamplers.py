@@ -125,7 +125,7 @@ def test_resolution_subsampler_video_size(size, resize_mode):
             assert w_vid == size
 
 
-@pytest.mark.parametrize("height,width,resize_mode", [(-1,128, ["scale"]), (1620,1620, ["scale", "crop", "pad"])])
+@pytest.mark.parametrize("height,width,resize_mode", [(-1, 128, ["scale"]), (1620, 1620, ["scale", "crop", "pad"])])
 def test_resolution_subsampler_height_and_width(height, width, resize_mode):
     current_folder = os.path.dirname(__file__)
     # video lenght - 2:02, 1080x1920

@@ -11,7 +11,6 @@ SHARDS = "tests/test_files/return_all_test.tar"
 
 @pytest.mark.parametrize("batch_size", [1, 4])
 def test_return_all(batch_size):
-
     decoder_kwargs = {"n_frames": 10, "fps": None, "num_threads": 1}
 
     dset = get_video_dataset(
@@ -47,7 +46,6 @@ def test_return_all(batch_size):
 
 @pytest.mark.parametrize("batch_size", [1, 2])
 def test_default(batch_size):
-
     decoder_kwargs = {"n_frames": 10, "fps": None, "num_threads": 1}
 
     dset = get_video_dataset(
@@ -80,7 +78,6 @@ def test_default(batch_size):
     [(1, ["0000008_00001", "0000030_00005", "0000038_00003"]), (2, ["0000008_00001", "0000030_00005"])],
 )
 def test_drop_last(batch_size, expected_keys):
-
     decoder_kwargs = {"n_frames": 10, "fps": None, "num_threads": 1}
 
     dset = get_video_dataset(
