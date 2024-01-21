@@ -56,16 +56,16 @@ def get_yt_meta(url, yt_metadata_args: dict) -> dict:
     """Return yt meta dict with meta data and/or subtitles
     yt_metadata_args is a dict of follwing format:
     yt_metadata_args = {
-        'writesubtitles': True,
+        'writesubtitles': 'first',
         'subtitleslangs': ['en'],
         'writeautomaticsub': True,
         'get_info': True
     }
 
-    writesubtitles:    Whether to write subtitles
+    writesubtitles:    Whether to write subtitles for each provided language or just the first present
     writeautomaticsub: Write the automatically generated subtitles to a file
     subtitleslangs:    List of languages of the subtitles to download.
-    get_info: whether to add info (title, description, tags etc) to the output.
+    get_info:          Whether to add info (title, description, tags etc) to the output.
     """
 
     write_subs = yt_metadata_args.get("writesubtitles", None)
@@ -74,15 +74,22 @@ def get_yt_meta(url, yt_metadata_args: dict) -> dict:
     yt_metadata_args["ignoreerrors"] = True
     yt_metadata_args["quiet"] = True
 
-    info_dict, sub_dict = None, None
+    info_dict, full_sub_dict = None, None
 
     with yt_dlp.YoutubeDL(yt_metadata_args) as yt:
         info_dict = yt.extract_info(url, download=False)
         if write_subs:
-            sub_url = info_dict["requested_subtitles"][yt_metadata_args["subtitleslangs"][0]]["url"]
-            res = requests.get(sub_url, timeout=10)
-            sub = io.TextIOWrapper(io.BytesIO(res.content)).read()
-            sub_dict = sub_to_dict(sub)
+            full_sub_dict = {}
+            for lang in yt_metadata_args["subtitleslangs"]:
+                if lang not in info_dict["requested_subtitles"]:
+                    continue
+                sub_url = info_dict["requested_subtitles"][lang]["url"]
+                res = requests.get(sub_url, timeout=10)
+                sub = io.TextIOWrapper(io.BytesIO(res.content)).read()
+                full_sub_dict[lang] = sub_to_dict(sub)
+
+                if write_subs == "first":
+                    break
 
         if yt_metadata_args["get_info"]:
             info_dict.pop("subtitles")
@@ -93,7 +100,7 @@ def get_yt_meta(url, yt_metadata_args: dict) -> dict:
         else:
             info_dict = None
 
-        yt_meta_dict = {"info": info_dict, "subtitles": sub_dict}
+        yt_meta_dict = {"info": info_dict, "subtitles": full_sub_dict}
 
         return yt_meta_dict
 

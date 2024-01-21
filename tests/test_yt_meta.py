@@ -51,8 +51,9 @@ def test_subtitles(input_file):
         yt_meta_dict = get_yt_meta(url, yt_metadata_args)
 
         assert type(yt_meta_dict) == dict
-        assert type(yt_meta_dict["subtitles"]) == list
-        assert type(yt_meta_dict["subtitles"][0]) == dict
+        assert type(yt_meta_dict["subtitles"]) == dict
+        assert type(yt_meta_dict["subtitles"]["en"]) == list
+        assert type(yt_meta_dict["subtitles"]["en"][0]) == dict
 
 
 @pytest.mark.parametrize("input_file", ["test_yt.csv"])
