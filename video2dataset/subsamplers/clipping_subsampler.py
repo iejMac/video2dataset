@@ -140,7 +140,7 @@ def _process_stream(
 
 def _extract_subtitles(clip_span: ClipSpan, meta_clip: dict) -> List[dict]:
     """Extracts subtitles and groups them by language"""
-    clip_subtitles = []
+    clip_subtitles: list[dict] = []
     s_c, e_c = _get_seconds(clip_span[0]), _get_seconds(clip_span[1])
     for lang_id, (lang, subtitles) in enumerate(meta_clip["yt_meta_dict"]["subtitles"].items()):
         idx = 0
