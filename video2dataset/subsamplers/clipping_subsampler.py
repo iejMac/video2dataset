@@ -13,7 +13,7 @@ import datetime
 from .subsampler import Subsampler
 
 
-ClipSpans = List[float]  # [start, end]
+ClipSpan = List[float]  # [start, end]
 
 
 class EncodeFormats(TypedDict):
@@ -45,7 +45,7 @@ def _get_strtime(t_sec: float) -> str:
     return f"{hour:02d}:{minute:02d}:{second:02d}.{microsecond:03d}"
 
 
-def _split_time_frame(s: float, e: float, min_length: float, max_length: float) -> List[ClipSpans]:
+def _split_time_frame(s: float, e: float, min_length: float, max_length: float) -> List[ClipSpan]:
     """Filters out cuts by min and max length"""
     time_d = e - s
     n_full_clips = int(time_d // max_length)
@@ -55,7 +55,7 @@ def _split_time_frame(s: float, e: float, min_length: float, max_length: float) 
     return clip_spans
 
 
-def _adjust_clip_spans_to_keyframes(clip_spans: List[ClipSpans], keyframes: List[float]) -> List[ClipSpans]:
+def _adjust_clip_spans_to_keyframes(clip_spans: List[ClipSpan], keyframes: List[float]) -> List[ClipSpan]:
     """Translates clip_spans into keyframe vocab"""
     adjusted_clip_spans = []
     for start, end in clip_spans:
@@ -69,15 +69,15 @@ def _adjust_clip_spans_to_keyframes(clip_spans: List[ClipSpans], keyframes: List
 
 
 def _adjust_clip_spans(
-    clip_spans: List[ClipSpans],
+    clip_spans: List[ClipSpan],
     keyframe_timestamps: Union[List[float], None],
     min_length: float,
     max_length: float,
     max_length_strategy: str,
-) -> List[ClipSpans]:
+) -> List[ClipSpan]:
     """Adjusts cut times around keyframes, filtering by min and max length"""
     if not isinstance(clip_spans[0], Iterable):  # make sure clip_spans looks like [[start, end]] and not [start, end]
-        clip_spans = cast(List[ClipSpans], [clip_spans])
+        clip_spans = cast(List[ClipSpan], [clip_spans])
     clip_spans = [[_get_seconds(s), _get_seconds(e)] for [s, e] in clip_spans]
 
     if keyframe_timestamps:
@@ -92,7 +92,7 @@ def _adjust_clip_spans(
     return filtered_clip_spans
 
 
-def _collate_clip_spans(clip_spans: List[ClipSpans]) -> Tuple[str, List[int]]:
+def _collate_clip_spans(clip_spans: List[ClipSpan]) -> Tuple[str, List[int]]:
     """Collates clip spans into a single string for ffmpeg and a list of clip idxs"""
     clip_times = []
     clip_idxs = []
@@ -138,8 +138,30 @@ def _process_stream(
     return stream_clips
 
 
+def _extract_subtitles(clip_span: ClipSpan, meta_clip: dict) -> List[dict]:
+    """Extracts subtitles and groups them by language"""
+    clip_subtitles = []
+    s_c, e_c = _get_seconds(clip_span[0]), _get_seconds(clip_span[1])
+    for lang_id, (lang, subtitles) in enumerate(meta_clip["yt_meta_dict"]["subtitles"].items()):
+        idx = 0
+        for line in subtitles:
+            line_dict = {lang: line["lines"]}
+            s, e = _get_seconds(line["start"]), _get_seconds(line["end"])
+            if max(s_c, s) < min(e_c, e):
+                if lang_id != 0:
+                    clip_subtitles[idx]["lines"].update(line_dict)
+                    idx += 1
+                else:
+                    temp_line = copy.deepcopy(line)
+                    temp_line["lines"] = line_dict
+                    clip_subtitles.append(temp_line)
+            elif s > e_c:
+                break
+    return clip_subtitles
+
+
 def _get_clip_metadata(
-    clip_spans: List[ClipSpans],
+    clip_spans: List[ClipSpan],
     clip_idxs: List[int],
     metadata: dict,
     oom_clip_count: int,
@@ -162,17 +184,13 @@ def _get_clip_metadata(
 
         yt_md_dict = meta_clip.get("yt_meta_dict", {})
         if (yt_md_dict is not None) and (yt_md_dict.get("subtitles", None) is not None):
-            clip_subtitles = []
-            s_c, e_c = _get_seconds(clip_span[0]), _get_seconds(clip_span[1])
-            for line in meta_clip["yt_meta_dict"]["subtitles"]:
-                s, e = _get_seconds(line["start"]), _get_seconds(line["end"])
-                if max(s_c, s) < min(e_c, e):
-                    clip_subtitles.append(line)
-                elif s > e_c:
-                    break
-            # full video subtitles might still be useful for context
-            meta_clip["clip_subtitles"] = clip_subtitles
+            meta_clip["clip_subtitles"] = _extract_subtitles(clip_span, meta_clip)
         metadata_clips.append(meta_clip)
+
+    # remove redundant metadata from clips after the first
+    for m_clips in metadata_clips[1:]:
+        m_clips["yt_meta_dict"] = {}
+
     return metadata_clips
 
 
@@ -180,7 +198,7 @@ def _get_clips(
     streams: Streams,
     encode_formats: EncodeFormats,
     precision: str,
-    clip_spans: List[ClipSpans],
+    clip_spans: List[ClipSpan],
     metadata: dict,
     oom_clip_count: int,
     strtime_formatting: bool,
