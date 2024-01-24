@@ -2,28 +2,19 @@
 clipping subsampler turns full videos into clips of videos according to clip_col
 """
 from collections.abc import Iterable
-from typing import Any, Union, List, Tuple, Dict, TypedDict, Literal, cast
 import copy
+import datetime
 import ffmpeg
 import glob
 import os
 import tempfile
+from typing import Any, Union, List, Tuple, Dict, Literal, cast
 
-import datetime
-from .subsampler import Subsampler
+from video2dataset.subsamplers.subsampler import Subsampler
+from video2dataset.types import EncodeFormats, Streams
 
 
 ClipSpan = List[float]  # [start, end]
-
-
-class EncodeFormats(TypedDict):
-    video: str
-    audio: str
-
-
-class Streams(TypedDict):
-    video: List[bytes]
-    audio: List[bytes]
 
 
 def _get_seconds(t: Union[str, float]) -> float:
