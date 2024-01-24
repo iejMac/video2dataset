@@ -41,22 +41,16 @@ def get_subsamplers(config: dict, encode_formats: EncodeFormats):
     cuts_are_clips = False
     if "CutDetectionSubsampler" in config["subsampling"]:
         if "args" in config["subsampling"]["CutDetectionSubsampler"]:
-            cut_detection_subsampler = CutDetectionSubsampler(
-                **config["subsampling"]["CutDetectionSubsampler"]["args"]
-            )
+            cut_detection_subsampler = CutDetectionSubsampler(**config["subsampling"]["CutDetectionSubsampler"]["args"])
         cuts_are_clips = config["subsampling"]["CutDetectionSubsampler"].get("cuts_are_clips", False)
 
     broadcast_subsampler = (
-        clipping_subsampler
-        if (config["storage"]["captions_are_subtitles"] or cuts_are_clips)
-        else NoOpSubsampler()
+        clipping_subsampler if (config["storage"]["captions_are_subtitles"] or cuts_are_clips) else NoOpSubsampler()
     )
 
     ffprobe_subsampler = None
     if "FFProbeSubsampler" in config["subsampling"] or need_keyframes:
-        ffprobe_subsampler = FFProbeSubsampler(
-            **config["subsampling"].get("FFProbeSubsampler", {"args": {}})["args"]
-        )
+        ffprobe_subsampler = FFProbeSubsampler(**config["subsampling"].get("FFProbeSubsampler", {"args": {}})["args"])
         ffprobe_subsampler.extract_keyframes |= need_keyframes
 
     video_subsamplers: List[Any] = []
@@ -78,9 +72,7 @@ def get_subsamplers(config: dict, encode_formats: EncodeFormats):
 class ShardStatus:
     successes: int = 0
     failed_to_subsample: int = 0
-    status_dict: CappedCounter = field(
-        default_factory=CappedCounter
-    )
+    status_dict: CappedCounter = field(default_factory=CappedCounter)
     error_message: Optional[str] = None
     count: int = 0
 
@@ -98,7 +90,13 @@ class SubsetWorker:
         self.sample_writer_class = sample_writer_class
         self.output_folder = output_folder
         self.config = config
-        self.ffprobe_subsampler, self.modal_subsamplers, self.cut_detection_subsampler, self.cuts_are_clips, self.broadcast_subsampler = get_subsamplers(config, encode_formats)
+        (
+            self.ffprobe_subsampler,
+            self.modal_subsamplers,
+            self.cut_detection_subsampler,
+            self.cuts_are_clips,
+            self.broadcast_subsampler,
+        ) = get_subsamplers(config, encode_formats)
 
         # set encoding formats
         self.input_encode_formats = encode_formats
@@ -113,7 +111,6 @@ class SubsetWorker:
                 len({s.encode_format for s in self.modal_subsamplers["video"]}) == 1
             )  # assert that all video subsamplers have the same output format
             self.output_encode_formats["video"] = self.modal_subsamplers["video"][0].encode_format
-
 
     def __call__(
         self,
@@ -212,7 +209,9 @@ class SubsetWorker:
 
                 for modality in list(subsampled_streams.keys()):
                     for modality_subsampler in self.modal_subsamplers[modality]:
-                        subsampled_streams, metas, shard_status.error_message = modality_subsampler(subsampled_streams, metas)
+                        subsampled_streams, metas, shard_status.error_message = modality_subsampler(
+                            subsampled_streams, metas
+                        )
                         assert shard_status.error_message is None
 
                 shard_status.successes += 1
