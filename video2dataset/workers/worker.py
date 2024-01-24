@@ -124,6 +124,8 @@ def process_sample(
     captions_are_subtitles: bool,
     shard_sample_writer: Any,  # TODO: type correctly
 ):
+    """Process a single video"""
+
     try:
         if subsamplers.ffprobe_subsampler is not None:
             streams, metadata, shard_status.error_message = subsamplers.ffprobe_subsampler(streams, metadata)
