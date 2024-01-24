@@ -8,7 +8,7 @@ import traceback
 import fsspec
 import numpy as np
 import webdataset as wds
-from typing import List, Any, Union, Optional
+from typing import List, Any, Union, Optional, Literal, cast
 
 from video2dataset.dataloader import get_video_dataset
 from video2dataset.logger import CappedCounter, write_stats
@@ -22,11 +22,6 @@ from video2dataset.subsamplers import (
     AudioRateSubsampler,
 )
 from video2dataset.types import EncodeFormats, Streams
-
-
-@dataclass
-class Subsamplers:
-    broadcast_subsampler: Union[ClippingSubsampler, NoOpSubsampler]
 
 
 def get_subsamplers(config: dict, encode_formats: EncodeFormats):
@@ -127,7 +122,7 @@ class SubsetWorker:
 
     def get_shard_processors(
         self,
-        shard: Union[str, List[str]],
+        shard: str,
         shard_id: int,
     ):
         try:
@@ -161,7 +156,7 @@ class SubsetWorker:
 
     def process_shard(
         self,
-        shard: Union[str, List[str]],
+        shard: str,
         shard_id: int,
     ):
         """Function to start an video processing in one process"""
@@ -184,6 +179,7 @@ class SubsetWorker:
             try:
                 streams: Streams = {}
                 for modality, format in self.input_encode_formats.items():
+                    modality = cast(Literal["audio", "video"], modality)
                     streams[modality] = [sample[format]]
 
                 if self.ffprobe_subsampler is not None:
