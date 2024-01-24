@@ -35,25 +35,7 @@ def get_subsamplers(config: dict, encode_formats: EncodeFormats):
         encode_formats,
         **config["subsampling"].get("ClippingSubsampler", {"args": {}})["args"],
     )
-
     need_keyframes = clipping_subsampler.precision == "keyframe_adjusted"
-    ffprobe_subsampler = None
-    if "FFProbeSubsampler" in config["subsampling"] or need_keyframes:
-        ffprobe_subsampler = FFProbeSubsampler(
-            **config["subsampling"].get("FFProbeSubsampler", {"args": {}})["args"]
-        )
-        ffprobe_subsampler.extract_keyframes |= need_keyframes
-    noop_subsampler = NoOpSubsampler()
-    video_subsamplers: List[Any] = []
-    if "ResolutionSubsampler" in config["subsampling"]:
-        video_subsamplers.append(ResolutionSubsampler(**config["subsampling"]["ResolutionSubsampler"]["args"]))
-    if "FrameSubsampler" in config["subsampling"]:
-        video_subsamplers.append(FrameSubsampler(**config["subsampling"]["FrameSubsampler"]["args"]))
-
-    audio_subsamplers: List[Any] = []
-    if "AudioRateSubsampler" in config["subsampling"]:
-        audio_subsamplers.append(AudioRateSubsampler(**config["subsampling"]["AudioRateSubsampler"]["args"]))
-    subsamplers = {"video": video_subsamplers, "audio": audio_subsamplers}
 
     cut_detection_subsampler = None
     cuts_are_clips = False
@@ -67,10 +49,29 @@ def get_subsamplers(config: dict, encode_formats: EncodeFormats):
     broadcast_subsampler = (
         clipping_subsampler
         if (config["storage"]["captions_are_subtitles"] or cuts_are_clips)
-        else noop_subsampler
+        else NoOpSubsampler()
     )
 
-    return ffprobe_subsampler, subsamplers, cut_detection_subsampler, cuts_are_clips, broadcast_subsampler
+    ffprobe_subsampler = None
+    if "FFProbeSubsampler" in config["subsampling"] or need_keyframes:
+        ffprobe_subsampler = FFProbeSubsampler(
+            **config["subsampling"].get("FFProbeSubsampler", {"args": {}})["args"]
+        )
+        ffprobe_subsampler.extract_keyframes |= need_keyframes
+
+    video_subsamplers: List[Any] = []
+    if "ResolutionSubsampler" in config["subsampling"]:
+        video_subsamplers.append(ResolutionSubsampler(**config["subsampling"]["ResolutionSubsampler"]["args"]))
+    if "FrameSubsampler" in config["subsampling"]:
+        video_subsamplers.append(FrameSubsampler(**config["subsampling"]["FrameSubsampler"]["args"]))
+
+    audio_subsamplers: List[Any] = []
+    if "AudioRateSubsampler" in config["subsampling"]:
+        audio_subsamplers.append(AudioRateSubsampler(**config["subsampling"]["AudioRateSubsampler"]["args"]))
+
+    modal_subsamplers = {"video": video_subsamplers, "audio": audio_subsamplers}
+
+    return ffprobe_subsampler, modal_subsamplers, cut_detection_subsampler, cuts_are_clips, broadcast_subsampler
 
 
 @dataclass
@@ -97,21 +98,21 @@ class SubsetWorker:
         self.sample_writer_class = sample_writer_class
         self.output_folder = output_folder
         self.config = config
-        self.ffprobe_subsampler, self.subsamplers, self.cut_detection_subsampler, self.cuts_are_clips, self.broadcast_subsampler = get_subsamplers(config, encode_formats)
+        self.ffprobe_subsampler, self.modal_subsamplers, self.cut_detection_subsampler, self.cuts_are_clips, self.broadcast_subsampler = get_subsamplers(config, encode_formats)
 
         # set encoding formats
         self.input_encode_formats = encode_formats
         self.output_encode_formats = self.input_encode_formats.copy()
-        if self.subsamplers["audio"]:
+        if self.modal_subsamplers["audio"]:
             assert (
-                len({s.encode_format for s in self.subsamplers["audio"]}) == 1
+                len({s.encode_format for s in self.modal_subsamplers["audio"]}) == 1
             )  # assert that all audio subsamplers have the same output format
-            self.output_encode_formats["audio"] = self.subsamplers["audio"][0].encode_format
-        if self.subsamplers["video"]:
+            self.output_encode_formats["audio"] = self.modal_subsamplers["audio"][0].encode_format
+        if self.modal_subsamplers["video"]:
             assert (
-                len({s.encode_format for s in self.subsamplers["video"]}) == 1
+                len({s.encode_format for s in self.modal_subsamplers["video"]}) == 1
             )  # assert that all video subsamplers have the same output format
-            self.output_encode_formats["video"] = self.subsamplers["video"][0].encode_format
+            self.output_encode_formats["video"] = self.modal_subsamplers["video"][0].encode_format
 
 
     def __call__(
@@ -127,14 +128,17 @@ class SubsetWorker:
             print(f"shard {row[0]} failed with error {err}")
             return (False, row)
 
-    def get_shard_processors(self, shard, shard_id):
+    def get_shard_processors(
+        self,
+        shard: Union[str, List[str]],
+        shard_id: int,
+    ):
         try:
             fs, shard_path = fsspec.core.url_to_fs(shard[: -len(".tar")] + ".parquet")
-
             with fs.open(shard_path, "rb") as f:
                 df = pa.parquet.read_table(f)
                 schema = df.schema
-        except Exception as e:  # pylint: disable=broad-except,unused-variable
+        except Exception:  # pylint: disable=broad-except
             fields = [
                 pa.field("key", pa.string()),
                 pa.field("status", pa.string()),
@@ -160,8 +164,8 @@ class SubsetWorker:
 
     def process_shard(
         self,
-        shard,
-        shard_id,
+        shard: Union[str, List[str]],
+        shard_id: int,
     ):
         """Function to start an video processing in one process"""
 
@@ -209,7 +213,7 @@ class SubsetWorker:
                     assert False
 
                 for modality in list(subsampled_streams.keys()):
-                    for modality_subsampler in self.subsamplers[modality]:
+                    for modality_subsampler in self.modal_subsamplers[modality]:
                         subsampled_streams, metas, shard_status.error_message = modality_subsampler(subsampled_streams, metas)
                         assert shard_status.error_message is None
 
