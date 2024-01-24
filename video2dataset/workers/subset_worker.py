@@ -185,7 +185,7 @@ class SubsetWorker:
                 return
 
             try:
-                streams: Streams = {"video": [], "audio": []}
+                streams: Streams = {}
                 for modality, format in self.input_encode_formats.items():
                     streams[modality] = [sample[format]]
 
@@ -196,15 +196,13 @@ class SubsetWorker:
                 if self.config["storage"]["captions_are_subtitles"]:  # create clips
                     subtitles = meta["yt_meta_dict"]["subtitles"]
                     meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
-
                 elif self.cut_detection_subsampler is not None:  # apply cut detection to get clips
                     streams, cuts, shard_status.error_message = self.cut_detection_subsampler(streams)
                     assert shard_status.error_message is None
                     meta["cuts"] = cuts
-
-                if self.cuts_are_clips:
-                    cuts = meta["cuts"]
-                    meta["clips"] = (np.array(cuts["cuts_original_fps"]) / cuts["original_fps"]).tolist()
+                    assert cuts is not None
+                    if self.cuts_are_clips:
+                        meta["clips"] = (np.array(cuts["cuts_original_fps"]) / cuts["original_fps"]).tolist()
 
                 # 1 video -> many videos (either clipping or noop which does identity broadcasting)
                 subsampled_streams, metas, shard_status.error_message = self.broadcast_subsampler(streams, meta)
