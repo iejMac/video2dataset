@@ -27,7 +27,7 @@ class SubsetWorker:
         self.output_folder = output_folder
         self.config = config
         self.input_encode_formats = encode_formats
-        self.subsamplers = get_subsamplers(config, self.input_encode_formats)
+        self.subsamplers, self.output_encode_formats = get_subsamplers(config, self.input_encode_formats)
 
     def __call__(
         self,
@@ -67,7 +67,7 @@ class SubsetWorker:
             True,  # save_caption
             self.config["storage"]["oom_shard_count"],
             schema,
-            self.subsamplers.output_encode_formats,
+            self.output_encode_formats,
         )
         shard_dataloader = get_video_dataset(
             urls=shard_file,

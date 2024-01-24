@@ -45,7 +45,7 @@ class DownloadWorker:
         self.url_indice = self.column_list.index("url")
         self.caption_indice = self.column_list.index("caption") if "caption" in self.column_list else None
         self.oom_sample_per_shard = math.ceil(math.log10(self.config["storage"]["number_sample_per_shard"]))
-        self.subsamplers = get_subsamplers(
+        self.subsamplers, self.output_encode_formats = get_subsamplers(
             config,
             encode_formats,
             do_clipping=("clips" in self.column_list),
@@ -72,6 +72,7 @@ class DownloadWorker:
         """Get objects for loading and writing data"""
 
         fs, shard_path = fsspec.core.url_to_fs(shard_file)
+        print(shard_path)
         with fs.open(shard_path, "rb") as f:
             df = pa.ipc.open_file(f).read_all()
             schema = df.schema

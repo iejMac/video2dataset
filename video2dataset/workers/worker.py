@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 import numpy as np
-from typing import Any, List, Optional
+from typing import Any, List, Tuple, Optional
 
 from video2dataset.logger import CappedCounter
 from video2dataset.subsamplers import (
@@ -132,15 +132,15 @@ def process_sample(
                 metadata["clips"] = (np.array(cuts["cuts_original_fps"]) / cuts["original_fps"]).tolist()
 
         # 1 video -> many videos (either clipping or noop which does identity broadcasting)
-        subsampled_streams, metas, shard_status.error_message = subsamplers.broadcast_subsampler(streams, metadata)
+        subsampled_streams, metadatas, shard_status.error_message = subsamplers.broadcast_subsampler(streams, metadata)
         if shard_status.error_message is not None:
             metadata["clips"] = []
             assert False
 
-        for modality in subsampled_streams:
+        for modality in list(subsampled_streams.keys()):
             for modality_subsampler in subsamplers.modal_subsamplers[modality]:
-                subsampled_streams, metas, shard_status.error_message = modality_subsampler(
-                    subsampled_streams, metas
+                subsampled_streams, metadatas, shard_status.error_message = modality_subsampler(
+                    subsampled_streams, metadatas
                 )
                 assert shard_status.error_message is None
 
@@ -158,7 +158,7 @@ def process_sample(
                 metadata,
             )
             return
-        for subsampled_streams, metadata in zip(subsampled_streams_list, metas):
+        for subsampled_streams, metadata in zip(subsampled_streams_list, metadatas):
             metadata["status"] = status
             text_caption = caption
             if captions_are_subtitles:
@@ -169,7 +169,8 @@ def process_sample(
                 text_caption,
                 metadata,
             )
-    except Exception:  # pylint: disable=broad-except
+    except Exception as err:  # pylint: disable=broad-except
+        print(err)
         shard_status.failed["failed_to_subsample"] += 1
         shard_status.status_dict.increment(shard_status.error_message)
         metadata["status"] = "failed_to_subsample"
