@@ -8,7 +8,7 @@ import traceback
 import fsspec
 import numpy as np
 import webdataset as wds
-from typing import List, Any, Union, Optional, Literal, cast
+from typing import List, Any, Optional, Literal, cast
 
 from video2dataset.dataloader import get_video_dataset
 from video2dataset.logger import CappedCounter, write_stats
@@ -25,6 +25,8 @@ from video2dataset.types import EncodeFormats, Streams
 
 
 def get_subsamplers(config: dict, encode_formats: EncodeFormats):
+    """Initialize all subsamplers using config"""
+
     clipping_subsampler = ClippingSubsampler(
         5,  # oom_clip_count
         encode_formats,
@@ -125,6 +127,8 @@ class SubsetWorker:
         shard: str,
         shard_id: int,
     ):
+        """Get objects for loading and writing data"""
+
         try:
             fs, shard_path = fsspec.core.url_to_fs(shard[: -len(".tar")] + ".parquet")
             with fs.open(shard_path, "rb") as f:
@@ -178,9 +182,9 @@ class SubsetWorker:
 
             try:
                 streams: Streams = {}
-                for modality, format in self.input_encode_formats.items():
+                for modality, encode_format in self.input_encode_formats.items():
                     modality = cast(Literal["audio", "video"], modality)
-                    streams[modality] = [sample[format]]
+                    streams[modality] = [sample[encode_format]]
 
                 if self.ffprobe_subsampler is not None:
                     streams, meta, shard_status.error_message = self.ffprobe_subsampler(streams, meta)
