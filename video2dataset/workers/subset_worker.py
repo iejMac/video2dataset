@@ -76,12 +76,7 @@ def get_subsamplers(config: dict, encode_formats: EncodeFormats):
 @dataclass
 class ShardStatus:
     successes: int = 0
-    failed: dict = field(
-        default_factory=lambda: {
-            "failed_to_download": 0,
-            "failed_to_subsample": 0,
-        }
-    )
+    failed_to_subsample: int = 0
     status_dict: CappedCounter = field(
         default_factory=CappedCounter
     )
@@ -175,51 +170,53 @@ class SubsetWorker:
         shard_status = ShardStatus()
 
         for sample in shard_dataloader:
+            shard_status.count += 1
+            key = sample["__key__"]
             try:
-                shard_status.count += 1
-                key = sample["__key__"]
                 caption = sample.get("txt", b"").decode("utf-8")
                 meta = json.loads(sample.get("json", b"{}").decode("utf-8"))
-                streams = {}
-                for mod, fmt in self.input_encode_formats.items():
-                    streams[mod] = [sample[fmt]]
+            except Exception as err:  # pylint: disable=broad-except
+                traceback.print_exc()
+                print(f"Sample {key} failed to download: {err}")
+                return
+
+            try:
+                streams: Streams = {"video": [], "audio": []}
+                for modality, format in self.input_encode_formats.items():
+                    streams[modality] = [sample[format]]
 
                 if self.ffprobe_subsampler is not None:
                     streams, meta, shard_status.error_message = self.ffprobe_subsampler(streams, meta)
-                    if shard_status.error_message is not None:
-                        raise ValueError("failed_to_subsample")
+                    assert shard_status.error_message is None
 
                 if self.config["storage"]["captions_are_subtitles"]:  # create clips
                     subtitles = meta["yt_meta_dict"]["subtitles"]
                     meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
+
                 elif self.cut_detection_subsampler is not None:  # apply cut detection to get clips
                     streams, cuts, shard_status.error_message = self.cut_detection_subsampler(streams)
-                    if shard_status.error_message is not None:
-                        raise ValueError("failed_to_subsample")
-
+                    assert shard_status.error_message is None
                     meta["cuts"] = cuts
 
                 if self.cuts_are_clips:
                     cuts = meta["cuts"]
-                    native_fps = cuts["original_fps"]
-                    meta["clips"] = (np.array(cuts["cuts_original_fps"]) / native_fps).tolist()
+                    meta["clips"] = (np.array(cuts["cuts_original_fps"]) / cuts["original_fps"]).tolist()
 
                 # 1 video -> many videos (either clipping or noop which does identity broadcasting)
                 subsampled_streams, metas, shard_status.error_message = self.broadcast_subsampler(streams, meta)
                 if shard_status.error_message is not None:
                     meta["clips"] = []
-                    raise ValueError("failed_to_subsample")
+                    assert False
 
                 for modality in list(subsampled_streams.keys()):
                     for modality_subsampler in self.subsamplers[modality]:
                         subsampled_streams, metas, shard_status.error_message = modality_subsampler(subsampled_streams, metas)
-
-                if shard_status.error_message is not None:
-                    raise ValueError("failed_to_subsample")
+                        assert shard_status.error_message is None
 
                 shard_status.successes += 1
                 status = "success"
                 shard_status.status_dict.increment(status)
+
                 subsampled_streams_list = [dict(zip(subsampled_streams, s)) for s in zip(*subsampled_streams.values())]
                 if len(subsampled_streams_list) == 0:  # no audio or video, just write meta
                     meta["status"] = status
@@ -230,37 +227,28 @@ class SubsetWorker:
                         meta,
                     )
                     continue
-
                 for subsampled_streams, meta in zip(subsampled_streams_list, metas):
                     meta["status"] = status
-
                     text_caption = caption
                     if self.config["storage"]["captions_are_subtitles"]:
                         text_caption = meta.get("clip_subtitles")[0]["lines"][0]
-
                     shard_sample_writer.write(
                         subsampled_streams,
                         meta["key"],
                         text_caption,
                         meta,
                     )
-
-            except Exception as err:  # pylint: disable=broad-except
-                status = str(err)
-                if status.startswith("failed_to_"):
-                    shard_status.failed[status] += 1
-                    shard_status.status_dict.increment(shard_status.error_message)
-                    meta["status"] = status
-                    meta["error_message"] = shard_status.error_message
-                    shard_sample_writer.write(
-                        {},
-                        key,
-                        caption,
-                        meta,
-                    )
-                else:
-                    traceback.print_exc()
-                    print(f"Sample {key} failed to download: {err}")
+            except Exception:  # pylint: disable=broad-except
+                shard_status.failed_to_subsample += 1
+                shard_status.status_dict.increment(shard_status.error_message)
+                meta["status"] = "failed_to_subsample"
+                meta["error_message"] = shard_status.error_message
+                shard_sample_writer.write(
+                    {},
+                    key,
+                    caption,
+                    meta,
+                )
 
         shard_sample_writer.close()
         end_time = time.time()
@@ -271,7 +259,7 @@ class SubsetWorker:
             shard_status.count,
             shard_status.successes,
             0,  # failed to download
-            shard_status.failed["failed_to_subsample"],
+            shard_status.failed_to_subsample,
             0,  # bytes downloaded
             start_time,
             end_time,
