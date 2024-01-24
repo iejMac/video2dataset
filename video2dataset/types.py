@@ -1,3 +1,4 @@
+"""Type definitions for video2dataset."""
 from typing import List, TypedDict
 
 
