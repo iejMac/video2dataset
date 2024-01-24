@@ -212,10 +212,10 @@ def video2dataset(
     if stage in ["download", "subset"]:
         worker = StandardWorker(
             sample_writer_class=sample_writer_class,
-            # save_caption=save_caption,
+            save_caption=save_caption,
             output_folder=output_folder,
-            # column_list=shard_iterator.column_list,
-            # tmp_dir=tmp_dir,
+            column_list=shard_iterator.column_list,
+            tmp_dir=tmp_dir,
             encode_formats=encode_formats,
             config=config,
         )

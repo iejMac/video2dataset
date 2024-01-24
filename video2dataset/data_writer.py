@@ -10,7 +10,20 @@ import pyarrow.parquet as pq
 import webdataset as wds
 
 
-class BufferedParquetWriter:
+class SampleWriter:
+    """Base class for type annotation"""
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def write(self, *args, **kwargs):
+        pass
+
+    def close(self):
+        pass
+
+
+class BufferedParquetWriter(SampleWriter):
     """Write samples to parquet files incrementally with a buffer"""
 
     def __init__(self, output_file, schema, buffer_size=100):
@@ -53,7 +66,7 @@ class BufferedParquetWriter:
             self.output_fd.close()
 
 
-class ParquetSampleWriter:
+class ParquetSampleWriter(SampleWriter):
     """ParquetSampleWriter is a video+caption writer to parquet"""
 
     def __init__(
@@ -97,7 +110,7 @@ class ParquetSampleWriter:
         self.buffered_parquet_writer.close()
 
 
-class WebDatasetSampleWriter:
+class WebDatasetSampleWriter(SampleWriter):
     """WebDatasetSampleWriter is a video+caption writer to webdataset"""
 
     def __init__(
@@ -149,7 +162,7 @@ class WebDatasetSampleWriter:
         self.tar_fd.close()
 
 
-class TFRecordSampleWriter:
+class TFRecordSampleWriter(SampleWriter):
     """TFRecordSampleWriter is a video+caption writer to TFRecord"""
 
     def __init__(
@@ -263,7 +276,7 @@ class TFRecordSampleWriter:
             return self._Feature(bytes_list=self._BytesList(value=value))
 
 
-class FilesSampleWriter:
+class FilesSampleWriter(SampleWriter):
     """FilesSampleWriter is a caption+video writer to files"""
 
     def __init__(
@@ -320,7 +333,7 @@ class FilesSampleWriter:
         self.buffered_parquet_writer.close()
 
 
-class DummySampleWriter:
+class DummySampleWriter(SampleWriter):
     """Does not write"""
 
     def __init__(
