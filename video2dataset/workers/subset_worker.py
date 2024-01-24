@@ -1,5 +1,5 @@
 """creates a subset of an existing dataset inside the sample dimension"""
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import time
 import json
 import pyarrow as pa
@@ -8,7 +8,7 @@ import traceback
 import fsspec
 import numpy as np
 import webdataset as wds
-from typing import List, Any, Union
+from typing import List, Any, Union, Optional
 
 from video2dataset.dataloader import get_video_dataset
 from video2dataset.logger import CappedCounter, write_stats
@@ -71,6 +71,22 @@ def get_subsamplers(config: dict, encode_formats: EncodeFormats):
     )
 
     return ffprobe_subsampler, subsamplers, cut_detection_subsampler, cuts_are_clips, broadcast_subsampler
+
+
+@dataclass
+class ShardStatus:
+    successes: int = 0
+    failed: dict = field(
+        default_factory=lambda: {
+            "failed_to_download": 0,
+            "failed_to_subsample": 0,
+        }
+    )
+    status_dict: CappedCounter = field(
+        default_factory=CappedCounter
+    )
+    error_message: Optional[str] = None
+    count: int = 0
 
 
 class SubsetWorker:
@@ -155,19 +171,12 @@ class SubsetWorker:
         """Function to start an video processing in one process"""
 
         start_time = time.time()
-
         shard_sample_writer, shard_dataloader = self.get_shard_processors(shard, shard_id)
-        successes = 0
-        failed = {
-            "failed_to_download": 0,
-            "failed_to_subsample": 0,
-        }
-        status_dict = CappedCounter()
-        error_message = None
-        count = 0
+        shard_status = ShardStatus()
+
         for sample in shard_dataloader:
             try:
-                count += 1
+                shard_status.count += 1
                 key = sample["__key__"]
                 caption = sample.get("txt", b"").decode("utf-8")
                 meta = json.loads(sample.get("json", b"{}").decode("utf-8"))
@@ -176,16 +185,16 @@ class SubsetWorker:
                     streams[mod] = [sample[fmt]]
 
                 if self.ffprobe_subsampler is not None:
-                    streams, meta, error_message = self.ffprobe_subsampler(streams, meta)
-                    if error_message is not None:
+                    streams, meta, shard_status.error_message = self.ffprobe_subsampler(streams, meta)
+                    if shard_status.error_message is not None:
                         raise ValueError("failed_to_subsample")
 
                 if self.config["storage"]["captions_are_subtitles"]:  # create clips
                     subtitles = meta["yt_meta_dict"]["subtitles"]
                     meta["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
                 elif self.cut_detection_subsampler is not None:  # apply cut detection to get clips
-                    streams, cuts, error_message = self.cut_detection_subsampler(streams)
-                    if error_message is not None:
+                    streams, cuts, shard_status.error_message = self.cut_detection_subsampler(streams)
+                    if shard_status.error_message is not None:
                         raise ValueError("failed_to_subsample")
 
                     meta["cuts"] = cuts
@@ -196,21 +205,21 @@ class SubsetWorker:
                     meta["clips"] = (np.array(cuts["cuts_original_fps"]) / native_fps).tolist()
 
                 # 1 video -> many videos (either clipping or noop which does identity broadcasting)
-                subsampled_streams, metas, error_message = self.broadcast_subsampler(streams, meta)
-                if error_message is not None:
+                subsampled_streams, metas, shard_status.error_message = self.broadcast_subsampler(streams, meta)
+                if shard_status.error_message is not None:
                     meta["clips"] = []
                     raise ValueError("failed_to_subsample")
 
                 for modality in list(subsampled_streams.keys()):
                     for modality_subsampler in self.subsamplers[modality]:
-                        subsampled_streams, metas, error_message = modality_subsampler(subsampled_streams, metas)
+                        subsampled_streams, metas, shard_status.error_message = modality_subsampler(subsampled_streams, metas)
 
-                if error_message is not None:
+                if shard_status.error_message is not None:
                     raise ValueError("failed_to_subsample")
 
-                successes += 1
+                shard_status.successes += 1
                 status = "success"
-                status_dict.increment(status)
+                shard_status.status_dict.increment(status)
                 subsampled_streams_list = [dict(zip(subsampled_streams, s)) for s in zip(*subsampled_streams.values())]
                 if len(subsampled_streams_list) == 0:  # no audio or video, just write meta
                     meta["status"] = status
@@ -239,10 +248,10 @@ class SubsetWorker:
             except Exception as err:  # pylint: disable=broad-except
                 status = str(err)
                 if status.startswith("failed_to_"):
-                    failed[status] += 1
-                    status_dict.increment(error_message)
+                    shard_status.failed[status] += 1
+                    shard_status.status_dict.increment(shard_status.error_message)
                     meta["status"] = status
-                    meta["error_message"] = error_message
+                    meta["error_message"] = shard_status.error_message
                     shard_sample_writer.write(
                         {},
                         key,
@@ -259,13 +268,13 @@ class SubsetWorker:
         write_stats(
             self.output_folder,
             shard_id,
-            count,
-            successes,
+            shard_status.count,
+            shard_status.successes,
             0,  # failed to download
-            failed["failed_to_subsample"],
+            shard_status.failed["failed_to_subsample"],
             0,  # bytes downloaded
             start_time,
             end_time,
-            status_dict,
+            shard_status.status_dict,
             self.config["storage"]["oom_shard_count"],
         )
