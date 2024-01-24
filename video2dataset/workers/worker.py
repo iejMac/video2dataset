@@ -19,6 +19,8 @@ from video2dataset.types import EncodeFormats, Streams, Metadata
 
 @dataclass
 class ShardStatus:
+    """Shard processing status"""
+
     successes: int = 0
     failed: dict = field(
         default_factory=lambda: {
@@ -34,12 +36,13 @@ class ShardStatus:
 
 @dataclass
 class Subsamplers:
+    """Subsamplers used in processing"""
+
     ffprobe_subsampler: Optional[FFProbeSubsampler] = None
     modal_subsamplers: dict = field(default_factory=dict)
     cut_detection_subsampler: Optional[CutDetectionSubsampler] = None
     cuts_are_clips: bool = False
     broadcast_subsampler: Subsampler = field(default_factory=NoOpSubsampler)
-
 
 
 def get_subsamplers(
@@ -64,7 +67,9 @@ def get_subsamplers(
         cuts_are_clips = config["subsampling"]["CutDetectionSubsampler"].get("cuts_are_clips", False)
 
     broadcast_subsampler = (
-        clipping_subsampler if (do_clipping or config["storage"]["captions_are_subtitles"] or cuts_are_clips) else NoOpSubsampler()
+        clipping_subsampler
+        if (do_clipping or config["storage"]["captions_are_subtitles"] or cuts_are_clips)
+        else NoOpSubsampler()
     )
 
     ffprobe_subsampler = None
@@ -97,13 +102,16 @@ def get_subsamplers(
         )  # assert that all video subsamplers have the same output format
         output_encode_formats["video"] = modal_subsamplers["video"][0].encode_format
 
-    return Subsamplers(
-        ffprobe_subsampler=ffprobe_subsampler,
-        modal_subsamplers=modal_subsamplers,
-        cut_detection_subsampler=cut_detection_subsampler,
-        cuts_are_clips=cuts_are_clips,
-        broadcast_subsampler=broadcast_subsampler,
-    ), output_encode_formats
+    return (
+        Subsamplers(
+            ffprobe_subsampler=ffprobe_subsampler,
+            modal_subsamplers=modal_subsamplers,
+            cut_detection_subsampler=cut_detection_subsampler,
+            cuts_are_clips=cuts_are_clips,
+            broadcast_subsampler=broadcast_subsampler,
+        ),
+        output_encode_formats,
+    )
 
 
 def process_sample(
@@ -159,19 +167,19 @@ def process_sample(
                 metadata,
             )
             return
-        for subsampled_streams, metadata in zip(subsampled_streams_list, metadatas):
-            metadata["status"] = status
+        for subsampled_streams, subsampled_metadata in zip(subsampled_streams_list, metadatas):
+            subsampled_metadata["status"] = status
             text_caption = caption
             if captions_are_subtitles:
-                clip_subtitles = metadata.get("clip_subtitles")
+                clip_subtitles = subsampled_metadata.get("clip_subtitles")
                 first_clip_subtitles = clip_subtitles[0] if clip_subtitles else None
                 subtitle_lines = first_clip_subtitles["lines"] if first_clip_subtitles else None
                 text_caption = subtitle_lines[0] if subtitle_lines else text_caption
             shard_sample_writer.write(
                 subsampled_streams,
-                metadata["key"],
+                subsampled_metadata["key"],
                 text_caption,
-                metadata,
+                subsampled_metadata,
             )
     except Exception as err:  # pylint: disable=broad-except
         print(err)

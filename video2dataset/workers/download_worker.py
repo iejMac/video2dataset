@@ -92,8 +92,10 @@ class DownloadWorker:
         )
         pydict = df.select(self.column_list).to_pydict()
         shard_to_dl = list(enumerate(zip(*(pydict[col] for col in self.column_list))))
+
         def rm_shard_path():
             fs.rm(shard_path)
+
         return shard_sample_writer, shard_to_dl, rm_shard_path
 
     def process_shard(
@@ -108,10 +110,12 @@ class DownloadWorker:
         shard_status = ShardStatus(count=len(shard_to_dl))
 
         semaphore = Semaphore(self.config["distribution"]["thread_count"])
+
         def data_generator():
             for key_and_url in [(key, x[self.url_indice]) for key, x in shard_to_dl]:
                 with semaphore:
                     yield key_and_url
+
         data_reader_call_param_generator = data_generator()
 
         with ThreadPool(self.config["distribution"]["thread_count"]) as thread_pool:
@@ -132,7 +136,7 @@ class DownloadWorker:
                         "error_message": shard_status.error_message,
                         "yt_meta_dict": yt_meta_dict,
                     }
-                except Exception as err:
+                except Exception as err:  # pylint: disable=broad-except
                     traceback.print_exc()
                     print(f"Sample {key} failed to download: {err}")
                     return
@@ -143,7 +147,7 @@ class DownloadWorker:
                         if "[youtube]" in shard_status.error_message:  # video-specific error, remove videoID
                             shard_status.error_message = "ERROR: [youtube]:" + shard_status.error_message.split(":")[-1]
                         raise ValueError
-                except Exception:
+                except Exception:  # pylint: disable=broad-except
                     shard_status.failed["failed_to_download"] += 1
                     shard_status.status_dict.increment(shard_status.error_message)
                     metadata["status"] = "failed_to_download"
