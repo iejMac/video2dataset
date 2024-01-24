@@ -1,3 +1,4 @@
+"""Standard worker for video2dataset."""
 from dataclasses import dataclass, field
 import numpy as np
 from typing import Any, List, Tuple, Optional
@@ -162,7 +163,10 @@ def process_sample(
             metadata["status"] = status
             text_caption = caption
             if captions_are_subtitles:
-                text_caption = metadata.get("clip_subtitles")[0]["lines"][0]
+                clip_subtitles = metadata.get("clip_subtitles")
+                first_clip_subtitles = clip_subtitles[0] if clip_subtitles else None
+                subtitle_lines = first_clip_subtitles["lines"] if first_clip_subtitles else None
+                text_caption = subtitle_lines[0] if subtitle_lines else text_caption
             shard_sample_writer.write(
                 subsampled_streams,
                 metadata["key"],

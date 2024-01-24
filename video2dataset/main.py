@@ -26,7 +26,7 @@ from video2dataset.distributor import (
     SlurmDistributor,
     SlurmShardSampler,
 )
-from video2dataset.workers import DownloadWorker, SubsetWorker, OpticalFlowWorker, CaptionWorker, WhisperWorker
+from video2dataset.workers import StandardWorker, OpticalFlowWorker, CaptionWorker, WhisperWorker
 from video2dataset.configs import CONFIGS
 from video2dataset.types import EncodeFormats
 
@@ -209,20 +209,13 @@ def video2dataset(
             config["reading"]["sampler"],
         )
 
-    if stage == "download":
-        worker = DownloadWorker(
+    if stage in ["download", "subset"]:
+        worker = StandardWorker(
             sample_writer_class=sample_writer_class,
-            save_caption=save_caption,
+            # save_caption=save_caption,
             output_folder=output_folder,
-            column_list=shard_iterator.column_list,
-            tmp_dir=tmp_dir,
-            encode_formats=encode_formats,
-            config=config,
-        )
-    elif stage == "subset":
-        worker = SubsetWorker(  # type: ignore
-            sample_writer_class=sample_writer_class,
-            output_folder=output_folder,
+            # column_list=shard_iterator.column_list,
+            # tmp_dir=tmp_dir,
             encode_formats=encode_formats,
             config=config,
         )
