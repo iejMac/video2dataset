@@ -9,25 +9,26 @@ from omegaconf import OmegaConf
 from typing import List, Optional, Any
 import numpy as np  # pylint: disable=unused-import
 
-from .logger import LoggerProcess
-from .data_writer import (
+from video2dataset.logger import LoggerProcess
+from video2dataset.data_writer import (
     WebDatasetSampleWriter,
     FilesSampleWriter,
     ParquetSampleWriter,
     TFRecordSampleWriter,
     DummySampleWriter,
 )
-from .input_sharder import InputSharder
-from .output_sharder import OutputSharder
-from .distributor import (
+from video2dataset.input_sharder import InputSharder
+from video2dataset.output_sharder import OutputSharder
+from video2dataset.distributor import (
     no_distributor,
     multiprocessing_distributor,
     pyspark_distributor,
     SlurmDistributor,
     SlurmShardSampler,
 )
-from .workers import DownloadWorker, SubsetWorker, OpticalFlowWorker, CaptionWorker, WhisperWorker
-from .configs import CONFIGS
+from video2dataset.workers import DownloadWorker, SubsetWorker, OpticalFlowWorker, CaptionWorker, WhisperWorker
+from video2dataset.configs import CONFIGS
+from video2dataset.types import EncodeFormats
 
 
 def identity(x):
@@ -42,7 +43,7 @@ def video2dataset(
     output_folder: str = "dataset",
     output_format: str = "files",
     input_format: str = "csv",
-    encode_formats: Optional[dict] = None,
+    encode_formats: Optional[EncodeFormats] = None,
     stage: str = "download",
     url_col: str = "url",
     caption_col: Optional[str] = None,
