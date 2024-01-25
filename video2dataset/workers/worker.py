@@ -1,12 +1,10 @@
 """Standard worker for video2dataset."""
 from dataclasses import dataclass, field
 import numpy as np
-import os
-import tempfile
 from typing import Any, List, Tuple, Optional
-import uuid
 
 from video2dataset.logger import CappedCounter
+from video2dataset.refactoring_utils import stream_to_temp_filepaths, temp_filepaths_to_streams
 from video2dataset.subsamplers import (
     ClippingSubsampler,
     CutDetectionSubsampler,
@@ -117,30 +115,6 @@ def get_subsamplers(
     )
 
 
-def save_temp_input_streams(streams: Streams) -> dict:
-    """
-    This is a temporary workaround for now, while refactoring some of the subsamplers.
-    Each subsampler currently works by taking in streams, writing to temp input files, and running ffmpeg to produce temp output files.
-    It would be faster to build one combined ffmpeg pipe for all subsamplers and run it only once.
-    That way we can simply pass in input filenames, and write final output files directly, without IO on intermediate temp files.
-    It's difficult to change everything at once, so we're going to refactor one subsampler at a time.
-    This function allows us to save temp files, to give us filenames for passing into refactored subsamplers.
-    It would be much better to just start with filepaths to begin with, but this requires big changes to how input streams are processed.
-    """
-
-    stream_temp_filepaths = {}
-    with tempfile.TemporaryDirectory() as tmpdir:
-        for modality in streams:
-            stream_temp_filepaths[modality] = []
-            for stream in streams[modality]:
-                stream_uuid = str(uuid.uuid4())
-                stream_temp_filepath = os.path.join(tmpdir, stream_uuid)
-                with open(stream_temp_filepath, "wb") as f:
-                    f.write(stream)
-                stream_temp_filepaths[modality].append(stream_temp_filepath)
-    return stream_temp_filepaths
-
-
 def process_sample(
     subsamplers: Subsamplers,
     shard_status: ShardStatus,
@@ -154,9 +128,11 @@ def process_sample(
     """Process a single video"""
 
     try:
+        temp_filepaths = stream_to_temp_filepaths(streams)
         if subsamplers.ffprobe_subsampler is not None:
             streams, metadata, shard_status.error_message = subsamplers.ffprobe_subsampler(streams, metadata)
             assert shard_status.error_message is None
+        streams = temp_filepaths_to_streams(temp_filepaths)
 
         if captions_are_subtitles:  # create clips
             subtitles = metadata["yt_meta_dict"]["subtitles"]
