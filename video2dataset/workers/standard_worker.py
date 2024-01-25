@@ -9,9 +9,11 @@ from threading import Semaphore
 import time
 import traceback
 from typing import Any, List, Tuple, Optional, Type, cast
+import webdataset as wds
 
 from video2dataset.data_reader import VideoDataReader
 from video2dataset.data_writer import SampleWriter
+from video2dataset.dataloader import get_video_dataset
 from video2dataset.logger import CappedCounter, write_stats
 from video2dataset.subsamplers import (
     ClippingSubsampler,
@@ -24,6 +26,88 @@ from video2dataset.subsamplers import (
     Subsampler,
 )
 from video2dataset.types import EncodeFormats, Streams, Metadata
+
+
+@dataclass
+class ProcessingSubsamplers:
+    """Subsamplers used in processing"""
+
+    ffprobe_subsampler: Optional[FFProbeSubsampler] = None
+    modal_subsamplers: dict = field(default_factory=dict)
+    cut_detection_subsampler: Optional[CutDetectionSubsampler] = None
+    cuts_are_clips: bool = False
+    broadcast_subsampler: Subsampler = field(default_factory=NoOpSubsampler)
+
+
+def get_subsamplers(
+    config: dict,
+    input_encode_formats: EncodeFormats,
+    do_clipping: bool = False,
+) -> Tuple[ProcessingSubsamplers, EncodeFormats]:
+    """Initialize all subsamplers using config"""
+
+    # cut_detection_subsampler, cuts_are_clips
+    cut_detection_subsampler = None
+    cuts_are_clips = False
+    if "CutDetectionSubsampler" in config["subsampling"]:
+        if "args" in config["subsampling"]["CutDetectionSubsampler"]:
+            cut_detection_subsampler = CutDetectionSubsampler(**config["subsampling"]["CutDetectionSubsampler"]["args"])
+        cuts_are_clips = config["subsampling"]["CutDetectionSubsampler"].get("cuts_are_clips", False)
+
+    # broadcast_subsampler
+    _clipping_subsampler = ClippingSubsampler(
+        oom_clip_count=5,
+        encode_formats=input_encode_formats,
+        **config["subsampling"].get("ClippingSubsampler", {"args": {}})["args"],
+    )
+    _need_keyframes = _clipping_subsampler.precision == "keyframe_adjusted"
+    broadcast_subsampler = (
+        _clipping_subsampler
+        if (do_clipping or config["storage"]["captions_are_subtitles"] or cuts_are_clips)
+        else NoOpSubsampler()
+    )
+
+    # ffprobe_subsampler
+    ffprobe_subsampler = None
+    if "FFProbeSubsampler" in config["subsampling"] or _need_keyframes:
+        ffprobe_subsampler = FFProbeSubsampler(**config["subsampling"].get("FFProbeSubsampler", {"args": {}})["args"])
+        ffprobe_subsampler.extract_keyframes |= _need_keyframes
+
+    # modal_subsamplers
+    video_subsamplers: List[Subsampler] = []
+    audio_subsamplers: List[Subsampler] = []
+    if "ResolutionSubsampler" in config["subsampling"]:
+        video_subsamplers.append(ResolutionSubsampler(**config["subsampling"]["ResolutionSubsampler"]["args"]))
+    if "FrameSubsampler" in config["subsampling"]:
+        video_subsamplers.append(FrameSubsampler(**config["subsampling"]["FrameSubsampler"]["args"]))
+    if "AudioRateSubsampler" in config["subsampling"]:
+        audio_subsamplers.append(AudioRateSubsampler(**config["subsampling"]["AudioRateSubsampler"]["args"]))
+    modal_subsamplers = {"video": video_subsamplers, "audio": audio_subsamplers}
+
+    # output encoding formats
+    output_encode_formats = input_encode_formats.copy()
+    if modal_subsamplers["audio"]:
+        assert (
+            len({s.encode_format for s in modal_subsamplers["audio"]}) == 1
+        )  # assert that all audio subsamplers have the same output format
+        output_encode_formats["audio"] = modal_subsamplers["audio"][0].encode_format
+    if modal_subsamplers["video"]:
+        assert (
+            len({s.encode_format for s in modal_subsamplers["video"]}) == 1
+        )  # assert that all video subsamplers have the same output format
+        output_encode_formats["video"] = modal_subsamplers["video"][0].encode_format
+
+    # return
+    return (
+        ProcessingSubsamplers(
+            ffprobe_subsampler=ffprobe_subsampler,
+            modal_subsamplers=modal_subsamplers,
+            cut_detection_subsampler=cut_detection_subsampler,
+            cuts_are_clips=cuts_are_clips,
+            broadcast_subsampler=broadcast_subsampler,
+        ),
+        output_encode_formats,
+    )
 
 
 @dataclass
@@ -43,88 +127,8 @@ class ShardStatus:
     bytes_downloaded: int = 0
 
 
-@dataclass
-class Subsamplers:
-    """Subsamplers used in processing"""
-
-    ffprobe_subsampler: Optional[FFProbeSubsampler] = None
-    modal_subsamplers: dict = field(default_factory=dict)
-    cut_detection_subsampler: Optional[CutDetectionSubsampler] = None
-    cuts_are_clips: bool = False
-    broadcast_subsampler: Subsampler = field(default_factory=NoOpSubsampler)
-
-
-def get_subsamplers(
-    config: dict,
-    input_encode_formats: EncodeFormats,
-    do_clipping: bool = False,
-) -> Tuple[Subsamplers, EncodeFormats]:
-    """Initialize all subsamplers using config"""
-
-    clipping_subsampler = ClippingSubsampler(
-        oom_clip_count=5,
-        encode_formats=input_encode_formats,
-        **config["subsampling"].get("ClippingSubsampler", {"args": {}})["args"],
-    )
-    need_keyframes = clipping_subsampler.precision == "keyframe_adjusted"
-
-    cut_detection_subsampler = None
-    cuts_are_clips = False
-    if "CutDetectionSubsampler" in config["subsampling"]:
-        if "args" in config["subsampling"]["CutDetectionSubsampler"]:
-            cut_detection_subsampler = CutDetectionSubsampler(**config["subsampling"]["CutDetectionSubsampler"]["args"])
-        cuts_are_clips = config["subsampling"]["CutDetectionSubsampler"].get("cuts_are_clips", False)
-
-    broadcast_subsampler = (
-        clipping_subsampler
-        if (do_clipping or config["storage"]["captions_are_subtitles"] or cuts_are_clips)
-        else NoOpSubsampler()
-    )
-
-    ffprobe_subsampler = None
-    if "FFProbeSubsampler" in config["subsampling"] or need_keyframes:
-        ffprobe_subsampler = FFProbeSubsampler(**config["subsampling"].get("FFProbeSubsampler", {"args": {}})["args"])
-        ffprobe_subsampler.extract_keyframes |= need_keyframes
-
-    video_subsamplers: List[Any] = []
-    if "ResolutionSubsampler" in config["subsampling"]:
-        video_subsamplers.append(ResolutionSubsampler(**config["subsampling"]["ResolutionSubsampler"]["args"]))
-    if "FrameSubsampler" in config["subsampling"]:
-        video_subsamplers.append(FrameSubsampler(**config["subsampling"]["FrameSubsampler"]["args"]))
-
-    audio_subsamplers: List[Any] = []
-    if "AudioRateSubsampler" in config["subsampling"]:
-        audio_subsamplers.append(AudioRateSubsampler(**config["subsampling"]["AudioRateSubsampler"]["args"]))
-
-    modal_subsamplers = {"video": video_subsamplers, "audio": audio_subsamplers}
-
-    # output encoding formats
-    output_encode_formats = input_encode_formats.copy()
-    if modal_subsamplers["audio"]:
-        assert (
-            len({s.encode_format for s in modal_subsamplers["audio"]}) == 1
-        )  # assert that all audio subsamplers have the same output format
-        output_encode_formats["audio"] = modal_subsamplers["audio"][0].encode_format
-    if modal_subsamplers["video"]:
-        assert (
-            len({s.encode_format for s in modal_subsamplers["video"]}) == 1
-        )  # assert that all video subsamplers have the same output format
-        output_encode_formats["video"] = modal_subsamplers["video"][0].encode_format
-
-    return (
-        Subsamplers(
-            ffprobe_subsampler=ffprobe_subsampler,
-            modal_subsamplers=modal_subsamplers,
-            cut_detection_subsampler=cut_detection_subsampler,
-            cuts_are_clips=cuts_are_clips,
-            broadcast_subsampler=broadcast_subsampler,
-        ),
-        output_encode_formats,
-    )
-
-
 def process_sample(
-    subsamplers: Subsamplers,
+    subsamplers: ProcessingSubsamplers,
     shard_status: ShardStatus,
     streams: Streams,
     key: str,
@@ -222,22 +226,20 @@ class StandardWorker:
         output_folder: str,
         encode_formats: EncodeFormats,
         config: dict,
-        # for downloading
         save_caption: bool,
         column_list: Optional[List[str]],
         tmp_dir: str,
     ) -> None:
+        self.config = config
         # the following options are used for downloading
-        self.save_caption = save_caption
         self.column_list = column_list if column_list is not None else ["url"]
         self.url_indice = self.column_list.index("url")
         self.caption_indice = self.column_list.index("caption") if "caption" in self.column_list else None
         self.data_reader = VideoDataReader(encode_formats, tmp_dir, config["reading"])
-        self.oom_sample_per_shard = math.ceil(math.log10(self.config["storage"]["number_sample_per_shard"]))
         # the following options are used for processing
+        self.save_caption = save_caption
         self.sample_writer_class = sample_writer_class
         self.output_folder = output_folder
-        self.config = config
         self.input_encode_formats = encode_formats
         self.subsamplers, self.output_encode_formats = get_subsamplers(
             config,
@@ -265,17 +267,41 @@ class StandardWorker:
     ):
         """Get objects for loading and writing data"""
 
-        fs, shard_path = fsspec.core.url_to_fs(shard_file)
-        print(shard_path)
-        with fs.open(shard_path, "rb") as f:
-            df = pa.ipc.open_file(f).read_all()
-            schema = df.schema
-        schema = df.schema
-        schema = (
-            schema.append(pa.field("key", pa.string()))
-            .append(pa.field("status", pa.string()))
-            .append(pa.field("error_message", pa.string()))
-        )
+        file_extension = shard_file.split(".")[-1]
+        if file_extension == "feather":
+            fs, shard_path = fsspec.core.url_to_fs(shard_file)
+            with fs.open(shard_path, "rb") as f:
+                df = pa.ipc.open_file(f).read_all()
+                schema = df.schema
+            schema = (
+                schema.append(pa.field("key", pa.string()))
+                .append(pa.field("status", pa.string()))
+                .append(pa.field("error_message", pa.string()))
+            )
+            pydict = df.select(self.column_list).to_pydict()
+            shard_to_dl = list(enumerate(zip(*(pydict[col] for col in self.column_list))))
+        elif file_extension == "tar":
+            try:
+                fs, shard_path = fsspec.core.url_to_fs(shard_file[: -len(".tar")] + ".parquet")
+                with fs.open(shard_path, "rb") as f:
+                    df = pa.parquet.read_table(f)
+                    schema = df.schema
+            except Exception:  # pylint: disable=broad-except
+                fields = [
+                    pa.field("key", pa.string()),
+                    pa.field("status", pa.string()),
+                    pa.field("error_message", pa.string()),
+                ]
+                schema = pa.schema(fields)
+            shard_dataloader = get_video_dataset(
+                urls=shard_file,
+                batch_size=1,
+                decoder_kwargs={},
+                enforce_additional_keys=[],
+                handler=wds.warn_and_continue,
+            )
+        else:
+            raise ValueError(f"File extension {file_extension} not yet implemented")
         shard_sample_writer = self.sample_writer_class(
             shard_id,
             self.output_folder,
@@ -284,8 +310,6 @@ class StandardWorker:
             schema,
             self.output_encode_formats,
         )
-        pydict = df.select(self.column_list).to_pydict()
-        shard_to_dl = list(enumerate(zip(*(pydict[col] for col in self.column_list))))
 
         def rm_shard_path():
             fs.rm(shard_path)
@@ -296,6 +320,7 @@ class StandardWorker:
         self,
         shard_file: str,
         shard_id: int,
+        delete_shard: bool = False,
     ):
         """Function to start an video downloading in one process"""
 
@@ -320,7 +345,10 @@ class StandardWorker:
                 try:
                     _, sample_data = shard_to_dl[key]
                     str_key = compute_key(
-                        key, shard_id, self.oom_sample_per_shard, self.config["storage"]["oom_shard_count"]
+                        key,
+                        shard_id,
+                        math.ceil(math.log10(self.config["storage"]["number_sample_per_shard"])),
+                        self.config["storage"]["oom_shard_count"],
                     )
                     caption = sample_data[self.caption_indice] if self.caption_indice is not None else None
                     metadata = {
@@ -374,7 +402,10 @@ class StandardWorker:
             thread_pool.terminate()
             thread_pool.join()
             del thread_pool
-        rm_shard_path()
+
+        if delete_shard:
+            rm_shard_path()
+
         end_time = time.time()
 
         write_stats(

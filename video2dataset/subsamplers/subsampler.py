@@ -6,5 +6,10 @@ class Subsampler:
     """Subsamples input and returns in same format (stream dict + metadata)"""
 
     @abstractmethod
+    def __init__(self, *args, **kwargs):
+        self.encode_format = ""
+        raise NotImplementedError("Subsampler should not be initialized")
+
+    @abstractmethod
     def __call__(self, streams, metadata):
         raise NotImplementedError("Subsampler should not be called")
