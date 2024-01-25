@@ -53,6 +53,8 @@ class CutDetectionSubsampler(Subsampler):
 
     def __call__(self, streams, metadata=None):
         video_bytes = streams["video"][0]
+        if metadata is None:
+            metadata = {}
 
         try:
             with tempfile.TemporaryDirectory() as tmpdir:
@@ -91,7 +93,8 @@ class CutDetectionSubsampler(Subsampler):
                             scene_manager, self.cut_detection_mode
                         )
                         scene_manager.clear()
+                metadata["cuts"] = cuts
         except Exception as err:  # pylint: disable=broad-except
             return {}, None, str(err)
 
-        return streams, cuts, None
+        return streams, metadata, None

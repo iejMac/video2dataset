@@ -135,9 +135,9 @@ def process_sample(
             subtitles = metadata["yt_meta_dict"]["subtitles"]
             metadata["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
         elif subsamplers.cut_detection_subsampler is not None:  # apply cut detection to get clips
-            streams, cuts, shard_status.error_message = subsamplers.cut_detection_subsampler(streams)
+            streams, metadata, shard_status.error_message = subsamplers.cut_detection_subsampler(streams, metadata)
             assert shard_status.error_message is None
-            metadata["cuts"] = cuts
+            cuts = metadata["cuts"]
             assert cuts is not None
             if subsamplers.cuts_are_clips:
                 metadata["clips"] = (np.array(cuts["cuts_original_fps"]) / cuts["original_fps"]).tolist()
