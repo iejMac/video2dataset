@@ -3,7 +3,6 @@ import fsspec
 import math
 from multiprocessing.pool import ThreadPool
 import pyarrow as pa
-from threading import Semaphore
 import time
 import traceback
 from typing import cast
