@@ -5,13 +5,13 @@ from collections.abc import Iterable
 import copy
 import datetime
 import ffmpeg
+from ffmpeg.nodes import Node
 import glob
 import os
-import tempfile
 from typing import Any, Union, List, Tuple, Dict, Literal, cast
 
 from video2dataset.subsamplers.subsampler import Subsampler
-from video2dataset.types import EncodeFormats, Streams
+from video2dataset.types import Metadata, Error, TempFilepaths, EncodeFormats, Streams
 
 
 ClipSpan = List[float]  # [start, end]
@@ -105,30 +105,6 @@ def _collate_clip_spans(clip_spans: List[ClipSpan]) -> Tuple[str, List[int]]:
     return clip_times_str, clip_idxs
 
 
-def _process_stream(
-    tmpdir: Any,  # BytesPath
-    stream_bytes: bytes,
-    encode_format: str,
-    ffmpeg_kwargs: dict,
-) -> List[str]:
-    """Processes a stream into clips using ffmpeg"""
-    # TODO: we need to put the extension into the metadata
-    # TODO: This can be done better using pipes I just don't feel like sinking too much time into this rn
-    with open(os.path.join(tmpdir, f"input.{encode_format}"), "wb") as f:
-        f.write(stream_bytes)
-    try:
-        (
-            ffmpeg.input(f"{tmpdir}/input.{encode_format}")
-            .output(f"{tmpdir}/clip_%d.{encode_format}", **ffmpeg_kwargs)
-            .run(capture_stdout=True, quiet=True)
-        )
-    except Exception as err:  # pylint: disable=broad-except
-        raise err
-    stream_clips = glob.glob(f"{tmpdir}/clip*.{encode_format}")
-    stream_clips.sort(key=lambda x: int(x.split("_")[-1].split(".")[0]))
-    return stream_clips
-
-
 def _extract_subtitles(clip_span: ClipSpan, meta_clip: dict) -> List[dict]:
     """Extracts subtitles and groups them by language"""
     clip_subtitles: List[dict] = []
@@ -186,15 +162,15 @@ def _get_clip_metadata(
 
 
 def _get_clips(
-    streams: Streams,
+    filepaths: TempFilepaths,
     encode_formats: EncodeFormats,
     precision: str,
     clip_spans: List[ClipSpan],
     metadata: dict,
     oom_clip_count: int,
     strtime_formatting: bool,
-) -> Tuple[Dict[str, List[bytes]], List[dict]]:
-    """Gets clips from streams"""
+) -> Tuple[Node, List[dict]]:
+    """Gets clips from filepaths"""
     clip_times, clip_idxs = _collate_clip_spans(clip_spans)
 
     ffmpeg_kwargs = {
@@ -209,27 +185,12 @@ def _get_clips(
         ffmpeg_kwargs["c"] = "copy"
 
     clips: Dict[str, List[bytes]] = {}
-    for k in streams.keys():
-        k = cast(Literal["audio", "video"], k)
-        with tempfile.TemporaryDirectory() as tmpdir:
-            stream_bytes = streams[k][0]  # pre-broadcast so only one
-            if stream_bytes is None:
-                continue
-            try:
-                stream_clips = _process_stream(
-                    tmpdir=tmpdir,
-                    stream_bytes=stream_bytes,
-                    encode_format=encode_formats[k],
-                    ffmpeg_kwargs=ffmpeg_kwargs,
-                )
-            except Exception as err:  # pylint: disable=broad-except
-                raise err
-
-            clips[k] = []
-            for clip_idx in clip_idxs:
-                with open(stream_clips[clip_idx], "rb") as vid_f:
-                    clip_bytes = vid_f.read()
-                    clips[k].append(clip_bytes)
+    for k in filepaths.keys():
+        assert k in filepaths
+        stream_clips = ffmpeg.input(filepaths[k][0])
+        .output(f"{tmpdir}/clip_%d.{encode_formats[k]}", **ffmpeg_kwargs)
+        .run(capture_stdout=True, quiet=True)
+        clips[k] = 
 
     clip_metadata = _get_clip_metadata(
         clip_spans=clip_spans,
@@ -287,7 +248,7 @@ class ClippingSubsampler(Subsampler):
         self.max_length_strategy = max_length_strategy
         self.precision = precision
 
-    def __call__(self, streams: Streams, metadata: dict):
+    def __call__(self, filepaths: TempFilepaths, metadata: Metadata) -> Tuple[TempFilepaths, List[Metadata], Error]:
         strtime_formatting = isinstance(metadata["clips"][0][0], str)
 
         clip_spans = _adjust_clip_spans(
@@ -307,7 +268,7 @@ class ClippingSubsampler(Subsampler):
 
         try:
             clips, clip_metadata = _get_clips(
-                streams=streams,
+                filepaths=filepaths,
                 encode_formats=self.encode_formats,
                 precision=self.precision,
                 clip_spans=clip_spans,
