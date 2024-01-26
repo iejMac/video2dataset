@@ -1,7 +1,7 @@
 """extracts basic video compression metadata."""
 import json
 import subprocess
-from typing import Tuple
+from typing import Tuple, Optional
 
 from video2dataset.subsamplers.subsampler import Subsampler
 from video2dataset.types import Metadata, Error
@@ -18,7 +18,8 @@ class FFProbeSubsampler(Subsampler):
     def __init__(self, extract_keyframes=False):
         self.extract_keyframes = extract_keyframes
 
-    def __call__(self, video_filepath: str, metadata: Metadata) -> Tuple[Metadata, Error]:
+    def __call__(self, video_filepath: str, metadata: Optional[Metadata] = None) -> Tuple[Metadata, Error]:
+        metadata = metadata if metadata is not None else {}
         try:
             # extract video metadata
             command = [

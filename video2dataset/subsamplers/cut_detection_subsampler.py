@@ -57,7 +57,8 @@ class CutDetectionSubsampler(Subsampler):
         self.threshold = threshold
         self.min_scene_len = min_scene_len
 
-    def __call__(self, video_filepath: str, metadata: Metadata) -> Tuple[Metadata, Error]:
+    def __call__(self, video_filepath: str, metadata: Optional[Metadata] = None) -> Tuple[Metadata, Error]:
+        metadata = metadata if metadata is not None else {}
         try:
             # find scene changes
             video = open_video(video_filepath)
