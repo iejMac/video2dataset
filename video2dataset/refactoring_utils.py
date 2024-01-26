@@ -4,10 +4,10 @@ import tempfile
 from typing import List
 import uuid
 
-from video2dataset.types import Streams
+from video2dataset.types import Streams, TempFilepaths
 
 
-def stream_to_temp_filepaths(streams: Streams) -> dict[str, List[str]]:
+def stream_to_temp_filepaths(streams: Streams) -> TempFilepaths:
     """
     This is a temporary workaround for now, while refactoring some of the subsamplers.
     Each subsampler currently works by taking in streams, writing to temp input files, and running ffmpeg to produce temp output files.
@@ -18,7 +18,7 @@ def stream_to_temp_filepaths(streams: Streams) -> dict[str, List[str]]:
     It would be much better to just start with filepaths to begin with, but this requires big changes to how input streams are processed.
     """
 
-    stream_temp_filepaths = {}
+    stream_temp_filepaths: TempFilepaths = {}
     with tempfile.TemporaryDirectory() as tmpdir:
         for modality in streams:
             stream_temp_filepaths[modality] = []
@@ -31,7 +31,7 @@ def stream_to_temp_filepaths(streams: Streams) -> dict[str, List[str]]:
     return stream_temp_filepaths
 
 
-def temp_filepaths_to_streams(stream_temp_filepaths: dict[str, List[str]]) -> Streams:
+def temp_filepaths_to_streams(stream_temp_filepaths: TempFilepaths) -> Streams:
     """Going the other way. Once again, a temporary workaround during refactoring."""
 
     streams: Streams = {}

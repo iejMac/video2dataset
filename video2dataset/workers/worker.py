@@ -128,11 +128,11 @@ def process_sample(
     """Process a single video"""
 
     try:
-        temp_filepaths = stream_to_temp_filepaths(streams)
         if subsamplers.ffprobe_subsampler is not None:
-            streams, metadata, shard_status.error_message = subsamplers.ffprobe_subsampler(streams, metadata)
+            temp_filepaths = stream_to_temp_filepaths(streams)
+            temp_filepaths, metadata, shard_status.error_message = subsamplers.ffprobe_subsampler(temp_filepaths, metadata)
             assert shard_status.error_message is None
-        streams = temp_filepaths_to_streams(temp_filepaths)
+            streams = temp_filepaths_to_streams(temp_filepaths)
 
         if captions_are_subtitles:  # create clips
             subtitles = metadata["yt_meta_dict"]["subtitles"]
