@@ -6,7 +6,7 @@ from scenedetect import ContentDetector, SceneManager, open_video
 from typing import Tuple, List, Optional, Literal
 
 from video2dataset.subsamplers.subsampler import Subsampler
-from video2dataset.types import Metadata, Error, TempFilepaths
+from video2dataset.types import Metadata, Error
 
 # TODO: this can be done more elegantly:
 # from scenedetect import scene_manager and set that in correct namespace
@@ -57,15 +57,10 @@ class CutDetectionSubsampler(Subsampler):
         self.threshold = threshold
         self.min_scene_len = min_scene_len
 
-    def __call__(self, filepaths: TempFilepaths, metadata: Metadata) -> Tuple[TempFilepaths, Metadata, Error]:
+    def __call__(self, video_filepath: str, metadata: Metadata) -> Tuple[Metadata, Error]:
         try:
-            # CutDetectionSubsampler is called pre-broadcast, so there should only be one video
-            assert "video" in filepaths
-            assert len(filepaths["video"]) == 1
-            filepath = filepaths["video"][0]
-
             # find scene changes
-            video = open_video(filepath)
+            video = open_video(video_filepath)
             detector = ContentDetector(threshold=self.threshold, min_scene_len=self.min_scene_len)
             scene_manager = SceneManager()
             scene_manager.add_detector(detector)
@@ -98,5 +93,5 @@ class CutDetectionSubsampler(Subsampler):
             # save and return metadata
             metadata["cuts"] = cuts
         except Exception as err:  # pylint: disable=broad-except
-            return filepaths, metadata, str(err)
-        return filepaths, metadata, None
+            return metadata, str(err)
+        return metadata, None

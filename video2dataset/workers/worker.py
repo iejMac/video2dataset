@@ -117,22 +117,22 @@ class ShardStatus:
     bytes_downloaded: int = 0
 
 
-def calculate_metadata(
+def extract_video_metadata(
     subsamplers: Subsamplers,
     shard_status: ShardStatus,
     metadata: Metadata,
-    temp_filepaths: TempFilepaths,
+    video_filepath: str,
     captions_are_subtitles: bool,
 ):
     if subsamplers.ffprobe_subsampler is not None:
-        temp_filepaths, metadata, shard_status.error_message = subsamplers.ffprobe_subsampler(temp_filepaths, metadata)
+        metadata, shard_status.error_message = subsamplers.ffprobe_subsampler(video_filepath, metadata)
         assert shard_status.error_message is None
 
     if captions_are_subtitles:  # create clips
         subtitles = metadata["yt_meta_dict"]["subtitles"]
         metadata["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
     elif subsamplers.cut_detection_subsampler is not None:  # apply cut detection to get clips
-        temp_filepaths, metadata, shard_status.error_message = subsamplers.cut_detection_subsampler(temp_filepaths, metadata)
+        metadata, shard_status.error_message = subsamplers.cut_detection_subsampler(video_filepath, metadata)
         assert shard_status.error_message is None
         cuts = metadata["cuts"]
         assert cuts is not None
@@ -156,7 +156,7 @@ def process_sample(
 
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
-            # save temp stream dumps and use filepaths
+            # save temp stream dumps
             temp_filepaths: TempFilepaths = {}
             for modality in streams:
                 temp_filepaths[modality] = []
@@ -167,12 +167,17 @@ def process_sample(
                         f.write(stream)
                     temp_filepaths[modality].append(temp_filepath)
 
+            # this is pre-broadcast, so there should only be one video
+            assert "video" in temp_filepaths
+            assert len(temp_filepaths["video"]) == 1
+            video_filepath = temp_filepaths["video"][0]
+
             # add info about keyframes and cuts
-            metadata = calculate_metadata(
+            metadata = extract_video_metadata(
                 subsamplers=subsamplers,
                 shard_status=shard_status,
                 metadata=metadata,
-                temp_filepaths=temp_filepaths,
+                video_filepath=video_filepath,
                 captions_are_subtitles=captions_are_subtitles,
             )
 

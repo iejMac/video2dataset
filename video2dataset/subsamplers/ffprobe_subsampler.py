@@ -4,7 +4,7 @@ import subprocess
 from typing import Tuple
 
 from video2dataset.subsamplers.subsampler import Subsampler
-from video2dataset.types import Metadata, Error, TempFilepaths
+from video2dataset.types import Metadata, Error
 
 
 # TODO: figuer out why this is so slow (12 samples/s)
@@ -18,13 +18,8 @@ class FFProbeSubsampler(Subsampler):
     def __init__(self, extract_keyframes=False):
         self.extract_keyframes = extract_keyframes
 
-    def __call__(self, filepaths: TempFilepaths, metadata: Metadata) -> Tuple[TempFilepaths, Metadata, Error]:
+    def __call__(self, video_filepath: str, metadata: Metadata) -> Tuple[Metadata, Error]:
         try:
-            # FFProbeSubsampler is called pre-broadcast, so there should only be one video
-            assert "video" in filepaths
-            assert len(filepaths["video"]) == 1
-            filepath = filepaths["video"][0]
-
             # extract video metadata
             command = [
                 "ffprobe",
@@ -34,7 +29,7 @@ class FFProbeSubsampler(Subsampler):
                 "json",
                 "-show_format",
                 "-show_streams",
-                f"{filepath}",
+                f"{video_filepath}",
             ]
             if self.extract_keyframes:
                 command.extend(["-select_streams", "v:0", "-show_entries", "packet=pts_time,flags"])
@@ -57,5 +52,5 @@ class FFProbeSubsampler(Subsampler):
             video_metadata.pop("packets")  # Don't need it anymore
             metadata["video_metadata"] = video_metadata
         except Exception as err:  # pylint: disable=broad-except
-            return filepaths, metadata, str(err)
-        return filepaths, metadata, None
+            return metadata, str(err)
+        return metadata, None
