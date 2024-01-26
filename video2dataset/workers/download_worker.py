@@ -109,12 +109,9 @@ class DownloadWorker:
         shard_sample_writer, shard_to_dl, rm_shard_path = self.get_shard_processors(shard_file, shard_id)
         shard_status = ShardStatus(count=len(shard_to_dl))
 
-        semaphore = Semaphore(self.config["distribution"]["thread_count"])
-
         def data_generator():
             for key_and_url in [(key, x[self.url_indice]) for key, x in shard_to_dl]:
-                with semaphore:
-                    yield key_and_url
+                yield key_and_url
 
         data_reader_call_param_generator = data_generator()
 
@@ -177,9 +174,6 @@ class DownloadWorker:
                 )
 
             shard_sample_writer.close()
-            thread_pool.terminate()
-            thread_pool.join()
-            del thread_pool
         rm_shard_path()
         end_time = time.time()
 
