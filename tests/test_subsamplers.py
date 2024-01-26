@@ -213,7 +213,9 @@ def test_audio_rate_subsampler(sample_rate, n_audio_channels):
 def test_cut_detection_subsampler(cut_detection_mode, framerates):
     subsampler = CutDetectionSubsampler(cut_detection_mode, framerates, threshold=5)
 
-    metadata, error_message = subsampler("test_files/test_video.mp4")
+    current_folder = os.path.dirname(__file__)
+    video_filepath = os.path.join(current_folder, "test_files/test_video.mp4")
+    metadata, error_message = subsampler(video_filepath)
     assert error_message is None
     cuts = metadata["cuts"]
 
@@ -275,7 +277,9 @@ def test_optical_flow_subsampler(detector, fps, params):
 def test_ffprobe_subsampler(extract_keyframes):
     subsampler = FFProbeSubsampler(extract_keyframes)
 
-    metadata, error_message = subsampler("test_files/test_video.mp4")
+    current_folder = os.path.dirname(__file__)
+    video_filepath = os.path.join(current_folder, "test_files/test_video.mp4")
+    metadata, error_message = subsampler(video_filepath)
     assert error_message is None
     assert metadata is not None
     assert "video_metadata" in metadata

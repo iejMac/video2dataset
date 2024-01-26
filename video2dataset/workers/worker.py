@@ -124,6 +124,8 @@ def extract_video_metadata(
     video_filepath: str,
     captions_are_subtitles: bool,
 ):
+    """Add additional metadata keys for video file"""
+
     if subsamplers.ffprobe_subsampler is not None:
         metadata, shard_status.error_message = subsamplers.ffprobe_subsampler(video_filepath, metadata)
         assert shard_status.error_message is None
