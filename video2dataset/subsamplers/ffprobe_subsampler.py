@@ -20,9 +20,12 @@ class FFProbeSubsampler(Subsampler):
 
     def __call__(self, filepaths: TempFilepaths, metadata: Metadata) -> Tuple[TempFilepaths, Metadata, Error]:
         try:
-            # process first video
+            # FFProbeSubsampler is called pre-broadcast, so there should only be one video
             assert "video" in filepaths
+            assert len(filepaths["video"]) == 1
             filepath = filepaths["video"][0]
+
+            # extract video metadata
             command = [
                 "ffprobe",
                 "-v",
@@ -38,16 +41,21 @@ class FFProbeSubsampler(Subsampler):
             process = subprocess.run(command, capture_output=True, text=True, check=True)
             video_metadata = json.loads(process.stdout)
 
+            # extract keyframe timestamps if requested
             if self.extract_keyframes:
-                keyframe_info = [entry for entry in video_metadata["packets"] if "K" in entry.get("flags", "")]
-                keyframe_timestamps = [float(entry["pts_time"]) for entry in keyframe_info]
+                keyframe_timestamps = [
+                    float(packet["pts_time"])
+                    for packet in video_metadata["packets"]
+                    if "K" in packet.get("flags", "")
+                ]
                 if "duration" in video_metadata["format"]:
                     duration = float(video_metadata["format"]["duration"])
                     keyframe_timestamps.append(duration)
                 video_metadata["keyframe_timestamps"] = keyframe_timestamps
-                video_metadata.pop("packets")  # Don't need it anymore
+
+            # save and return metadata
+            video_metadata.pop("packets")  # Don't need it anymore
             metadata["video_metadata"] = video_metadata
         except Exception as err:  # pylint: disable=broad-except
             return filepaths, metadata, str(err)
-
         return filepaths, metadata, None

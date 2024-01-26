@@ -21,23 +21,6 @@ from video2dataset.types import EncodeFormats, Streams, Metadata, TempFilepaths
 
 
 @dataclass
-class ShardStatus:
-    """Shard processing status"""
-
-    successes: int = 0
-    failed: dict = field(
-        default_factory=lambda: {
-            "failed_to_download": 0,
-            "failed_to_subsample": 0,
-        }
-    )
-    status_dict: CappedCounter = field(default_factory=CappedCounter)
-    error_message: Optional[str] = None
-    count: int = 0
-    bytes_downloaded: int = 0
-
-
-@dataclass
 class Subsamplers:
     """Subsamplers used in processing"""
 
@@ -115,6 +98,23 @@ def get_subsamplers(
         ),
         output_encode_formats,
     )
+
+
+@dataclass
+class ShardStatus:
+    """Shard processing status"""
+
+    successes: int = 0
+    failed: dict = field(
+        default_factory=lambda: {
+            "failed_to_download": 0,
+            "failed_to_subsample": 0,
+        }
+    )
+    status_dict: CappedCounter = field(default_factory=CappedCounter)
+    error_message: Optional[str] = None
+    count: int = 0
+    bytes_downloaded: int = 0
 
 
 def calculate_metadata(
