@@ -117,6 +117,31 @@ def get_subsamplers(
     )
 
 
+def calculate_metadata(
+    subsamplers: Subsamplers,
+    shard_status: ShardStatus,
+    metadata: Metadata,
+    temp_filepaths: TempFilepaths,
+    captions_are_subtitles: bool,
+):
+    if subsamplers.ffprobe_subsampler is not None:
+        temp_filepaths, metadata, shard_status.error_message = subsamplers.ffprobe_subsampler(temp_filepaths, metadata)
+        assert shard_status.error_message is None
+
+    if captions_are_subtitles:  # create clips
+        subtitles = metadata["yt_meta_dict"]["subtitles"]
+        metadata["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
+    elif subsamplers.cut_detection_subsampler is not None:  # apply cut detection to get clips
+        temp_filepaths, metadata, shard_status.error_message = subsamplers.cut_detection_subsampler(temp_filepaths, metadata)
+        assert shard_status.error_message is None
+        cuts = metadata["cuts"]
+        assert cuts is not None
+        if subsamplers.cuts_are_clips:
+            metadata["clips"] = (np.array(cuts["cuts_original_fps"]) / cuts["original_fps"]).tolist()
+
+    return metadata
+
+
 def process_sample(
     subsamplers: Subsamplers,
     shard_status: ShardStatus,
@@ -142,20 +167,14 @@ def process_sample(
                         f.write(stream)
                     temp_filepaths[modality].append(temp_filepath)
 
-            if subsamplers.ffprobe_subsampler is not None:
-                temp_filepaths, metadata, shard_status.error_message = subsamplers.ffprobe_subsampler(temp_filepaths, metadata)
-                assert shard_status.error_message is None
-
-            if captions_are_subtitles:  # create clips
-                subtitles = metadata["yt_meta_dict"]["subtitles"]
-                metadata["clips"] = [[line_dict["start"], line_dict["end"]] for line_dict in subtitles]
-            elif subsamplers.cut_detection_subsampler is not None:  # apply cut detection to get clips
-                temp_filepaths, metadata, shard_status.error_message = subsamplers.cut_detection_subsampler(temp_filepaths, metadata)
-                assert shard_status.error_message is None
-                cuts = metadata["cuts"]
-                assert cuts is not None
-                if subsamplers.cuts_are_clips:
-                    metadata["clips"] = (np.array(cuts["cuts_original_fps"]) / cuts["original_fps"]).tolist()
+            # add info about keyframes and cuts
+            metadata = calculate_metadata(
+                subsamplers=subsamplers,
+                shard_status=shard_status,
+                metadata=metadata,
+                temp_filepaths=temp_filepaths,
+                captions_are_subtitles=captions_are_subtitles,
+            )
 
         # 1 video -> many videos (either clipping or noop which does identity broadcasting)
         subsampled_streams, metadatas, shard_status.error_message = subsamplers.broadcast_subsampler(streams, metadata)
