@@ -211,16 +211,12 @@ def test_audio_rate_subsampler(sample_rate, n_audio_channels):
     "cut_detection_mode,framerates", [("longest", []), ("longest", [1]), ("all", []), ("all", [1])]
 )
 def test_cut_detection_subsampler(cut_detection_mode, framerates):
-    current_folder = os.path.dirname(__file__)
-    video = os.path.join(current_folder, "test_files/test_video.mp4")
-    with open(video, "rb") as vid_f:
-        video_bytes = vid_f.read()
-
     subsampler = CutDetectionSubsampler(cut_detection_mode, framerates, threshold=5)
 
-    streams = {"video": [video_bytes]}
-    streams, metadata, err_msg = subsampler(streams)
+    metadata, error_message = subsampler("test_files/test_video.mp4")
+    assert error_message is None
     cuts = metadata["cuts"]
+
     if cut_detection_mode == "longest":
         assert len(cuts["cuts_original_fps"]) == 1
         assert cuts["cuts_original_fps"][0] == [0, 2096]
@@ -277,17 +273,9 @@ def test_optical_flow_subsampler(detector, fps, params):
 
 @pytest.mark.parametrize("extract_keyframes", [False, True])
 def test_ffprobe_subsampler(extract_keyframes):
-    current_folder = os.path.dirname(__file__)
-    # video length - 2:02, 1080x1920, 30 fps
-    video = os.path.join(current_folder, "test_files/test_video.mp4")
-    with open(video, "rb") as vid_f:
-        video_bytes = vid_f.read()
-
     subsampler = FFProbeSubsampler(extract_keyframes)
 
-    streams = {"video": [video_bytes]}
-    metadata = {}
-    subsampled_streams, metadata, error_message = subsampler(streams, metadata)
+    metadata, error_message = subsampler("test_files/test_video.mp4")
     assert error_message is None
     assert metadata is not None
     assert "video_metadata" in metadata

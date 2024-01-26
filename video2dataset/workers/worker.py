@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import os
 import tempfile
-from typing import Any, List, Tuple, Optional
+from typing import Any, List, Tuple, Optional, Literal, cast
 import uuid
 
 from video2dataset.logger import CappedCounter
@@ -159,6 +159,7 @@ def process_sample(
             # save temp stream dumps
             temp_filepaths: TempFilepaths = {}
             for modality in streams:
+                modality = cast(Literal["video", "audio"], modality)
                 temp_filepaths[modality] = []
                 for stream in streams[modality]:
                     stream_uuid = str(uuid.uuid4())
