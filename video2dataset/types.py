@@ -1,5 +1,5 @@
 """Type definitions for video2dataset."""
-from typing import List, TypedDict
+from typing import List, TypedDict, Optional
 
 
 class EncodeFormats(TypedDict, total=False):
@@ -14,3 +14,12 @@ class Streams(TypedDict, total=False):
 
 # TODO: make more structured
 Metadata = dict
+
+
+Error = Optional[str]
+
+
+# TODO: remove after refactoring is complete
+class TempFilepaths(TypedDict, total=False):
+    video: List[str]
+    audio: List[str]
