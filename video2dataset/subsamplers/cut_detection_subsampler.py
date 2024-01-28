@@ -86,9 +86,7 @@ class CutDetectionSubsampler(Subsampler):
                 # so if we desire to sample 1/N of the video, we need to subtract one when doing frame skipping
 
                 scene_manager.detect_scenes(video=video, frame_skip=frame_skip)
-                cuts[f"cuts_{target_fps}"] = get_scenes_from_scene_manager(
-                    scene_manager, self.cut_detection_mode
-                )
+                cuts[f"cuts_{target_fps}"] = get_scenes_from_scene_manager(scene_manager, self.cut_detection_mode)
                 scene_manager.clear()
 
             # save and return metadata

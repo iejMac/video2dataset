@@ -40,17 +40,15 @@ class FFProbeSubsampler(Subsampler):
             # extract keyframe timestamps if requested
             if self.extract_keyframes:
                 keyframe_timestamps = [
-                    float(packet["pts_time"])
-                    for packet in video_metadata["packets"]
-                    if "K" in packet.get("flags", "")
+                    float(packet["pts_time"]) for packet in video_metadata["packets"] if "K" in packet.get("flags", "")
                 ]
                 if "duration" in video_metadata["format"]:
                     duration = float(video_metadata["format"]["duration"])
                     keyframe_timestamps.append(duration)
                 video_metadata["keyframe_timestamps"] = keyframe_timestamps
+                video_metadata.pop("packets")  # Don't need it anymore
 
             # save and return metadata
-            video_metadata.pop("packets")  # Don't need it anymore
             metadata["video_metadata"] = video_metadata
         except Exception as err:  # pylint: disable=broad-except
             return metadata, str(err)
