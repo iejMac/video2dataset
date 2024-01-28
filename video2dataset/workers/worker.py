@@ -1,5 +1,6 @@
 """Standard worker for video2dataset."""
 from dataclasses import dataclass, field
+import ffmpeg
 import numpy as np
 import os
 import tempfile
@@ -184,11 +185,25 @@ def process_sample(
                 captions_are_subtitles=captions_are_subtitles,
             )
 
-        # 1 video -> many videos (either clipping or noop which does identity broadcasting)
-        subsampled_streams, metadatas, shard_status.error_message = subsamplers.broadcast_subsampler(streams, metadata)
-        if shard_status.error_message is not None:
-            metadata["clips"] = []
-            assert False
+            # process video modality
+            video_filepaths = temp_filepaths["video"]
+            for video_filepath in video_filepaths:
+                # prep first node
+                ffmpeg_node = ffmpeg.input(video_filepath)
+
+                # 1 video -> many videos (either clipping or noop which does identity broadcasting)
+                (
+                    ffmpeg_node,
+                    metadatas,
+                    shard_status.error_message
+                ) = subsamplers.broadcast_subsampler(
+                    ffmpeg_node=ffmpeg_node,
+                    tmpdir=tmpdir,
+                    metadatas=[metadata],
+                )
+                if shard_status.error_message is not None:
+                    metadata["clips"] = []
+                    assert False
 
         for modality in list(subsampled_streams.keys()):
             for modality_subsampler in subsamplers.modal_subsamplers[modality]:

@@ -6,12 +6,10 @@ import copy
 import datetime
 import ffmpeg
 from ffmpeg.nodes import Node
-import glob
-import os
-from typing import Any, Union, List, Tuple, Dict, Literal, cast
+from typing import Union, List, Tuple, Dict, Literal, cast
 
 from video2dataset.subsamplers.subsampler import Subsampler
-from video2dataset.types import Metadata, Error, TempFilepaths, EncodeFormats, Streams
+from video2dataset.types import Metadata, Error, TempFilepaths, EncodeFormats
 
 
 ClipSpan = List[float]  # [start, end]
@@ -130,17 +128,17 @@ def _extract_subtitles(clip_span: ClipSpan, meta_clip: dict) -> List[dict]:
 def _get_clip_metadata(
     clip_spans: List[ClipSpan],
     clip_idxs: List[int],
-    metadata: dict,
+    metadatas: dict,
     oom_clip_count: int,
     strtime_formatting: bool,
 ) -> List[dict]:
-    """Gets metadata for each clip"""
+    """Gets metadatas for each clip"""
     metadata_clips = []
     for clip_id, (clip_span, _) in enumerate(zip(clip_spans, clip_idxs)):
         clip_key = "{clip_id:0{oom_clip_count}d}".format(  # pylint: disable=consider-using-f-string
             clip_id=clip_id, oom_clip_count=oom_clip_count
         )
-        meta_clip = copy.deepcopy(metadata)
+        meta_clip = copy.deepcopy(metadatas)
         # set the timeframe of this clip
         if strtime_formatting:
             #  Keep clip_spans in the original format to be compatible with the data schema.
@@ -154,7 +152,7 @@ def _get_clip_metadata(
             meta_clip["clip_subtitles"] = _extract_subtitles(clip_span, meta_clip)
         metadata_clips.append(meta_clip)
 
-    # remove redundant metadata from clips after the first
+    # remove redundant metadatas from clips after the first
     for m_clips in metadata_clips[1:]:
         m_clips["yt_meta_dict"] = {}
 
@@ -166,7 +164,7 @@ def _get_clips(
     encode_formats: EncodeFormats,
     precision: str,
     clip_spans: List[ClipSpan],
-    metadata: dict,
+    metadatas: dict,
     oom_clip_count: int,
     strtime_formatting: bool,
 ) -> Tuple[Node, List[dict]]:
@@ -195,7 +193,7 @@ def _get_clips(
     clip_metadata = _get_clip_metadata(
         clip_spans=clip_spans,
         clip_idxs=clip_idxs,
-        metadata=metadata,
+        metadatas=metadatas,
         oom_clip_count=oom_clip_count,
         strtime_formatting=strtime_formatting,
     )
@@ -205,7 +203,7 @@ def _get_clips(
 
 class ClippingSubsampler(Subsampler):
     """
-    Cuts videos up into segments according to the 'clips' metadata
+    Cuts videos up into segments according to the 'clips' metadatas
 
     Parameters:
     oom_clip_count: int
@@ -248,14 +246,14 @@ class ClippingSubsampler(Subsampler):
         self.max_length_strategy = max_length_strategy
         self.precision = precision
 
-    def __call__(self, filepaths: TempFilepaths, metadata: Metadata) -> Tuple[TempFilepaths, List[Metadata], Error]:
-        strtime_formatting = isinstance(metadata["clips"][0][0], str)
+    def __call__(self, ffmpeg_node: Node, tmpdir: str, metadatas: List[Metadata]) -> Tuple[Node, List[Metadata], Error]:
+        strtime_formatting = isinstance(metadatas["clips"][0][0], str)
 
         clip_spans = _adjust_clip_spans(
-            clip_spans=metadata.pop("clips"),
+            clip_spans=metadatas.pop("clips"),
             keyframe_timestamps=(
                 # TODO: make it so if keyframe timestamps not present, get it yourself
-                metadata["video_metadata"].pop("keyframe_timestamps")
+                metadatas["video_metadata"].pop("keyframe_timestamps")
                 if self.precision == "keyframe_adjusted"
                 else None
             ),
@@ -272,7 +270,7 @@ class ClippingSubsampler(Subsampler):
                 encode_formats=self.encode_formats,
                 precision=self.precision,
                 clip_spans=clip_spans,
-                metadata=metadata,
+                metadatas=metadatas,
                 oom_clip_count=self.oom_clip_count,
                 strtime_formatting=strtime_formatting,
             )
