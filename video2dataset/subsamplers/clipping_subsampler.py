@@ -5,11 +5,10 @@ from collections.abc import Iterable
 import copy
 import datetime
 import ffmpeg
-from ffmpeg.nodes import Node
 from typing import Union, List, Tuple, Dict, Literal, cast
 
 from video2dataset.subsamplers.subsampler import Subsampler
-from video2dataset.types import Metadata, Error, TempFilepaths, EncodeFormats
+from video2dataset.types import Metadata, Error, TempFilepaths, EncodeFormats, FFmpegStream
 
 
 ClipSpan = List[float]  # [start, end]
@@ -167,7 +166,7 @@ def _get_clips(
     metadatas: dict,
     oom_clip_count: int,
     strtime_formatting: bool,
-) -> Tuple[Node, List[dict]]:
+) -> Tuple[FilterableStream, List[dict]]:
     """Gets clips from filepaths"""
     clip_times, clip_idxs = _collate_clip_spans(clip_spans)
 
@@ -246,7 +245,7 @@ class ClippingSubsampler(Subsampler):
         self.max_length_strategy = max_length_strategy
         self.precision = precision
 
-    def __call__(self, ffmpeg_node: Node, tmpdir: str, metadatas: List[Metadata]) -> Tuple[Node, List[Metadata], Error]:
+    def __call__(self, stream: FFmpegStream, tmpdir: str, metadatas: List[Metadata]) -> Tuple[FFmpegStream, List[Metadata], Error]:
         strtime_formatting = isinstance(metadatas["clips"][0][0], str)
 
         clip_spans = _adjust_clip_spans(

@@ -185,32 +185,35 @@ def process_sample(
                 captions_are_subtitles=captions_are_subtitles,
             )
 
-            # process video modality
-            video_filepaths = temp_filepaths["video"]
-            for video_filepath in video_filepaths:
-                # prep first node
-                ffmpeg_node = ffmpeg.input(video_filepath)
+            # process each modality
+            for modality in temp_filepaths:
+                for modal_filepath in temp_filepaths[modality]:
+                    # prep first node
+                    stream = ffmpeg.input(modal_filepath)
 
-                # 1 video -> many videos (either clipping or noop which does identity broadcasting)
-                (
-                    ffmpeg_node,
-                    metadatas,
-                    shard_status.error_message
-                ) = subsamplers.broadcast_subsampler(
-                    ffmpeg_node=ffmpeg_node,
-                    tmpdir=tmpdir,
-                    metadatas=[metadata],
-                )
-                if shard_status.error_message is not None:
-                    metadata["clips"] = []
-                    assert False
+                    # apply each subsampler
+                    for modal_subsampler in subsamplers.modal_subsamplers[modality]:
+                        stream, metadatas, shard_status.error_message = modal_subsampler(
+                            stream=stream, tmpdir=tmpdir, metadatas=[metadata],
+                        )
+                        assert shard_status.error_message is None
 
-        for modality in list(subsampled_streams.keys()):
-            for modality_subsampler in subsamplers.modal_subsamplers[modality]:
-                subsampled_streams, metadatas, shard_status.error_message = modality_subsampler(
-                    subsampled_streams, metadatas
-                )
-                assert shard_status.error_message is None
+                    # 1 video -> many videos (either clipping or noop which does identity broadcasting)
+                    (
+                        stream,
+                        metadatas,
+                        shard_status.error_message
+                    ) = subsamplers.broadcast_subsampler(
+                        stream=stream,
+                        tmpdir=tmpdir,
+                        metadatas=[metadata],
+                    )
+                    if shard_status.error_message is not None:
+                        metadata["clips"] = []
+                        assert False
+
+                    # run all filters
+                    stream = stream.output(f"{tmpdir}/output.mp4", reset_timestamps=1).run(capture_stdout=True, quiet=True)
 
         shard_status.successes += 1
         status = "success"
