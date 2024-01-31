@@ -112,7 +112,7 @@ class DownloadWorker:
         semaphore = Semaphore(self.config["distribution"]["thread_count"])
         def data_generator():
             for key_and_url in [(key, x[self.url_indice]) for key, x in shard_to_dl]:
-                semaphore.acquire()
+                semaphore.acquire()  # pylint: disable=consider-using-with
                 yield key_and_url
 
         data_reader_call_param_generator = data_generator()
