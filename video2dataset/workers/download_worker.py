@@ -3,6 +3,7 @@ import fsspec
 import math
 from multiprocessing.pool import ThreadPool
 import pyarrow as pa
+from threading import Semaphore
 import time
 import traceback
 from typing import cast
@@ -108,8 +109,10 @@ class DownloadWorker:
         shard_sample_writer, shard_to_dl, rm_shard_path = self.get_shard_processors(shard_file, shard_id)
         shard_status = ShardStatus(count=len(shard_to_dl))
 
+        semaphore = Semaphore(self.config["distribution"]["thread_count"])
         def data_generator():
             for key_and_url in [(key, x[self.url_indice]) for key, x in shard_to_dl]:
+                semaphore.acquire()
                 yield key_and_url
 
         data_reader_call_param_generator = data_generator()
@@ -135,6 +138,7 @@ class DownloadWorker:
                 except Exception as err:  # pylint: disable=broad-except
                     traceback.print_exc()
                     print(f"Sample {key} failed to download: {err}")
+                    semaphore.release()
                     return
 
                 try:
@@ -154,6 +158,7 @@ class DownloadWorker:
                         sample_data[self.caption_indice] if self.caption_indice is not None else None,
                         metadata,
                     )
+                    semaphore.release()
                     return
 
                 for stream in streams.values():
@@ -171,6 +176,7 @@ class DownloadWorker:
                     captions_are_subtitles=self.config["storage"]["captions_are_subtitles"],
                     shard_sample_writer=shard_sample_writer,
                 )
+                semaphore.release()
 
             shard_sample_writer.close()
         rm_shard_path()
