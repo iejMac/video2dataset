@@ -85,7 +85,7 @@ def _adjust_clip_spans(
 
 def _collate_clip_spans(clip_spans: List[ClipSpan]) -> Tuple[str, List[int]]:
     """Collates clip spans into a single string for ffmpeg and a list of clip idxs"""
-    clip_times = [0.0]
+    clip_times = []
     clip_idxs = []
     e_prev = 0.0
     clip_idx = 0

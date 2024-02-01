@@ -110,6 +110,7 @@ class DownloadWorker:
         shard_status = ShardStatus(count=len(shard_to_dl))
 
         semaphore = Semaphore(self.config["distribution"]["thread_count"])
+
         def data_generator():
             for key_and_url in [(key, x[self.url_indice]) for key, x in shard_to_dl]:
                 semaphore.acquire()  # pylint: disable=consider-using-with
