@@ -72,7 +72,6 @@ class DownloadWorker:
         """Get objects for loading and writing data"""
 
         fs, shard_path = fsspec.core.url_to_fs(shard_file)
-        print(shard_path)
         with fs.open(shard_path, "rb") as f:
             df = pa.ipc.open_file(f).read_all()
             schema = df.schema
