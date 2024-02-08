@@ -4,12 +4,12 @@ video2dataset open contributions to add new features, improve efficiency or impr
 
 ## How to validate your changes ?
 
-Before merging a change (especially for non trivial changes), we ask:
+Before merging a change (especially for non trivial changes), we ask to:
 
-* to make sure the linting is passing, you can run `make black` and `make lint` locally and then check the status in a PR
-* to make sure the existing tests are passing, you can run `make test` locally and then check the status in a PR
-* to add new tests for new features or for bug fixes
-* to run manually an efficiency test. video2dataset must remain fast so this is important
+* make sure the linting is passing, you can run `make black` and `make lint` locally and then check the status in a PR
+* make sure the existing tests are passing, you can run `make test` locally and then check the status in a PR
+* add new tests for new features or for bug fixes
+* run manually an efficiency test. video2dataset must remain fast so this is important
 
 ## Efficiency test
 
