@@ -7,6 +7,8 @@ Easily create large video dataset from video urls. Can download and package 10M 
 
 If you believe in making reusable tools to make data easy to use for ML and you would like to contribute, please join the [DataToML](https://discord.gg/ep8yUUtCnp) chat.
 
+If you would like to contribute to video2dataset, please read [CONTRIBUTE.md](CONTRIBUTE.md)
+
 ## Install
 
 ```bash
