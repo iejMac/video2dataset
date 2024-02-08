@@ -1,3 +1,18 @@
+## 1.3.0
+
+* Whisper: Small fixes + CI fix (@iejmac)
+* Whisper: Allow input_format=table (@iejmac)
+* YtDownloader: don't print warnings (@iejmac)
+* SLURM improvments, audio fixes (@m-bain)
+* Support non-youtube video platforms (@vinyesm)
+* ClippingSubsampler: fix d-type change of "clips" (@SCZwangxiao)
+* Resolution subsampler passes through metadata (@MattUnderscoreZhang)
+* Added width and height options for ResolutionSubsampler (@MattUnderscoreZhang)
+* Fix for audio sampler never called (@vinyesm)
+* Add support for subtitles from multiple languages (@sramshetty)
+* Clipping subsampler refactor (@MattUnderscoreZhang)
+* Subset worker refactor (@MattUnderscoreZhang)
+
 ## 1.2.0
 
 Official Release of video2dataset v1

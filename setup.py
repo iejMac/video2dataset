@@ -17,7 +17,7 @@ if __name__ == "__main__":
         name="video2dataset",
         packages=find_packages(),
         include_package_data=True,
-        version="1.2.0",
+        version="1.3.0",
         license="MIT",
         description="Easily create large video dataset from video urls",
         long_description=long_description,
