@@ -10,7 +10,3 @@ class EncodeFormats(TypedDict, total=False):
 class Streams(TypedDict, total=False):
     video: List[bytes]
     audio: List[bytes]
-
-
-# TODO: make more structured
-Metadata = dict
