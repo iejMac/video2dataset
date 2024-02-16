@@ -32,15 +32,15 @@ class FrameSubsampler(Subsampler):
     # output_format - save as video, or images
     """
 
-    def __init__(self, frame_rate, downsample_method="fps", encode_format="mp4"):
+    def __init__(self, frame_rate, downsample_method="fps", encode_formats=None):
         self.frame_rate = frame_rate
         self.downsample_method = downsample_method
         self.output_modality = "video" if downsample_method == "fps" else "jpg"
-        self.encode_format = encode_format
+        self.encode_formats = encode_formats
 
     def __call__(self, streams, metadata=None):
         # TODO: you might not want to pop it (f.e. in case of other subsamplers)
-        video_bytes = streams.pop("video")
+        video_bytes = streams["video"]
         subsampled_bytes, subsampled_metas = [], []
         for i, vid_bytes in enumerate(video_bytes):
             with tempfile.TemporaryDirectory() as tmpdir:
