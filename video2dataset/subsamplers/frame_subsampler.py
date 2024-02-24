@@ -1,6 +1,7 @@
 """
 frame subsampler adjusts the fps of the videos to some constant value
 """
+
 import tempfile
 import os
 import copy
@@ -36,8 +37,8 @@ class FrameSubsampler(Subsampler):
         self.frame_rate = frame_rate
         self.downsample_method = downsample_method
         self.output_modality = "video" if downsample_method == "fps" else "jpg"
-        self.encode_formats = { "video": encode_format }
-    
+        self.encode_formats = {"video": encode_format}
+
     def __call__(self, streams, metadata=None):
         video_bytes = streams["video"]
         subsampled_bytes, subsampled_metas = [], []
@@ -52,9 +53,10 @@ class FrameSubsampler(Subsampler):
                         _ = _.filter("fps", fps=self.frame_rate)
                         _ = _.output(f"{tmpdir}/output.mp4", reset_timestamps=1).run(capture_stdout=True, quiet=True)
                     elif self.downsample_method == "keyframe":
-                        _ = ffmpeg.input(f"{tmpdir}/input.mp4", discard='nokey')
+                        _ = ffmpeg.input(f"{tmpdir}/input.mp4", discard="nokey")
                         # _ = _.filter("select", "eq(pict_type,I)")
-                        _ = _.output(f"{tmpdir}/output.mp4", **{"c:s": 'copy', 'c': 'copy', 'copyts': None}).run(capture_stdout=True, quiet=True)
+                        _ = _.output(f"{tmpdir}/output.mp4", **{"c:s": "copy", "c": "copy", "copyts": None})
+                        _ = _.run(capture_stdout=True, quiet=True)
                     elif "frame" in self.downsample_method:
                         _ = ffmpeg.input(f"{tmpdir}/input.mp4")
                         _ = _.filter("select", "eq(n,0)")
