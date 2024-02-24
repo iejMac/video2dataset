@@ -157,11 +157,13 @@ parallel-ssh -l $USER -i -h  ips.txt  "mv video2dataset_new.pex video2dataset.pe
 parallel-ssh -l $USER -i -h  ips.txt  "chmod +x video2dataset.pex"
 ```
 
+Alternatively you can use a virtual environment and distribute that via spark  (see [spark documentation](https://spark.apache.org/docs/latest/api/python/user_guide/python_packaging.html))
+
 ##### Download spark on workers
 
 ```bash
-parallel-ssh -l $USER -i -h  ips.txt  "wget https://archive.apache.org/dist/spark/spark-3.2.0/spark-3.2.0-bin-hadoop3.2.tgz"
-parallel-ssh -l $USER -i -h  ips.txt  "tar xf spark-3.2.0-bin-hadoop3.2.tgz"
+parallel-ssh -l $USER -i -h  ips.txt  "wget https://archive.apache.org/dist/spark/spark-3.5.0/spark-3.5.0-bin-hadoop3.tgz"
+parallel-ssh -l $USER -i -h  ips.txt  "tar xf spark-3.5.0-bin-hadoop3.tgz"
 ```
 
 #### Start the master node
@@ -169,7 +171,7 @@ parallel-ssh -l $USER -i -h  ips.txt  "tar xf spark-3.2.0-bin-hadoop3.2.tgz"
 When you're ready, you can start the master node with:
 
 ```bash
-./spark-3.2.0-bin-hadoop3.2/sbin/start-master.sh -h master_node -p 7077
+./spark-3.5.0-bin-hadoop3/sbin/start-master.sh -h master_node -p 7077
 ```
 
 Replace master_node by the master node ip.
@@ -180,7 +182,7 @@ Replace master_node by the master node ip.
 When you're ready, you can start the worker nodes with:
 
 ```bash
-parallel-ssh -l $USER -i -h  ips.txt  "./spark-3.2.0-bin-hadoop3.2/sbin/start-worker.sh -c 16 -m 16G spark://master_node:7077"
+parallel-ssh -l $USER -i -h  ips.txt  "./spark-3.5.0-bin-hadoop3/sbin/start-worker.sh -c 16 -m 16G spark://master_node:7077"
 ```
 
 Replace master_node by the master node ip.
@@ -192,7 +194,7 @@ Replace -c 16 -m 16g but the number of cores and ram you want to use on each wor
 When you're done, you can stop the worker nodes with:
 
 ```bash
-parallel-ssh -l $USER -i -h  ips.txt "rm -rf ~/spark-3.2.0-bin-hadoop3.2/work/*"
+parallel-ssh -l $USER -i -h  ips.txt "rm -rf ~/spark-3.5.0-bin-hadoop3/work/*"
 pkill -f "ssh -R"
 parallel-ssh -l $USER -i -h  ips.txt  "pkill java"
 ```
@@ -217,6 +219,8 @@ Save this script to download.py.
 Then run ./video2dataset.pex download.py
 
 Replace master_node by the master node ip.
+
+_Make sure you use the same spark and pyspark version (e.g. pyspark==3.5.0 for spark 3.5.0)_
 
 ```python
 from video2dataset import video2dataset
