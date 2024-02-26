@@ -17,7 +17,7 @@ decord
 torch==2.2.0
 langdetect
 torchdata==0.7.1
-torchaudio==2.2.0
+torchaudio==2.2.1
 soundfile
 omegaconf
 einops
