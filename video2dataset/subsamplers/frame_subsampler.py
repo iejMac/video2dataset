@@ -36,7 +36,7 @@ class FrameSubsampler(Subsampler):
     def __init__(self, frame_rate, downsample_method="fps", encode_format="mp4"):
         self.frame_rate = frame_rate
         self.downsample_method = downsample_method
-        self.output_modality = "video" if downsample_method == "fps" else "jpg"
+        self.output_modality = "video" if downsample_method in ["fps", "keyframe"] else "jpg"
         self.encode_formats = {"video": encode_format}
 
     def __call__(self, streams, metadata=None):
