@@ -164,6 +164,8 @@ class YtDlpDownloader:
     yt_args:
         download_size: preferred height of video to download. Will try to download smallest video >=download_size
         download_audio_rate: same as size but with audio
+        video_codec: preferred codec for video (e.g. avc1). If unspecified or not available download the default codec
+        fps: lower bound for fps. If unspecified or not available download worst quality video satisfies other criteria
         yt_metadata_args: see get_yt_metadata function docstring
     """
 
@@ -172,20 +174,21 @@ class YtDlpDownloader:
         self.metadata_args = yt_args.get("yt_metadata_args", {})
         self.video_size = yt_args.get("download_size", 360)
         self.audio_rate = yt_args.get("download_audio_rate", 44100)
+        self.video_codec = yt_args.get("video_codec", None)
+        self.fps = yt_args.get("fps", 0)
         self.tmp_dir = tmp_dir
         self.encode_formats = encode_formats
-
-        # TODO: figure out when to do this
-        # was relevant with HD videos for loading with decord
-        self.specify_codec = False
 
     def __call__(self, url):
         modality_paths = {}
 
+        # using *= (for contains) instead of = (for exact match) -> allows specifying e.g. avc1 instead of avc1.64001F
+        codec_format_string = f"[vcodec*={self.video_codec}]" if self.video_codec else ""
         video_format_string = (
-            f"wv*[height>={self.video_size}][ext=mp4]{'[codec=avc1]' if self.specify_codec else ''}/"
-            f"w[height>={self.video_size}][ext=mp4]{'[codec=avc1]' if self.specify_codec else ''}/"
-            f"bv/b[ext=mp4]{'[codec=avc1]' if self.specify_codec else ''}"
+            # worst video quality above minimum size, preferrably with enough fps
+            f"(wv*[fps>={self.fps}]/wv*)[height>={self.video_size}][ext=mp4]{codec_format_string}/"
+            # otherwise take best video quality 
+            f"bv/b[ext=mp4]{codec_format_string}"
         )
         audio_fmt_string = (
             f"wa[asr>={self.audio_rate}][ext=m4a] / ba[ext=m4a]" if self.audio_rate > 0 else "ba[ext=m4a]"
