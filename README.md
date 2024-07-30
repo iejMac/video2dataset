@@ -163,7 +163,7 @@ These arguments give coarse control over input/output "shape" of the dataset. Fo
 
 ## Downloading YouTube Metadata
 
-If we want to download a large amount of YouTube videos with video2dataset we can specify some parameters and also extract useful metadata as well. For directions on how to do so please see this [example](https://github.com/iejMac/video2dataset/blob/main/examples/yt_metadata.md).
+If we want to download a large amount of YouTube videos with video2dataset we can specify some parameters - including a proxy to distribute requests - and also extract useful metadata as well. For directions on how to do so please see this [example](https://github.com/iejMac/video2dataset/blob/main/examples/yt_metadata.md).
 
 ## Incremental mode
 

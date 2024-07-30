@@ -1,3 +1,16 @@
+### Setting up yt-dlp proxy:
+#### Usage
+
+yt-dlp allows you to setup a proxy to send requests to YouTube. We surface this feature through our config file through the `proxy` and the flag `proxy-check-certificate`. If `proxy-check-certificate` is set to False, it supresses HTTPS certificate validation.
+
+```yaml
+yt_args:
+    download_size: 360
+    download_audio_rate: 44100
+    proxy: "url:port"
+    proxy-check-certificate: True / False
+```
+
 ### Download YouTube metadata & subtitles:
 #### Usage
 
