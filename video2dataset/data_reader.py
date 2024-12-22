@@ -165,11 +165,13 @@ class YtDlpDownloader:
         download_size: preferred height of video to download. Will try to download smallest video >=download_size
         download_audio_rate: same as size but with audio
         yt_metadata_args: see get_yt_metadata function docstring
+        ydl_args: see YoutubeDL docstring
     """
 
     # TODO: maybe we just include height and width in the metadata_args
     def __init__(self, yt_args, tmp_dir, encode_formats):
         self.metadata_args = yt_args.get("yt_metadata_args", {})
+        self.ydl_args = yt_args.get("ydl_args", {})
         self.video_size = yt_args.get("download_size", 360)
         self.audio_rate = yt_args.get("download_audio_rate", 44100)
         self.tmp_dir = tmp_dir
@@ -194,6 +196,7 @@ class YtDlpDownloader:
         if self.encode_formats.get("audio", None):
             audio_path_m4a = f"{self.tmp_dir}/{str(uuid.uuid4())}.m4a"
             ydl_opts = {
+                **self.ydl_args,
                 "outtmpl": audio_path_m4a,
                 "format": audio_fmt_string,
                 "quiet": True,
@@ -217,6 +220,7 @@ class YtDlpDownloader:
         if self.encode_formats.get("video", None):
             video_path = f"{self.tmp_dir}/{str(uuid.uuid4())}.mp4"
             ydl_opts = {
+                **self.ydl_args,
                 "outtmpl": video_path,
                 "format": video_format_string,
                 "quiet": True,
