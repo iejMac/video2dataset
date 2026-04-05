@@ -1,6 +1,6 @@
-numpy>=1.19.5,<2
-fire>=0.4.0,<0.6.0
-requests>=2.27.1,<3
+numpy>=1.19.5
+fire>=0.4.0
+requests>=2.27.1
 ffmpeg-python
 yt_dlp
 pyarrow
@@ -11,13 +11,13 @@ wandb
 pandas
 tqdm
 timeout-decorator
-scenedetect[opencv]==0.6.2
+scenedetect[opencv]>=0.6.2
 decord
 #eva-decord  # use eva-decord instead of decord on Mac (https://github.com/dmlc/decord/issues/213)
-torch==2.2.0
+torch>=2.2.0
 langdetect
-torchdata==0.7.1
-torchaudio==2.2.0
+torchdata>=0.7.1
+torchaudio>=2.2.0
 soundfile
 omegaconf
 einops
