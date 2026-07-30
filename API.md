@@ -32,7 +32,7 @@ stage: String that tells video2dataset what stage of processing is being perform
 url_col: Column in input (if has columns) that contains the url (default = "url")
 caption_col: Column in input (if has columns) that contains captions (to be written as txt) (default = None)
 clip_col: Column in input (if has columns) that contains timeframes of clips for how to split video (default = None)
-save_additional_columns: List of column names to save to json component of a sample (defualt = None)
+save_additional_columns: List of column names to save to json component of a sample (default = None)
 enable_wandb: Whether or not to log info to wandb (default = False)
 wandb_project: Name of wandb project to log runs to (default = "video2dataset")
 incremental_mode: Decides how to handle restarting, Can be (default = "incremental")
